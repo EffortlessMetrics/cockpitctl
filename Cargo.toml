@@ -1,0 +1,39 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/cockpitctl-types",
+  "crates/cockpitctl-domain",
+  "crates/cockpitctl-ingest",
+  "crates/cockpitctl-render",
+  "crates/cockpitctl-io",
+  "crates/cockpitctl-cli",
+  "xtask",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.75"
+repository = "https://example.invalid/effortless-metrics/cockpitctl"
+authors = ["Effortless Metrics"]
+
+[workspace.dependencies]
+anyhow = "1"
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+clap = { version = "4", features = ["derive"] }
+sha2 = "0.10"
+hex = "0.4"
+walkdir = "2"
+time = { version = "0.3", features = ["formatting"] }
+globset = "0.4"
+tempfile = "3"
+
+# Dev/test dependencies (centralized; crates opt in)
+pretty_assertions = "1"
+assert_cmd = "2"
+predicates = "3"
+proptest = "1"
+insta = { version = "1", features = ["json"] }

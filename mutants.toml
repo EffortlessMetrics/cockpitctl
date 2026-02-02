@@ -1,0 +1,19 @@
+# cargo-mutants configuration (optional).
+#
+# Recommended focus:
+# - cockpitctl-domain (policy + highlight selection)
+# - cockpitctl-ingest (use case branching)
+#
+# You can run:
+#   cargo mutants --workspace --exclude cockpitctl-io --exclude xtask
+#
+# Keep this file conservative; mutation testing can be expensive in CI.
+
+[mutants]
+timeout = 60
+exclude_globs = [
+  "fixtures/**",
+  "schemas/**",
+  "templates/**",
+  "fuzz/**",
+]
