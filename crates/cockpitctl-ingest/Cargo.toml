@@ -4,10 +4,15 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-publish = false
+repository.workspace = true
+authors.workspace = true
+description = "Ingest use case and port traits (hexagonal architecture boundary)"
+readme = "../../README.md"
+keywords = ["ci", "ingest", "hexagonal", "ports", "use-case"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true
 serde_json.workspace = true
-cockpitctl-types = { path = "../cockpitctl-types" }
-cockpitctl-domain = { path = "../cockpitctl-domain" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.1.0" }
+cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.1.0" }

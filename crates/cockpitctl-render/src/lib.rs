@@ -113,6 +113,18 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
         out.push('\n');
     }
 
+    // Annotations section
+    let sensor_blocking: std::collections::BTreeMap<String, bool> = report
+        .sensors
+        .iter()
+        .map(|s| (s.id.clone(), s.blocking))
+        .collect();
+    out.push_str(&render_annotations_section(
+        &report.highlights,
+        cfg,
+        &sensor_blocking,
+    ));
+
     // Sections: group sensors by section label, render in cfg.policy.section_order order.
     let mut by_section: std::collections::BTreeMap<String, Vec<&cockpitctl_types::SensorSummary>> =
         std::collections::BTreeMap::new();

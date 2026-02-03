@@ -19,6 +19,17 @@ enum Commands {
         dir: PathBuf,
     },
 
+    /// Validate that JSON Schema files are valid JSON and conform to JSON Schema spec.
+    ValidateSchemas {
+        /// Directory containing JSON schema files
+        #[arg(long, default_value = "schemas")]
+        dir: PathBuf,
+
+        /// Reformat JSON files with consistent indentation
+        #[arg(long)]
+        fix: bool,
+    },
+
     /// Print instructions for regenerating golden fixtures.
     FixturesHelp,
 }
@@ -34,6 +45,7 @@ fn main() {
 fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Commands::SchemaCheck { dir } => schema_check(dir),
+        Commands::ValidateSchemas { dir, fix } => validate_schemas(dir, fix),
         Commands::FixturesHelp => fixtures_help(),
     }
 }
@@ -69,5 +81,109 @@ fn fixtures_help() -> Result<()> {
     eprintln!("  cp fixtures/happy_path/artifacts/cockpit/report.json fixtures/happy_path/expected/report.json");
     eprintln!("  cp fixtures/happy_path/artifacts/cockpit/comment.md fixtures/happy_path/expected/comment.md");
     eprintln!();
+    Ok(())
+}
+
+fn validate_schemas(dir: PathBuf, fix: bool) -> Result<()> {
+    use walkdir::WalkDir;
+
+    if !dir.exists() {
+        anyhow::bail!("schema directory does not exist: {}", dir.display());
+    }
+
+    let mut errors: Vec<String> = Vec::new();
+    let mut files_checked = 0;
+    let mut files_fixed = 0;
+
+    for entry in WalkDir::new(&dir)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+
+        // Skip non-JSON files
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+
+        // Skip directories
+        if !path.is_file() {
+            continue;
+        }
+
+        files_checked += 1;
+        eprintln!("checking: {}", path.display());
+
+        // Step 1: Read the file
+        let content = match fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(e) => {
+                errors.push(format!("{}: failed to read file: {}", path.display(), e));
+                continue;
+            }
+        };
+
+        // Step 2: Validate it's valid JSON
+        let value: serde_json::Value = match serde_json::from_str(&content) {
+            Ok(v) => v,
+            Err(e) => {
+                errors.push(format!("{}: invalid JSON: {}", path.display(), e));
+                continue;
+            }
+        };
+
+        // Step 3: Validate it's a valid JSON Schema (meta-validation)
+        if let Err(meta_err) = jsonschema::meta::validate(&value) {
+            errors.push(format!(
+                "{}: not a valid JSON Schema: {}",
+                path.display(),
+                meta_err
+            ));
+            continue;
+        }
+
+        // Step 4: Check for recommended fields
+        if value.get("$schema").is_none() {
+            eprintln!("  warning: {} missing $schema field", path.display());
+        }
+
+        // Step 5: Optionally fix formatting
+        if fix {
+            let formatted = serde_json::to_string_pretty(&value)
+                .with_context(|| format!("failed to format {}", path.display()))?;
+            let formatted_with_newline = format!("{}\n", formatted);
+
+            if formatted_with_newline != content {
+                fs::write(path, &formatted_with_newline)
+                    .with_context(|| format!("failed to write {}", path.display()))?;
+                eprintln!("  fixed: {}", path.display());
+                files_fixed += 1;
+            }
+        }
+
+        eprintln!("  ok: valid JSON Schema");
+    }
+
+    // Summary
+    eprintln!();
+    eprintln!(
+        "checked {} file(s), {} error(s)",
+        files_checked,
+        errors.len()
+    );
+    if fix {
+        eprintln!("fixed {} file(s)", files_fixed);
+    }
+
+    if !errors.is_empty() {
+        eprintln!();
+        eprintln!("errors:");
+        for e in &errors {
+            eprintln!("  {}", e);
+        }
+        anyhow::bail!("schema validation failed with {} error(s)", errors.len());
+    }
+
     Ok(())
 }

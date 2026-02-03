@@ -4,7 +4,12 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-publish = false
+repository.workspace = true
+authors.workspace = true
+description = "Director CLI for aggregating CI sensor receipts into merge decisions"
+readme = "../../README.md"
+keywords = ["ci", "cd", "cli", "sensors", "merge-decisions"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "cockpitctl"
@@ -15,10 +20,10 @@ anyhow.workspace = true
 clap.workspace = true
 serde_json.workspace = true
 time.workspace = true
-cockpitctl-types = { path = "../cockpitctl-types" }
-cockpitctl-ingest = { path = "../cockpitctl-ingest" }
-cockpitctl-render = { path = "../cockpitctl-render" }
-cockpitctl-io = { path = "../cockpitctl-io" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.1.0" }
+cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.1.0" }
+cockpitctl-render = { path = "../cockpitctl-render", version = "0.1.0" }
+cockpitctl-io = { path = "../cockpitctl-io", version = "0.1.0" }
 
 [dev-dependencies]
 assert_cmd.workspace = true

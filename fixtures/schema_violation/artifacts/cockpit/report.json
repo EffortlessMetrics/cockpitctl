@@ -1,0 +1,80 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.1.0"
+  },
+  "run": {
+    "started_at": "2026-02-03T18:56:12.9036244Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "bad-sensor",
+      "blocking": true,
+      "missing": "fail",
+      "present": false,
+      "report_path": "artifacts/bad-sensor/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": [
+          "schema_violation"
+        ]
+      },
+      "truncated": false,
+      "errors": [
+        "/findings/0: \"code\" is a required property",
+        "/findings/0: \"message\" is a required property",
+        "/run: \"started_at\" is a required property",
+        "/tool: \"version\" is a required property",
+        "/verdict: \"counts\" is a required property"
+      ]
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "bad-sensor",
+      "finding": {
+        "severity": "error",
+        "check_id": "cockpit.schema_violation",
+        "code": "cockpit.schema_violation",
+        "message": "Receipt for sensor `bad-sensor` at `artifacts/bad-sensor/report.json` does not conform to sensor.report.v1 schema: 5 schema violations: /findings/0: \"code\" is a required property; /findings/0: \"message\" is a required property; /run: \"started_at\" is a required property; /tool: \"version\" is a required property; /verdict: \"counts\" is a required property",
+        "help": "Ensure the sensor output matches the JSON schema at schemas/sensor.report.v1.json.",
+        "fingerprint": "da308739866f42584b25315a0bf175b3284f22c0037d70132a1a13a06245f01a"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Validation",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "bad-sensor",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Validation",
+        "repro": "bad-sensor check --verify"
+      }
+    ]
+  }
+}

@@ -37,6 +37,8 @@ Returned when:
 - A blocking sensor has `verdict.status = "fail"`
 - A blocking sensor has `verdict.status = "warn"` and `warn_is_fail = true`
 - A blocking sensor is missing and its `missing` policy is `"fail"`
+- A blocking sensor's receipt fails schema validation (in strict mode)
+- A blocking sensor's receipt cannot be parsed (invalid JSON or structure)
 
 The cockpit report and comment are still written on exit code 2. This allows CI to post the comment showing what failed.
 

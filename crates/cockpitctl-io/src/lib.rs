@@ -3,8 +3,12 @@
 //! This crate is the boundary between IO and the ingest use case.
 
 use anyhow::{Context, Result};
-use cockpitctl_ingest::{DiscoveredSensors, OutputSink, PolicySource, ReceiptSource};
+use cockpitctl_ingest::{
+    DiscoveredSensors, OutputSink, PolicySource, ReceiptSource, SchemaValidationResult,
+    SchemaValidator,
+};
 use cockpitctl_types::CockpitConfig;
+use jsonschema::Validator;
 use std::fs;
 use std::path::PathBuf;
 
@@ -217,6 +221,71 @@ impl OutputSink for FsOutputSink {
     }
 }
 
+/// JSON Schema validator for sensor reports.
+///
+/// Validates receipts against the `sensor.report.v1` JSON schema.
+pub struct JsonSchemaValidator {
+    validator: Validator,
+}
+
+impl JsonSchemaValidator {
+    /// Create a new validator by loading the schema from a file path.
+    pub fn from_file(schema_path: impl AsRef<std::path::Path>) -> Result<Self> {
+        let schema_str = fs::read_to_string(schema_path.as_ref())
+            .with_context(|| format!("read schema file {}", schema_path.as_ref().display()))?;
+        let schema: serde_json::Value = serde_json::from_str(&schema_str).with_context(|| {
+            format!("parse schema JSON from {}", schema_path.as_ref().display())
+        })?;
+        let validator =
+            Validator::new(&schema).map_err(|e| anyhow::anyhow!("invalid JSON schema: {}", e))?;
+        Ok(Self { validator })
+    }
+
+    /// Create a new validator from a JSON schema value.
+    pub fn from_schema(schema: &serde_json::Value) -> Result<Self> {
+        let validator =
+            Validator::new(schema).map_err(|e| anyhow::anyhow!("invalid JSON schema: {}", e))?;
+        Ok(Self { validator })
+    }
+
+    /// Create a new validator using the embedded sensor.report.v1 schema.
+    pub fn sensor_report_v1() -> Result<Self> {
+        const SCHEMA: &str = include_str!("../../../schemas/sensor.report.v1.json");
+        let schema: serde_json::Value =
+            serde_json::from_str(SCHEMA).context("parse embedded sensor.report.v1 schema")?;
+        Self::from_schema(&schema)
+    }
+}
+
+impl SchemaValidator for JsonSchemaValidator {
+    fn validate_receipt(&self, bytes: &[u8]) -> Result<SchemaValidationResult> {
+        // First, parse the JSON.
+        let value: serde_json::Value =
+            serde_json::from_slice(bytes).context("receipt is not valid JSON")?;
+
+        // Validate against the schema.
+        let result = self.validator.validate(&value);
+
+        if result.is_ok() {
+            Ok(SchemaValidationResult::Valid)
+        } else {
+            let errors: Vec<String> = self
+                .validator
+                .iter_errors(&value)
+                .map(|e| {
+                    let path = e.instance_path.to_string();
+                    if path.is_empty() {
+                        e.to_string()
+                    } else {
+                        format!("{}: {}", path, e)
+                    }
+                })
+                .collect();
+            Ok(SchemaValidationResult::Invalid(errors))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -308,5 +377,290 @@ mod tests {
         let layout = FsLayout::new("/tmp/artifacts", "/tmp/cockpit.toml");
         assert_eq!(layout.max_receipts, 100);
         assert_eq!(DEFAULT_MAX_RECEIPTS, 100);
+    }
+
+    // -------------------------------------------------------------------------
+    // JsonSchemaValidator tests
+    // -------------------------------------------------------------------------
+
+    /// Minimal valid sensor report with all required fields and the findings array.
+    fn valid_sensor_report() -> &'static str {
+        r#"{
+            "schema": "sensor.report.v1",
+            "tool": { "name": "test-tool", "version": "1.0.0" },
+            "run": { "started_at": "2026-01-15T10:30:00Z" },
+            "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+            "findings": []
+        }"#
+    }
+
+    #[test]
+    fn json_schema_validator_accepts_valid_receipt() {
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator
+            .validate_receipt(valid_sensor_report().as_bytes())
+            .unwrap();
+        assert!(matches!(result, SchemaValidationResult::Valid));
+    }
+
+    #[test]
+    fn json_schema_validator_accepts_valid_receipt_with_findings() {
+        let report = r#"{
+            "schema": "sensor.report.v1",
+            "tool": { "name": "clippy", "version": "0.1.0" },
+            "run": { "started_at": "2026-01-15T10:30:00Z" },
+            "verdict": { "status": "warn", "counts": { "info": 0, "warn": 1, "error": 0 } },
+            "findings": [
+                {
+                    "severity": "warn",
+                    "code": "clippy::unwrap_used",
+                    "message": "used `unwrap()` on a `Result` value"
+                }
+            ]
+        }"#;
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator.validate_receipt(report.as_bytes()).unwrap();
+        assert!(matches!(result, SchemaValidationResult::Valid));
+    }
+
+    #[test]
+    fn json_schema_validator_accepts_valid_receipt_with_full_finding() {
+        let report = r#"{
+            "schema": "sensor.report.v1",
+            "tool": { "name": "clippy", "version": "0.1.0", "commit": "abc123" },
+            "run": {
+                "started_at": "2026-01-15T10:30:00Z",
+                "ended_at": "2026-01-15T10:31:00Z",
+                "duration_ms": 60000
+            },
+            "verdict": { "status": "warn", "counts": { "info": 0, "warn": 1, "error": 0 } },
+            "findings": [
+                {
+                    "severity": "warn",
+                    "code": "clippy::unwrap_used",
+                    "message": "used `unwrap()` on a `Result` value",
+                    "location": { "path": "src/main.rs", "line": 42, "col": 10 },
+                    "help": "Consider using `expect()` or `?` instead",
+                    "url": "https://rust-lang.github.io/rust-clippy/",
+                    "fingerprint": "abc123def456",
+                    "check_id": "unwrap-check"
+                }
+            ],
+            "data": { "custom": "payload" }
+        }"#;
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator.validate_receipt(report.as_bytes()).unwrap();
+        assert!(matches!(result, SchemaValidationResult::Valid));
+    }
+
+    #[test]
+    fn json_schema_validator_rejects_missing_required_fields() {
+        // Missing "schema" field
+        let report = r#"{
+            "tool": { "name": "test", "version": "1.0" },
+            "run": { "started_at": "2026-01-15T10:30:00Z" },
+            "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+            "findings": []
+        }"#;
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator.validate_receipt(report.as_bytes()).unwrap();
+        match result {
+            SchemaValidationResult::Invalid(errors) => {
+                assert!(!errors.is_empty(), "should have at least one error");
+                let joined = errors.join(" ");
+                assert!(
+                    joined.contains("schema") || joined.contains("required"),
+                    "error should mention missing 'schema' field: {:?}",
+                    errors
+                );
+            }
+            SchemaValidationResult::Valid => panic!("expected Invalid result for missing 'schema'"),
+        }
+    }
+
+    #[test]
+    fn json_schema_validator_rejects_invalid_verdict_status() {
+        let report = r#"{
+            "schema": "sensor.report.v1",
+            "tool": { "name": "test", "version": "1.0" },
+            "run": { "started_at": "2026-01-15T10:30:00Z" },
+            "verdict": { "status": "invalid_status", "counts": { "info": 0, "warn": 0, "error": 0 } },
+            "findings": []
+        }"#;
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator.validate_receipt(report.as_bytes()).unwrap();
+        match result {
+            SchemaValidationResult::Invalid(errors) => {
+                assert!(!errors.is_empty(), "should have at least one error");
+                // Should mention the invalid enum value
+                let joined = errors.join(" ");
+                assert!(
+                    joined.contains("invalid_status")
+                        || joined.contains("status")
+                        || joined.contains("enum"),
+                    "error should mention invalid verdict status: {:?}",
+                    errors
+                );
+            }
+            SchemaValidationResult::Valid => {
+                panic!("expected Invalid result for bad verdict status")
+            }
+        }
+    }
+
+    #[test]
+    fn json_schema_validator_rejects_invalid_finding_severity() {
+        let report = r#"{
+            "schema": "sensor.report.v1",
+            "tool": { "name": "test", "version": "1.0" },
+            "run": { "started_at": "2026-01-15T10:30:00Z" },
+            "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+            "findings": [
+                {
+                    "severity": "critical",
+                    "code": "test-001",
+                    "message": "test message"
+                }
+            ]
+        }"#;
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator.validate_receipt(report.as_bytes()).unwrap();
+        match result {
+            SchemaValidationResult::Invalid(errors) => {
+                assert!(!errors.is_empty(), "should have at least one error");
+            }
+            SchemaValidationResult::Valid => panic!("expected Invalid result for bad severity"),
+        }
+    }
+
+    #[test]
+    fn json_schema_validator_rejects_finding_missing_required_fields() {
+        // Finding missing "code" field
+        let report = r#"{
+            "schema": "sensor.report.v1",
+            "tool": { "name": "test", "version": "1.0" },
+            "run": { "started_at": "2026-01-15T10:30:00Z" },
+            "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+            "findings": [
+                {
+                    "severity": "warn",
+                    "message": "test message"
+                }
+            ]
+        }"#;
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator.validate_receipt(report.as_bytes()).unwrap();
+        match result {
+            SchemaValidationResult::Invalid(errors) => {
+                assert!(!errors.is_empty(), "should have at least one error");
+                let joined = errors.join(" ");
+                assert!(
+                    joined.contains("code") || joined.contains("required"),
+                    "error should mention missing 'code' field: {:?}",
+                    errors
+                );
+            }
+            SchemaValidationResult::Valid => {
+                panic!("expected Invalid result for missing finding code")
+            }
+        }
+    }
+
+    #[test]
+    fn json_schema_validator_rejects_additional_properties_at_root() {
+        let report = r#"{
+            "schema": "sensor.report.v1",
+            "tool": { "name": "test", "version": "1.0" },
+            "run": { "started_at": "2026-01-15T10:30:00Z" },
+            "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+            "findings": [],
+            "extra_field": "not allowed"
+        }"#;
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator.validate_receipt(report.as_bytes()).unwrap();
+        match result {
+            SchemaValidationResult::Invalid(errors) => {
+                assert!(
+                    !errors.is_empty(),
+                    "should have at least one error for extra field"
+                );
+            }
+            SchemaValidationResult::Valid => {
+                panic!("expected Invalid result for additional properties at root")
+            }
+        }
+    }
+
+    #[test]
+    fn json_schema_validator_returns_error_for_invalid_json() {
+        let invalid_json = b"{ not valid json }";
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator.validate_receipt(invalid_json);
+        assert!(result.is_err(), "should return Err for invalid JSON");
+        let err_msg = format!("{:?}", result.err().unwrap());
+        assert!(
+            err_msg.contains("JSON") || err_msg.contains("json"),
+            "error should mention JSON parsing: {}",
+            err_msg
+        );
+    }
+
+    #[test]
+    fn json_schema_validator_rejects_empty_code_in_finding() {
+        // code has minLength: 1
+        let report = r#"{
+            "schema": "sensor.report.v1",
+            "tool": { "name": "test", "version": "1.0" },
+            "run": { "started_at": "2026-01-15T10:30:00Z" },
+            "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+            "findings": [
+                {
+                    "severity": "warn",
+                    "code": "",
+                    "message": "test message"
+                }
+            ]
+        }"#;
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator.validate_receipt(report.as_bytes()).unwrap();
+        match result {
+            SchemaValidationResult::Invalid(errors) => {
+                assert!(
+                    !errors.is_empty(),
+                    "should have at least one error for empty code"
+                );
+            }
+            SchemaValidationResult::Valid => panic!("expected Invalid result for empty code"),
+        }
+    }
+
+    #[test]
+    fn json_schema_validator_rejects_negative_line_number() {
+        // line has minimum: 1
+        let report = r#"{
+            "schema": "sensor.report.v1",
+            "tool": { "name": "test", "version": "1.0" },
+            "run": { "started_at": "2026-01-15T10:30:00Z" },
+            "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+            "findings": [
+                {
+                    "severity": "warn",
+                    "code": "test",
+                    "message": "test",
+                    "location": { "path": "src/main.rs", "line": 0 }
+                }
+            ]
+        }"#;
+        let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+        let result = validator.validate_receipt(report.as_bytes()).unwrap();
+        match result {
+            SchemaValidationResult::Invalid(errors) => {
+                assert!(
+                    !errors.is_empty(),
+                    "should have at least one error for line=0"
+                );
+            }
+            SchemaValidationResult::Valid => panic!("expected Invalid result for line=0"),
+        }
     }
 }

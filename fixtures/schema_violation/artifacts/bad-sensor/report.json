@@ -1,0 +1,15 @@
+{
+  "schema": "bad-sensor.report.v1",
+  "tool": {
+    "name": "bad-sensor"
+  },
+  "run": {},
+  "verdict": {
+    "status": "pass"
+  },
+  "findings": [
+    {
+      "severity": "info"
+    }
+  ]
+}

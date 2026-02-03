@@ -27,17 +27,14 @@ Emitted when an expected sensor did not produce a receipt.
 
 ### cockpit.invalid_receipt
 
-Emitted when a receipt exists but cannot be parsed.
+Emitted when a receipt exists but cannot be parsed as valid JSON or doesn't match the expected serde structure.
 
 ```json
 {
   "severity": "error",
   "code": "cockpit.invalid_receipt",
-  "message": "Failed to parse receipt for sensor 'builddiag': expected object at line 1",
-  "data": {
-    "error": "expected object at line 1 column 1",
-    "path": "artifacts/builddiag/report.json"
-  }
+  "message": "Invalid receipt for sensor `builddiag` at `artifacts/builddiag/report.json`: expected object at line 1",
+  "help": "Validate that the sensor wrote JSON matching sensor.report.v1."
 }
 ```
 
@@ -45,8 +42,33 @@ Emitted when a receipt exists but cannot be parsed.
 
 **When it appears:**
 - Receipt file exists but is not valid JSON
-- Receipt JSON doesn't match `sensor.report.v1` schema
-- Receipt has unknown top-level fields (strict parsing)
+- Receipt JSON doesn't match the Rust struct structure (missing required fields)
+- Occurs in lax mode or when schema validation passes but serde parsing fails
+
+### cockpit.schema_violation
+
+Emitted when a receipt fails JSON Schema validation (only in strict mode).
+
+```json
+{
+  "severity": "error",
+  "code": "cockpit.schema_violation",
+  "message": "Receipt for sensor `builddiag` at `artifacts/builddiag/report.json` does not conform to sensor.report.v1 schema: /tool: \"version\" is a required property",
+  "help": "Ensure the sensor output matches the JSON schema at schemas/sensor.report.v1.json."
+}
+```
+
+**Severity:** Always `"error"`
+
+**When it appears:**
+- `--schema-validation strict` is active (CLI) AND `schema_validation = "strict"` (config)
+- Receipt is valid JSON but violates the JSON Schema
+- Provides detailed field-level validation errors
+
+**Difference from invalid_receipt:**
+- `schema_violation` catches schema issues early with detailed errors
+- `invalid_receipt` is a fallback for parse errors (less specific)
+- A receipt may pass schema validation but fail serde parsing if schemas diverge
 
 ### cockpit.receipt_inconsistent
 
@@ -99,6 +121,25 @@ Emitted when a sensor ID contains path traversal.
 **When it appears:**
 - Sensor ID in config or discovered path contains `..`
 - The sensor is skipped for security
+
+### cockpit.sensors_truncated
+
+Emitted when sensor discovery is truncated due to safety limits.
+
+```json
+{
+  "severity": "warn",
+  "code": "cockpit.sensors_truncated",
+  "message": "Sensor discovery was truncated: processed 100 of 150 sensors found. Increase max_receipts limit if needed.",
+  "help": "This is a safety limit to prevent DoS. Consider reviewing why so many sensors exist."
+}
+```
+
+**Severity:** Always `"warn"`
+
+**When it appears:**
+- Number of discovered sensors exceeds `max_receipts` limit (default: 100)
+- Only the first N sensors (lexically sorted) are processed
 
 ## Code Stability
 

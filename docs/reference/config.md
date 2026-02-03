@@ -51,8 +51,21 @@ Global policy settings.
 | `warn_is_fail` | bool | `false` | When true, warnings from blocking sensors cause policy failure |
 | `max_highlights` | int | `7` | Maximum findings shown in highlights section |
 | `max_per_sensor_findings` | int | `20` | Maximum findings surfaced per sensor |
-| `max_annotations` | int | `25` | Maximum annotations for annotation emitters (future) |
+| `max_annotations` | int | `25` | Maximum annotations rendered in PR comment |
 | `section_order` | array | see below | Order of sections in PR comment |
+| `schema_validation` | string | `"lax"` | Receipt validation mode: `"lax"` or `"strict"` |
+
+**Schema Validation:**
+
+```toml
+[policy]
+schema_validation = "strict"  # Enable JSON Schema validation
+```
+
+- **`"lax"` (default):** Skip JSON Schema validation; only parse receipts as JSON
+- **`"strict"`:** Validate receipts against `schemas/sensor.report.v1.json` before parsing; violations are surfaced as `cockpit.schema_violation` findings
+
+> **Note:** The CLI `--schema-validation lax` flag can override a `strict` config (emergency escape). However, CLI `strict` cannot override config `lax` (policy controls).
 
 **Default section order:**
 

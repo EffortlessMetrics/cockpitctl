@@ -14,7 +14,8 @@ members = [
 edition = "2021"
 license = "MIT OR Apache-2.0"
 rust-version = "1.75"
-repository = "https://example.invalid/effortless-metrics/cockpitctl"
+repository = "https://github.com/EffortlessMetrics/cockpitctl"
+homepage = "https://github.com/EffortlessMetrics/cockpitctl"
 authors = ["Effortless Metrics"]
 
 [workspace.dependencies]

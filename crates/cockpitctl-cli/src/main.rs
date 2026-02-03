@@ -1,10 +1,28 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator};
-use cockpitctl_io::{FsLayout, FsOutputSink, FsPolicySource, FsReceiptSource};
+use cockpitctl_io::{FsLayout, FsOutputSink, FsPolicySource, FsReceiptSource, JsonSchemaValidator};
 use cockpitctl_render::render_comment;
-use cockpitctl_types::{RunInfo, ToolInfo};
+use cockpitctl_types::{RunInfo, SchemaValidation, ToolInfo};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+
+/// CLI schema validation mode for sensor receipts.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]
+pub enum SchemaValidationMode {
+    /// Skip JSON schema validation; only parse receipts as JSON.
+    Lax,
+    /// Validate receipts against schemas/sensor.report.v1.json.
+    Strict,
+}
+
+impl From<SchemaValidationMode> for SchemaValidation {
+    fn from(mode: SchemaValidationMode) -> Self {
+        match mode {
+            SchemaValidationMode::Lax => SchemaValidation::Lax,
+            SchemaValidationMode::Strict => SchemaValidation::Strict,
+        }
+    }
+}
 
 #[derive(Parser, Debug)]
 #[command(name = "cockpitctl")]
@@ -29,6 +47,14 @@ enum Commands {
         /// Labels present on the PR (optional; used for label-gates)
         #[arg(long)]
         label: Vec<String>,
+
+        /// Schema validation mode for sensor receipts.
+        ///
+        /// - lax: Skip JSON schema validation; only parse receipts as JSON (default).
+        /// - strict: Validate receipts against schemas/sensor.report.v1.json; schema
+        ///   violations are surfaced as findings rather than causing parse errors.
+        #[arg(long, value_enum, default_value_t = SchemaValidationMode::Lax)]
+        schema_validation: SchemaValidationMode,
     },
 
     /// Write a starter cockpit.toml (does not overwrite).
@@ -63,7 +89,8 @@ fn run(cli: Cli) -> Result<i32> {
             artifacts,
             config,
             label,
-        } => cmd_ingest(&artifacts, &config, label),
+            schema_validation,
+        } => cmd_ingest(&artifacts, &config, label, schema_validation),
         Commands::Init { path } => cmd_init(&path),
         Commands::Validate { input } => cmd_validate(&input),
     }
@@ -78,7 +105,12 @@ fn now_rfc3339() -> String {
         .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())
 }
 
-fn cmd_ingest(artifacts: &str, config: &str, labels: Vec<String>) -> Result<i32> {
+fn cmd_ingest(
+    artifacts: &str,
+    config: &str,
+    labels: Vec<String>,
+    schema_validation: SchemaValidationMode,
+) -> Result<i32> {
     let layout = FsLayout::new(artifacts, config);
 
     let receipts = FsReceiptSource::new(layout.clone());
@@ -100,13 +132,27 @@ fn cmd_ingest(artifacts: &str, config: &str, labels: Vec<String>) -> Result<i32>
         ci: None,
     };
 
-    let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, |r, cfg| {
-        render_comment(r, cfg)
-    });
-
     let req = IngestRequest { labels, tool, run };
-    let result = uc.execute(req).context("ingest")?;
-    Ok(result.exit_code)
+
+    // Execute with the appropriate schema validator based on CLI flag.
+    match schema_validation {
+        SchemaValidationMode::Lax => {
+            let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, |r, cfg| {
+                render_comment(r, cfg)
+            });
+            let result = uc.execute(req).context("ingest")?;
+            Ok(result.exit_code)
+        }
+        SchemaValidationMode::Strict => {
+            let validator = JsonSchemaValidator::sensor_report_v1()
+                .context("load sensor.report.v1 JSON schema")?;
+            let uc = IngestUseCase::new(receipts, policy, output, validator, |r, cfg| {
+                render_comment(r, cfg)
+            });
+            let result = uc.execute(req).context("ingest")?;
+            Ok(result.exit_code)
+        }
+    }
 }
 
 fn cmd_init(path: &str) -> Result<i32> {
