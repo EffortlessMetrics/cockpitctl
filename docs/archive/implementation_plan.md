@@ -1,6 +1,6 @@
 # cockpitctl implementation plan
 
-This is the staged, test-heavy plan to take `cockpitctl` from skeleton to “boring infrastructure”.
+This is the staged, test-heavy plan to take `cockpitctl` from skeleton to "boring infrastructure".
 
 ## Milestone 0 — Repo scaffold + contracts
 
@@ -17,7 +17,7 @@ This is the staged, test-heavy plan to take `cockpitctl` from skeleton to “bor
 - [ ] CI runs: fmt, clippy, test
 
 **Definition of done**
-- “Hello ingest” produces `artifacts/cockpit/*` deterministically.
+- "Hello ingest" produces `artifacts/cockpit/*` deterministically.
 
 ## Milestone 1 — Ingest core (receipt bus)
 
@@ -59,7 +59,7 @@ This is the staged, test-heavy plan to take `cockpitctl` from skeleton to “bor
 - [ ] Derived fingerprint for findings missing fingerprint
 - [ ] Receipt size caps and sensor count caps
 - [ ] Symlink escape protections (no traversal outside artifacts dir)
-- [ ] “Counts reconciliation” (receipt_inconsistent reason)
+- [ ] "Counts reconciliation" (receipt_inconsistent reason)
 
 **Tests**
 - Property tests for ordering determinism
@@ -96,4 +96,4 @@ This is the staged, test-heavy plan to take `cockpitctl` from skeleton to “bor
 - JSON schema validation (optional feature)
 - `cockpitctl explain` for cockpit-level codes (missing/invalid)
 - SARIF render for highlights (optional)
-- “Policy snapshot signing” (if you need tamper-evidence)
+- "Policy snapshot signing" (if you need tamper-evidence)

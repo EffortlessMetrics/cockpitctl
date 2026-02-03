@@ -3,11 +3,14 @@
 //! This crate is the boundary between IO and the ingest use case.
 
 use anyhow::{Context, Result};
-use cockpitctl_ingest::{OutputSink, PolicySource, ReceiptSource};
+use cockpitctl_ingest::{DiscoveredSensors, OutputSink, PolicySource, ReceiptSource};
 use cockpitctl_types::CockpitConfig;
 use std::fs;
-use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
+use std::path::PathBuf;
+
+/// Default cap on number of receipts (sensors) to process.
+/// Protects against DoS if someone creates thousands of sensor directories.
+pub const DEFAULT_MAX_RECEIPTS: usize = 100;
 
 #[derive(Clone)]
 pub struct FsLayout {
@@ -15,6 +18,8 @@ pub struct FsLayout {
     pub out_dir: PathBuf,
     pub config_path: PathBuf,
     pub max_receipt_bytes: usize,
+    /// Maximum number of sensor receipts to process. Protects against DoS.
+    pub max_receipts: usize,
 }
 
 impl FsLayout {
@@ -26,7 +31,14 @@ impl FsLayout {
             out_dir,
             config_path: config_path.into(),
             max_receipt_bytes: 2 * 1024 * 1024, // 2MB default safety cap
+            max_receipts: DEFAULT_MAX_RECEIPTS,
         }
+    }
+
+    /// Set a custom max_receipts limit. Returns self for chaining.
+    pub fn with_max_receipts(mut self, max: usize) -> Self {
+        self.max_receipts = max;
+        self
     }
 
     pub fn sensor_dir(&self, sensor_id: &str) -> PathBuf {
@@ -56,7 +68,9 @@ pub struct FsReceiptSource {
 }
 
 impl FsReceiptSource {
-    pub fn new(layout: FsLayout) -> Self { Self { layout } }
+    pub fn new(layout: FsLayout) -> Self {
+        Self { layout }
+    }
 
     fn is_valid_sensor_id(id: &str) -> bool {
         // Avoid path traversal and weirdness. Keep this conservative.
@@ -65,30 +79,51 @@ impl FsReceiptSource {
 }
 
 impl ReceiptSource for FsReceiptSource {
-    fn discovered_sensors(&self) -> Result<Vec<String>> {
+    fn discovered_sensors(&self) -> Result<DiscoveredSensors> {
         let mut out = Vec::new();
         if !self.layout.artifacts_dir.exists() {
             // No artifacts dir: valid for local runs. Treat as empty.
-            return Ok(out);
+            return Ok(DiscoveredSensors {
+                sensors: out,
+                truncated: false,
+                total_found: 0,
+            });
         }
 
         // Each direct child directory of artifacts/ is a sensor candidate.
-        for entry in fs::read_dir(&self.layout.artifacts_dir)
-            .with_context(|| format!("read artifacts dir {}", self.layout.artifacts_dir.display()))?
-        {
+        for entry in fs::read_dir(&self.layout.artifacts_dir).with_context(|| {
+            format!("read artifacts dir {}", self.layout.artifacts_dir.display())
+        })? {
             let entry = entry?;
             let path = entry.path();
-            if !path.is_dir() { continue; }
+            if !path.is_dir() {
+                continue;
+            }
             let name = entry.file_name().to_string_lossy().to_string();
-            if name == "cockpit" { continue; }
-            if !Self::is_valid_sensor_id(&name) { continue; }
+            if name == "cockpit" {
+                continue;
+            }
+            if !Self::is_valid_sensor_id(&name) {
+                continue;
+            }
             if self.layout.report_file(&name).exists() {
                 out.push(name);
             }
         }
 
         out.sort();
-        Ok(out)
+
+        let total_found = out.len();
+        let truncated = total_found > self.layout.max_receipts;
+        if truncated {
+            out.truncate(self.layout.max_receipts);
+        }
+
+        Ok(DiscoveredSensors {
+            sensors: out,
+            truncated,
+            total_found,
+        })
     }
 
     fn read_report_bytes(&self, sensor_id: &str) -> Result<Option<Vec<u8>>> {
@@ -135,7 +170,9 @@ pub struct FsPolicySource {
 }
 
 impl FsPolicySource {
-    pub fn new(layout: FsLayout) -> Self { Self { layout } }
+    pub fn new(layout: FsLayout) -> Self {
+        Self { layout }
+    }
 }
 
 impl PolicySource for FsPolicySource {
@@ -145,7 +182,8 @@ impl PolicySource for FsPolicySource {
             return Ok(None);
         }
         let txt = fs::read_to_string(p).with_context(|| format!("read config {}", p.display()))?;
-        let cfg: CockpitConfig = toml::from_str(&txt).with_context(|| format!("parse TOML {}", p.display()))?;
+        let cfg: CockpitConfig =
+            toml::from_str(&txt).with_context(|| format!("parse TOML {}", p.display()))?;
         Ok(Some(cfg))
     }
 }
@@ -156,7 +194,9 @@ pub struct FsOutputSink {
 }
 
 impl FsOutputSink {
-    pub fn new(layout: FsLayout) -> Self { Self { layout } }
+    pub fn new(layout: FsLayout) -> Self {
+        Self { layout }
+    }
 }
 
 impl OutputSink for FsOutputSink {
@@ -174,5 +214,99 @@ impl OutputSink for FsOutputSink {
         let p = self.layout.cockpit_comment_file();
         fs::write(&p, md).with_context(|| format!("write {}", p.display()))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    /// Minimal valid sensor report for testing.
+    fn minimal_report() -> &'static str {
+        r#"{
+            "schema": "sensor.report.v1",
+            "tool": { "name": "test", "version": "1.0" },
+            "run": { "started_at": "2026-01-01T00:00:00Z" },
+            "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } }
+        }"#
+    }
+
+    #[test]
+    fn discovered_sensors_respects_max_receipts_cap() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+
+        // Create 5 sensor directories with reports.
+        for i in 0..5 {
+            let sensor_dir = artifacts.join(format!("sensor_{:02}", i));
+            fs::create_dir_all(&sensor_dir).unwrap();
+            fs::write(sensor_dir.join("report.json"), minimal_report()).unwrap();
+        }
+
+        // Use a cap of 3.
+        let layout =
+            FsLayout::new(&artifacts, tmp.path().join("cockpit.toml")).with_max_receipts(3);
+        let source = FsReceiptSource::new(layout);
+        let result = source.discovered_sensors().unwrap();
+
+        // Should return exactly 3 sensors, truncated flag true, total 5.
+        assert_eq!(result.sensors.len(), 3);
+        assert!(result.truncated);
+        assert_eq!(result.total_found, 5);
+
+        // Should be the first 3 in lexical order.
+        assert_eq!(result.sensors, vec!["sensor_00", "sensor_01", "sensor_02"]);
+    }
+
+    #[test]
+    fn discovered_sensors_no_truncation_when_under_cap() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+
+        // Create 2 sensor directories.
+        for i in 0..2 {
+            let sensor_dir = artifacts.join(format!("sensor_{}", i));
+            fs::create_dir_all(&sensor_dir).unwrap();
+            fs::write(sensor_dir.join("report.json"), minimal_report()).unwrap();
+        }
+
+        // Use default cap (100).
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+        let result = source.discovered_sensors().unwrap();
+
+        assert_eq!(result.sensors.len(), 2);
+        assert!(!result.truncated);
+        assert_eq!(result.total_found, 2);
+    }
+
+    #[test]
+    fn discovered_sensors_cap_at_exact_limit_is_not_truncated() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+
+        // Create exactly 3 sensors with cap of 3.
+        for i in 0..3 {
+            let sensor_dir = artifacts.join(format!("sensor_{}", i));
+            fs::create_dir_all(&sensor_dir).unwrap();
+            fs::write(sensor_dir.join("report.json"), minimal_report()).unwrap();
+        }
+
+        let layout =
+            FsLayout::new(&artifacts, tmp.path().join("cockpit.toml")).with_max_receipts(3);
+        let source = FsReceiptSource::new(layout);
+        let result = source.discovered_sensors().unwrap();
+
+        assert_eq!(result.sensors.len(), 3);
+        assert!(!result.truncated);
+        assert_eq!(result.total_found, 3);
+    }
+
+    #[test]
+    fn default_max_receipts_is_100() {
+        let layout = FsLayout::new("/tmp/artifacts", "/tmp/cockpit.toml");
+        assert_eq!(layout.max_receipts, 100);
+        assert_eq!(DEFAULT_MAX_RECEIPTS, 100);
     }
 }

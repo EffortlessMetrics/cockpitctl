@@ -1,0 +1,18 @@
+[policy]
+warn_is_fail = false
+max_highlights = 7
+max_per_sensor_findings = 20
+max_annotations = 25
+section_order = ["Highlights", "Repo contract", "Policy", "Other"]
+
+[sensors.builddiag]
+blocking = true
+missing = "fail"
+section = "Repo contract"
+repro = "builddiag check --profile team"
+
+[sensors.malformed]
+blocking = true
+missing = "fail"
+section = "Policy"
+repro = "malformed check --base $BASE_SHA"

@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use cockpitctl_ingest::{IngestRequest, IngestUseCase};
+use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator};
 use cockpitctl_io::{FsLayout, FsOutputSink, FsPolicySource, FsReceiptSource};
 use cockpitctl_render::render_comment;
 use cockpitctl_types::{RunInfo, ToolInfo};
-use time::{OffsetDateTime, format_description::well_known::Rfc3339};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 #[derive(Parser, Debug)]
 #[command(name = "cockpitctl")]
@@ -59,7 +59,11 @@ fn main() {
 
 fn run(cli: Cli) -> Result<i32> {
     match cli.command {
-        Commands::Ingest { artifacts, config, label } => cmd_ingest(&artifacts, &config, label),
+        Commands::Ingest {
+            artifacts,
+            config,
+            label,
+        } => cmd_ingest(&artifacts, &config, label),
         Commands::Init { path } => cmd_init(&path),
         Commands::Validate { input } => cmd_validate(&input),
     }
@@ -96,7 +100,9 @@ fn cmd_ingest(artifacts: &str, config: &str, labels: Vec<String>) -> Result<i32>
         ci: None,
     };
 
-    let uc = IngestUseCase::new(receipts, policy, output, |r, cfg| render_comment(r, cfg));
+    let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, |r, cfg| {
+        render_comment(r, cfg)
+    });
 
     let req = IngestRequest { labels, tool, run };
     let result = uc.execute(req).context("ingest")?;

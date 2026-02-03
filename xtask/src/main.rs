@@ -46,7 +46,8 @@ fn schema_check(dir: PathBuf) -> Result<()> {
 
     for f in files {
         let txt = fs::read_to_string(&f).with_context(|| format!("read {}", f.display()))?;
-        let v: serde_json::Value = serde_json::from_str(&txt).with_context(|| format!("parse json {}", f.display()))?;
+        let v: serde_json::Value =
+            serde_json::from_str(&txt).with_context(|| format!("parse json {}", f.display()))?;
 
         let id = v.get("$id").and_then(|x| x.as_str()).unwrap_or("");
         let title = v.get("title").and_then(|x| x.as_str()).unwrap_or("");
@@ -63,10 +64,10 @@ fn schema_check(dir: PathBuf) -> Result<()> {
 fn fixtures_help() -> Result<()> {
     eprintln!("Golden fixtures live under ./fixtures/*.");
     eprintln!("To regenerate, run cockpitctl ingest on each fixture and copy outputs:");
-    eprintln!("");
+    eprintln!();
     eprintln!("  cargo run -p cockpitctl -- ingest --artifacts fixtures/happy_path/artifacts --config fixtures/happy_path/cockpit.toml");
     eprintln!("  cp fixtures/happy_path/artifacts/cockpit/report.json fixtures/happy_path/expected/report.json");
     eprintln!("  cp fixtures/happy_path/artifacts/cockpit/comment.md fixtures/happy_path/expected/comment.md");
-    eprintln!("");
+    eprintln!();
     Ok(())
 }

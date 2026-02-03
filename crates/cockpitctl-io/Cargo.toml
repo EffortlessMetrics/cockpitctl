@@ -10,5 +10,10 @@ publish = false
 anyhow.workspace = true
 toml.workspace = true
 walkdir.workspace = true
+serde_json.workspace = true
+jsonschema.workspace = true
 cockpitctl-types = { path = "../cockpitctl-types" }
 cockpitctl-ingest = { path = "../cockpitctl-ingest" }
+
+[dev-dependencies]
+tempfile.workspace = true

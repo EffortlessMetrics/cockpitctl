@@ -8,3 +8,11 @@ publish = false
 
 [dependencies]
 cockpitctl-types = { path = "../cockpitctl-types" }
+
+[dev-dependencies]
+criterion.workspace = true
+rand.workspace = true
+
+[[bench]]
+name = "render_benches"
+harness = false

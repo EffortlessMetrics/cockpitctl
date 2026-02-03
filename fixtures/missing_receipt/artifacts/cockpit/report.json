@@ -1,0 +1,100 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.1.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T12:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "builddiag",
+      "blocking": true,
+      "missing": "fail",
+      "present": true,
+      "report_path": "artifacts/builddiag/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": []
+    },
+    {
+      "id": "diffguard",
+      "blocking": true,
+      "missing": "fail",
+      "present": false,
+      "report_path": "artifacts/diffguard/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": [
+          "missing_receipt"
+        ]
+      },
+      "truncated": false,
+      "errors": []
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "diffguard",
+      "finding": {
+        "severity": "error",
+        "check_id": "cockpit.missing_receipt",
+        "code": "cockpit.missing_receipt",
+        "message": "Expected receipt for sensor `diffguard` but it was not found at `artifacts/diffguard/report.json`.",
+        "help": "Ensure the sensor ran and wrote artifacts/<sensor>/report.json.",
+        "fingerprint": "3f44fc6473c54a0fc2918727a0ef6152e8829c13d9e7d44f1f96491457133e45"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Policy",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "builddiag",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Repo contract",
+        "repro": "builddiag check --profile team"
+      },
+      {
+        "id": "diffguard",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Policy",
+        "repro": "diffguard check --base $BASE_SHA --head $HEAD_SHA"
+      }
+    ]
+  }
+}

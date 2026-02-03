@@ -6,17 +6,28 @@
 use anyhow::{Context, Result};
 use cockpitctl_domain::{
     build_cockpit_report, select_highlights, sort_sensor_summaries, summarize_sensor_report,
-    synthesize_invalid_sensor, synthesize_missing_sensor,
+    synthesize_invalid_sensor, synthesize_missing_sensor, synthesize_schema_violation_sensor,
+    synthesize_sensors_truncated,
 };
 use cockpitctl_types::{
-    CockpitConfig, CockpitReport, MissingPolicy, SensorPolicy, ToolInfo, RunInfo,
+    CockpitConfig, CockpitReport, MissingPolicy, RunInfo, SchemaValidation, SensorPolicy, ToolInfo,
 };
-use serde_json::Value;
+
+/// Result of sensor discovery, including any truncation info.
+pub struct DiscoveredSensors {
+    /// Discovered sensor IDs (sorted lexically).
+    pub sensors: Vec<String>,
+    /// True if the number of sensors was capped due to max_receipts limit.
+    pub truncated: bool,
+    /// Total number of sensors found before truncation (if truncated).
+    pub total_found: usize,
+}
 
 /// Ports: where receipts come from.
 pub trait ReceiptSource {
     /// Return a stable list of discovered sensor IDs that have a receipt file present.
-    fn discovered_sensors(&self) -> Result<Vec<String>>;
+    /// May be truncated if the number of sensors exceeds a safety limit.
+    fn discovered_sensors(&self) -> Result<DiscoveredSensors>;
 
     /// Read the report.json bytes for a sensor if present.
     fn read_report_bytes(&self, sensor_id: &str) -> Result<Option<Vec<u8>>>;
@@ -39,6 +50,30 @@ pub trait OutputSink {
     fn write_cockpit_comment(&self, md: &str) -> Result<()>;
 }
 
+/// Result of JSON Schema validation.
+pub enum SchemaValidationResult {
+    /// Receipt conforms to the schema.
+    Valid,
+    /// Receipt violates the schema. Contains a list of validation error messages.
+    Invalid(Vec<String>),
+}
+
+/// Ports: schema validation for receipts.
+pub trait SchemaValidator {
+    /// Validate raw receipt bytes against the sensor.report.v1 JSON schema.
+    /// Returns validation result with detailed errors if invalid.
+    fn validate_receipt(&self, bytes: &[u8]) -> Result<SchemaValidationResult>;
+}
+
+/// A no-op schema validator that always returns Valid (for lax mode).
+pub struct NoOpSchemaValidator;
+
+impl SchemaValidator for NoOpSchemaValidator {
+    fn validate_receipt(&self, _bytes: &[u8]) -> Result<SchemaValidationResult> {
+        Ok(SchemaValidationResult::Valid)
+    }
+}
+
 /// Request inputs for ingestion.
 pub struct IngestRequest {
     pub labels: Vec<String>, // optional; label-gates may use this
@@ -53,46 +88,62 @@ pub struct IngestResult {
     pub exit_code: i32,
 }
 
-pub struct IngestUseCase<R, P, O, RenderFn>
+pub struct IngestUseCase<R, P, O, S, RenderFn>
 where
     R: ReceiptSource,
     P: PolicySource,
     O: OutputSink,
+    S: SchemaValidator,
     RenderFn: Fn(&CockpitReport, &CockpitConfig) -> String,
 {
     receipts: R,
     policy: P,
     output: O,
+    schema_validator: S,
     render: RenderFn,
 }
 
-impl<R, P, O, RenderFn> IngestUseCase<R, P, O, RenderFn>
+impl<R, P, O, S, RenderFn> IngestUseCase<R, P, O, S, RenderFn>
 where
     R: ReceiptSource,
     P: PolicySource,
     O: OutputSink,
+    S: SchemaValidator,
     RenderFn: Fn(&CockpitReport, &CockpitConfig) -> String,
 {
-    pub fn new(receipts: R, policy: P, output: O, render: RenderFn) -> Self {
-        Self { receipts, policy, output, render }
+    pub fn new(receipts: R, policy: P, output: O, schema_validator: S, render: RenderFn) -> Self {
+        Self {
+            receipts,
+            policy,
+            output,
+            schema_validator,
+            render,
+        }
     }
 
     pub fn execute(&self, req: IngestRequest) -> Result<IngestResult> {
-        let discovered = self.receipts.discovered_sensors().context("discover sensors")?;
+        let discovery = self
+            .receipts
+            .discovered_sensors()
+            .context("discover sensors")?;
+        let discovered = discovery.sensors;
 
-        let mut cfg = if let Some(cfg) = self.policy.load_config().context("load cockpit.toml")? {
+        let cfg = if let Some(cfg) = self.policy.load_config().context("load cockpit.toml")? {
             cfg
         } else {
             // Default policy: all discovered sensors are blocking, missing policy = skip.
             let mut cfg = CockpitConfig::default();
             for id in &discovered {
-                cfg.sensors.insert(id.clone(), SensorPolicy {
-                    blocking: true,
-                    missing: MissingPolicy::Skip,
-                    section: None,
-                    require_label: None,
-                    repro: None,
-                });
+                cfg.sensors.insert(
+                    id.clone(),
+                    SensorPolicy {
+                        blocking: true,
+                        missing: MissingPolicy::Skip,
+                        section: None,
+                        require_label: None,
+                        repro: None,
+                    },
+                );
             }
             cfg
         };
@@ -107,6 +158,14 @@ where
         let mut sensor_summaries = Vec::new();
         let mut highlight_candidates = Vec::new();
 
+        // Add warning if sensor discovery was truncated.
+        if discovery.truncated {
+            highlight_candidates.push(synthesize_sensors_truncated(
+                discovered.len(),
+                discovery.total_found,
+            ));
+        }
+
         // Cache blocking status for highlight sorting.
         let mut sensor_blocking = std::collections::BTreeMap::<String, bool>::new();
 
@@ -119,15 +178,14 @@ where
                 if !req.labels.iter().any(|l| l == label) {
                     // Synthesized "skipped due to missing label"
                     let report_path = self.receipts.report_path(&sensor_id);
-                    let comment_path = self.receipts.comment_path_if_present(&sensor_id).unwrap_or(None);
+                    let comment_path = self
+                        .receipts
+                        .comment_path_if_present(&sensor_id)
+                        .unwrap_or(None);
                     let mut p = policy.clone();
                     p.missing = MissingPolicy::Skip;
-                    let (summary, _) = synthesize_missing_sensor(
-                        &sensor_id,
-                        &p,
-                        &report_path,
-                        comment_path,
-                    );
+                    let (summary, _) =
+                        synthesize_missing_sensor(&sensor_id, &p, &report_path, comment_path);
                     sensor_summaries.push(summary);
                     continue;
                 }
@@ -138,11 +196,35 @@ where
 
             let bytes_opt = self.receipts.read_report_bytes(&sensor_id)?;
             let Some(bytes) = bytes_opt else {
-                let (summary, h) = synthesize_missing_sensor(&sensor_id, &policy, &report_path, comment_path);
+                let (summary, h) =
+                    synthesize_missing_sensor(&sensor_id, &policy, &report_path, comment_path);
                 sensor_summaries.push(summary);
-                if let Some(h) = h { highlight_candidates.push(h); }
+                if let Some(h) = h {
+                    highlight_candidates.push(h);
+                }
                 continue;
             };
+
+            // Schema validation (if enabled).
+            if matches!(cfg.policy.schema_validation, SchemaValidation::Strict) {
+                match self.schema_validator.validate_receipt(&bytes)? {
+                    SchemaValidationResult::Valid => {}
+                    SchemaValidationResult::Invalid(errors) => {
+                        let (summary, h) = synthesize_schema_violation_sensor(
+                            &sensor_id,
+                            &policy,
+                            &report_path,
+                            comment_path,
+                            errors,
+                        );
+                        sensor_summaries.push(summary);
+                        if let Some(h) = h {
+                            highlight_candidates.push(h);
+                        }
+                        continue;
+                    }
+                }
+            }
 
             // Parse sensor report. Invalid JSON is not a cockpitctl runtime error; it is a surfaced finding.
             match serde_json::from_slice::<cockpitctl_types::SensorReport>(&bytes) {
@@ -167,7 +249,9 @@ where
                         e.to_string(),
                     );
                     sensor_summaries.push(summary);
-                    if let Some(h) = h { highlight_candidates.push(h); }
+                    if let Some(h) = h {
+                        highlight_candidates.push(h);
+                    }
                 }
             }
         }
@@ -189,7 +273,9 @@ where
         let comment_md = (self.render)(&report, &cfg);
 
         // Write outputs.
-        let report_json = serde_json::to_string_pretty(&report).context("serialize cockpit report")?;
+        let mut report_json =
+            serde_json::to_string_pretty(&report).context("serialize cockpit report")?;
+        report_json.push('\n'); // Ensure trailing newline for text file convention.
         self.output.write_cockpit_report(&report_json)?;
         self.output.write_cockpit_comment(&comment_md)?;
 
@@ -199,6 +285,10 @@ where
             _ => 0,
         };
 
-        Ok(IngestResult { report, comment_md, exit_code })
+        Ok(IngestResult {
+            report,
+            comment_md,
+            exit_code,
+        })
     }
 }

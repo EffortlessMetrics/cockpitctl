@@ -4,24 +4,31 @@ use proptest::prelude::*;
 
 fn any_finding() -> impl Strategy<Value = Finding> {
     (
-        prop_oneof![Just(Severity::Info), Just(Severity::Warn), Just(Severity::Error)],
-        ".*", // code
-        ".*", // message
-        prop::option::of(".*"), // path
+        prop_oneof![
+            Just(Severity::Info),
+            Just(Severity::Warn),
+            Just(Severity::Error)
+        ],
+        ".*",                            // code
+        ".*",                            // message
+        prop::option::of(".*"),          // path
         prop::option::of(1u32..1000u32), // line
-    ).prop_map(|(severity, code, message, path, line)| {
-        Finding {
+    )
+        .prop_map(|(severity, code, message, path, line)| Finding {
             severity,
             check_id: None,
             code,
             message,
-            location: Some(Location { path, line, col: None }),
+            location: Some(Location {
+                path,
+                line,
+                col: None,
+            }),
             help: None,
             url: None,
             fingerprint: None,
             data: None,
-        }
-    })
+        })
 }
 
 proptest! {

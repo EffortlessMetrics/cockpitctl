@@ -1,3 +1,5 @@
+#![allow(deprecated)] // Command::cargo_bin still widely used
+
 use assert_cmd::Command;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -25,8 +27,10 @@ fn ingest_happy_path_fixture_matches_golden() {
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",
-        "--artifacts", artifacts.to_string_lossy().as_ref(),
-        "--config", config.to_string_lossy().as_ref(),
+        "--artifacts",
+        artifacts.to_string_lossy().as_ref(),
+        "--config",
+        config.to_string_lossy().as_ref(),
     ]);
 
     cmd.assert().success();
@@ -55,8 +59,10 @@ fn ingest_missing_receipt_fixture_matches_golden_and_exits_2() {
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",
-        "--artifacts", artifacts.to_string_lossy().as_ref(),
-        "--config", config.to_string_lossy().as_ref(),
+        "--artifacts",
+        artifacts.to_string_lossy().as_ref(),
+        "--config",
+        config.to_string_lossy().as_ref(),
     ]);
 
     cmd.assert().code(2);

@@ -1,0 +1,30 @@
+{
+  "schema": "diffguard.report.v1",
+  "tool": {
+    "name": "diffguard",
+    "version": "0.4.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T11:59:10Z"
+  },
+  "verdict": {
+    "status": "warn",
+    "counts": {
+      "info": 0,
+      "warn": 1,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "findings": [
+    {
+      "severity": "warn",
+      "code": "diffguard.forbidden_api",
+      "message": "Forbidden API introduced: std::mem::transmute",
+      "location": {
+        "path": "src/lib.rs",
+        "line": 42
+      }
+    }
+  ]
+}

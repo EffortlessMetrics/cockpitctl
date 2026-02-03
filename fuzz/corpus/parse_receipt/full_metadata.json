@@ -1,0 +1,69 @@
+{
+  "schema": "builddiag.report.v1",
+  "tool": {
+    "name": "builddiag",
+    "version": "0.7.1",
+    "commit": "abc123"
+  },
+  "run": {
+    "started_at": "2026-02-02T11:59:00Z",
+    "ended_at": "2026-02-02T12:00:00Z",
+    "duration_ms": 60000,
+    "host": {
+      "os": "linux",
+      "arch": "x86_64",
+      "hostname": "ci-runner"
+    },
+    "git": {
+      "repo": "owner/repo",
+      "base_ref": "main",
+      "head_ref": "feature",
+      "base_sha": "aaa111",
+      "head_sha": "bbb222",
+      "merge_base": "ccc333"
+    },
+    "ci": {
+      "provider": "github",
+      "run_id": "12345",
+      "run_url": "https://github.com/owner/repo/actions/runs/12345",
+      "job": "build"
+    }
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 1,
+      "warn": 2,
+      "error": 3
+    },
+    "reasons": ["Build failed", "Lint errors"]
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "E0001",
+      "message": "syntax error",
+      "check_id": "rustc",
+      "location": {
+        "path": "src/main.rs",
+        "line": 10,
+        "col": 5
+      },
+      "help": "Check your syntax",
+      "url": "https://doc.rust-lang.org/error-index.html#E0001",
+      "fingerprint": "fp123",
+      "data": {"extra": "info"}
+    },
+    {
+      "severity": "warn",
+      "code": "W0001",
+      "message": "unused variable"
+    },
+    {
+      "severity": "info",
+      "code": "I0001",
+      "message": "note: something"
+    }
+  ],
+  "data": {"custom": "payload"}
+}

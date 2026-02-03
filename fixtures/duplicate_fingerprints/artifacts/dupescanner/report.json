@@ -1,0 +1,80 @@
+{
+  "schema": "dupescanner.report.v1",
+  "tool": {
+    "name": "dupescanner",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T11:59:00Z"
+  },
+  "verdict": {
+    "status": "warn",
+    "counts": {
+      "info": 0,
+      "warn": 4,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "dupescanner.duplicate_code",
+      "message": "Duplicate code block detected",
+      "fingerprint": "deadbeef1234567890abcdef1234567890abcdef1234567890abcdef12345678",
+      "location": {
+        "path": "src/foo.rs",
+        "line": 10
+      }
+    },
+    {
+      "severity": "error",
+      "code": "dupescanner.duplicate_code",
+      "message": "Duplicate code block detected (same fingerprint)",
+      "fingerprint": "deadbeef1234567890abcdef1234567890abcdef1234567890abcdef12345678",
+      "location": {
+        "path": "src/bar.rs",
+        "line": 20
+      }
+    },
+    {
+      "severity": "warn",
+      "code": "dupescanner.similar_code",
+      "message": "Similar code pattern found",
+      "fingerprint": "cafebabe1234567890abcdef1234567890abcdef1234567890abcdef12345678",
+      "location": {
+        "path": "src/alpha.rs",
+        "line": 5
+      }
+    },
+    {
+      "severity": "warn",
+      "code": "dupescanner.similar_code",
+      "message": "Similar code pattern found (same fingerprint)",
+      "fingerprint": "cafebabe1234567890abcdef1234567890abcdef1234567890abcdef12345678",
+      "location": {
+        "path": "src/beta.rs",
+        "line": 15
+      }
+    },
+    {
+      "severity": "warn",
+      "code": "dupescanner.unique_finding",
+      "message": "This finding has a unique fingerprint",
+      "fingerprint": "unique001234567890abcdef1234567890abcdef1234567890abcdef12345678",
+      "location": {
+        "path": "src/gamma.rs",
+        "line": 30
+      }
+    },
+    {
+      "severity": "warn",
+      "code": "dupescanner.no_fingerprint",
+      "message": "This finding has no fingerprint and will get derived one",
+      "location": {
+        "path": "src/delta.rs",
+        "line": 40
+      }
+    }
+  ]
+}

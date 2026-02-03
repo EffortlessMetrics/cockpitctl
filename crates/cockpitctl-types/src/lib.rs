@@ -152,12 +152,24 @@ pub struct SensorReport {
 }
 
 /// Missing receipt behavior (policy).
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum MissingPolicy {
+    #[default]
     Skip,
     Warn,
     Fail,
+}
+
+/// Schema validation mode for sensor receipts.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SchemaValidation {
+    /// Validate receipts against the JSON schema (default).
+    #[default]
+    Strict,
+    /// Skip schema validation; only parse as JSON.
+    Lax,
 }
 
 /// A per-sensor policy in cockpit.toml.
@@ -187,11 +199,21 @@ pub struct Policy {
     pub max_annotations: usize,
     #[serde(default = "default_section_order")]
     pub section_order: Vec<String>,
+    /// Schema validation mode: "strict" (default) validates receipts against
+    /// sensor.report.v1 schema; "lax" skips schema validation.
+    #[serde(default)]
+    pub schema_validation: SchemaValidation,
 }
 
-fn default_max_highlights() -> usize { 7 }
-fn default_max_per_sensor_findings() -> usize { 20 }
-fn default_max_annotations() -> usize { 25 }
+fn default_max_highlights() -> usize {
+    7
+}
+fn default_max_per_sensor_findings() -> usize {
+    20
+}
+fn default_max_annotations() -> usize {
+    25
+}
 fn default_section_order() -> Vec<String> {
     vec![
         "Highlights".into(),
@@ -206,10 +228,6 @@ fn default_section_order() -> Vec<String> {
     ]
 }
 
-impl Default for MissingPolicy {
-    fn default() -> Self { MissingPolicy::Skip }
-}
-
 impl Default for Policy {
     fn default() -> Self {
         Self {
@@ -218,6 +236,7 @@ impl Default for Policy {
             max_per_sensor_findings: default_max_per_sensor_findings(),
             max_annotations: default_max_annotations(),
             section_order: default_section_order(),
+            schema_validation: SchemaValidation::default(),
         }
     }
 }

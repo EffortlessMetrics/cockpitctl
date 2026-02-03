@@ -1,0 +1,7 @@
+[policy]
+warn_is_fail = false
+
+[sensors.optional_sensor]
+blocking = false
+missing = "skip"
+section = "Other"
