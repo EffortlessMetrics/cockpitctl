@@ -41,3 +41,5 @@ proptest = "1"
 insta = { version = "1", features = ["json"] }
 criterion = { version = "0.5", features = ["html_reports"] }
 rand = "0.8"
+cucumber = "0.21"
+futures = "0.3"
