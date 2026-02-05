@@ -4,13 +4,13 @@
 
 use anyhow::{Context, Result};
 use cockpitctl_ingest::{
-    DiscoveredSensors, OutputSink, PolicySource, ReceiptSource, SchemaValidationResult,
-    SchemaValidator,
+    CommentRead, DiscoveredSensors, OutputSink, PolicySource, ReceiptSource, ReportRead,
+    SchemaValidationResult, SchemaValidator,
 };
-use cockpitctl_types::CockpitConfig;
+use cockpitctl_types::{is_valid_sensor_id, CockpitConfig};
 use jsonschema::Validator;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Default cap on number of receipts (sensors) to process.
 /// Protects against DoS if someone creates thousands of sensor directories.
@@ -69,28 +69,56 @@ impl FsLayout {
 #[derive(Clone)]
 pub struct FsReceiptSource {
     layout: FsLayout,
+    artifacts_root: PathBuf,
 }
 
 impl FsReceiptSource {
     pub fn new(layout: FsLayout) -> Self {
-        Self { layout }
+        let artifacts_root = canonicalize_root(&layout.artifacts_dir);
+        Self {
+            layout,
+            artifacts_root,
+        }
     }
 
-    fn is_valid_sensor_id(id: &str) -> bool {
-        // Avoid path traversal and weirdness. Keep this conservative.
-        !id.is_empty() && !id.contains("..") && !id.contains('/') && !id.contains('\\')
+    fn is_safe_path(&self, path: &Path) -> bool {
+        let canonical = match fs::canonicalize(path) {
+            Ok(p) => p,
+            Err(_) => return false,
+        };
+        canonical.starts_with(&self.artifacts_root)
+    }
+}
+
+fn absolute_path(path: &Path) -> PathBuf {
+    if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(path)
+    }
+}
+
+fn canonicalize_root(path: &Path) -> PathBuf {
+    if path.exists() {
+        fs::canonicalize(path).unwrap_or_else(|_| absolute_path(path))
+    } else {
+        absolute_path(path)
     }
 }
 
 impl ReceiptSource for FsReceiptSource {
     fn discovered_sensors(&self) -> Result<DiscoveredSensors> {
         let mut out = Vec::new();
+        let mut invalid = Vec::new();
         if !self.layout.artifacts_dir.exists() {
             // No artifacts dir: valid for local runs. Treat as empty.
             return Ok(DiscoveredSensors {
                 sensors: out,
                 truncated: false,
                 total_found: 0,
+                invalid_sensor_ids: invalid,
             });
         }
 
@@ -107,7 +135,8 @@ impl ReceiptSource for FsReceiptSource {
             if name == "cockpit" {
                 continue;
             }
-            if !Self::is_valid_sensor_id(&name) {
+            if !is_valid_sensor_id(&name) {
+                invalid.push(name);
                 continue;
             }
             if self.layout.report_file(&name).exists() {
@@ -116,6 +145,7 @@ impl ReceiptSource for FsReceiptSource {
         }
 
         out.sort();
+        invalid.sort();
 
         let total_found = out.len();
         let truncated = total_found > self.layout.max_receipts;
@@ -127,43 +157,51 @@ impl ReceiptSource for FsReceiptSource {
             sensors: out,
             truncated,
             total_found,
+            invalid_sensor_ids: invalid,
         })
     }
 
-    fn read_report_bytes(&self, sensor_id: &str) -> Result<Option<Vec<u8>>> {
-        if !Self::is_valid_sensor_id(sensor_id) {
-            return Ok(None);
+    fn read_report_bytes(&self, sensor_id: &str) -> Result<ReportRead> {
+        if !is_valid_sensor_id(sensor_id) {
+            return Ok(ReportRead::UnsafePath);
         }
         let p = self.layout.report_file(sensor_id);
         if !p.exists() {
-            return Ok(None);
+            return Ok(ReportRead::Missing);
+        }
+        if !self.is_safe_path(&p) {
+            return Ok(ReportRead::UnsafePath);
         }
         let meta = fs::metadata(&p)?;
         if meta.len() as usize > self.layout.max_receipt_bytes {
-            anyhow::bail!(
-                "receipt too large: {} bytes at {} (cap {})",
-                meta.len(),
-                p.display(),
-                self.layout.max_receipt_bytes
-            );
+            return Ok(ReportRead::Oversized {
+                size: meta.len(),
+                cap: self.layout.max_receipt_bytes,
+            });
         }
         let bytes = fs::read(&p).with_context(|| format!("read receipt {}", p.display()))?;
-        Ok(Some(bytes))
+        Ok(ReportRead::Bytes(bytes))
     }
 
     fn report_path(&self, sensor_id: &str) -> String {
         format!("artifacts/{}/report.json", sensor_id)
     }
 
-    fn comment_path_if_present(&self, sensor_id: &str) -> Result<Option<String>> {
-        if !Self::is_valid_sensor_id(sensor_id) {
-            return Ok(None);
+    fn comment_path_if_present(&self, sensor_id: &str) -> Result<CommentRead> {
+        if !is_valid_sensor_id(sensor_id) {
+            return Ok(CommentRead::UnsafePath);
         }
         let p = self.layout.comment_file(sensor_id);
         if p.exists() {
-            Ok(Some(format!("artifacts/{}/comment.md", sensor_id)))
+            if !self.is_safe_path(&p) {
+                return Ok(CommentRead::UnsafePath);
+            }
+            Ok(CommentRead::Present(format!(
+                "artifacts/{}/comment.md",
+                sensor_id
+            )))
         } else {
-            Ok(None)
+            Ok(CommentRead::Missing)
         }
     }
 }
@@ -250,9 +288,17 @@ impl JsonSchemaValidator {
 
     /// Create a new validator using the embedded sensor.report.v1 schema.
     pub fn sensor_report_v1() -> Result<Self> {
-        const SCHEMA: &str = include_str!("../../../schemas/sensor.report.v1.json");
+        const SCHEMA: &str = cockpitctl_types::SENSOR_REPORT_V1_SCHEMA_JSON;
         let schema: serde_json::Value =
             serde_json::from_str(SCHEMA).context("parse embedded sensor.report.v1 schema")?;
+        Self::from_schema(&schema)
+    }
+
+    /// Create a new validator using the embedded cockpit.report.v1 schema.
+    pub fn cockpit_report_v1() -> Result<Self> {
+        const SCHEMA: &str = cockpitctl_types::COCKPIT_REPORT_V1_SCHEMA_JSON;
+        let schema: serde_json::Value =
+            serde_json::from_str(SCHEMA).context("parse embedded cockpit.report.v1 schema")?;
         Self::from_schema(&schema)
     }
 }
@@ -323,6 +369,7 @@ mod tests {
         assert_eq!(result.sensors.len(), 3);
         assert!(result.truncated);
         assert_eq!(result.total_found, 5);
+        assert!(result.invalid_sensor_ids.is_empty());
 
         // Should be the first 3 in lexical order.
         assert_eq!(result.sensors, vec!["sensor_00", "sensor_01", "sensor_02"]);
@@ -348,6 +395,7 @@ mod tests {
         assert_eq!(result.sensors.len(), 2);
         assert!(!result.truncated);
         assert_eq!(result.total_found, 2);
+        assert!(result.invalid_sensor_ids.is_empty());
     }
 
     #[test]
@@ -370,6 +418,7 @@ mod tests {
         assert_eq!(result.sensors.len(), 3);
         assert!(!result.truncated);
         assert_eq!(result.total_found, 3);
+        assert!(result.invalid_sensor_ids.is_empty());
     }
 
     #[test]

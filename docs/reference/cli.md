@@ -27,14 +27,14 @@ cockpitctl ingest [OPTIONS]
 | `--artifacts <PATH>` | `artifacts` | Directory containing sensor receipts |
 | `--config <PATH>` | `cockpit.toml` | Path to policy configuration file |
 | `--label <LABEL>` | (none) | PR labels for label-gate evaluation (repeatable) |
-| `--schema-validation <MODE>` | `lax` | Schema validation mode: `lax` or `strict` |
+| `--schema-validation <MODE>` | (unset) | Schema validation mode: `lax` or `strict` (overrides config when provided) |
 
 **Schema Validation Modes:**
 
-- **`lax` (default):** Skip JSON Schema validation. Receipts only need to parse as valid JSON matching the serde structure. Faster, but schema errors surface as `cockpit.invalid_receipt` with less detail.
+- **`lax` (config default):** Skip JSON Schema validation. Receipts only need to parse as valid JSON matching the serde structure. Faster, but schema errors surface as `cockpit.invalid_receipt` with less detail.
 - **`strict`:** Validate receipts against `schemas/sensor.report.v1.json` before parsing. Schema violations surface as `cockpit.schema_violation` with detailed field-level errors. Useful during sensor development or strict CI pipelines.
 
-> **Note:** If both CLI and config specify schema validation, CLI `lax` can override config `strict` (emergency escape hatch), but CLI `strict` does not override config `lax` (config controls policy).
+> **Note:** The CLI flag only overrides config when explicitly provided. If unset, `cockpit.toml` controls the mode.
 
 **Outputs:**
 
@@ -100,12 +100,13 @@ cockpitctl validate [OPTIONS]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--input <PATH>` | required | Path to JSON file to validate |
+| `--strict` | default | Perform JSON Schema validation |
+| `--lax` | (none) | Skip JSON Schema validation |
 
 **Behavior:**
 
-- Parses the file as either `sensor.report.v1` or `cockpit.report.v1`
-- Reports parse errors with location information
-- Does not perform full JSON Schema validation by default
+- In `--strict` mode (default), validates against the embedded JSON Schemas
+- In `--lax` mode, only parses JSON into the Rust struct shapes
 
 **Example:**
 

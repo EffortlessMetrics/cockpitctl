@@ -1,12 +1,14 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (OpenAI) when working with code in this repository.
 
 ## Project Overview
 
 **cockpitctl** is a "director" application that ingests sensor receipts and produces a single merge decision surface. It reads receipts from `artifacts/<sensor>/report.json`, applies composition policy from `cockpit.toml`, and outputs an aggregate report and PR comment.
 
 Key constraints: No running sensors, no network calls, treats receipts as untrusted input, tool-specific payload is opaque.
+
+Note: the CLI crate lives at `crates/cockpitctl-cli`, but the package/binary name is `cockpitctl`.
 
 ## Build & Test Commands
 

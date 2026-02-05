@@ -10,6 +10,12 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// Embedded JSON Schema for sensor.report.v1.
+pub const SENSOR_REPORT_V1_SCHEMA_JSON: &str = include_str!("../schemas/sensor.report.v1.json");
+
+/// Embedded JSON Schema for cockpit.report.v1.
+pub const COCKPIT_REPORT_V1_SCHEMA_JSON: &str = include_str!("../schemas/cockpit.report.v1.json");
+
 /// A schema identifier string, e.g. `builddiag.report.v1`.
 pub type SchemaId = String;
 
@@ -165,11 +171,11 @@ pub enum MissingPolicy {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum SchemaValidation {
-    /// Validate receipts against the JSON schema (default).
+    /// Skip schema validation; only parse as JSON (default).
     #[default]
-    Strict,
-    /// Skip schema validation; only parse as JSON.
     Lax,
+    /// Validate receipts against the JSON schema.
+    Strict,
 }
 
 /// A per-sensor policy in cockpit.toml.
@@ -199,8 +205,8 @@ pub struct Policy {
     pub max_annotations: usize,
     #[serde(default = "default_section_order")]
     pub section_order: Vec<String>,
-    /// Schema validation mode: "strict" (default) validates receipts against
-    /// sensor.report.v1 schema; "lax" skips schema validation.
+    /// Schema validation mode: "lax" (default) skips schema validation; "strict"
+    /// validates receipts against the embedded sensor.report.v1 schema.
     #[serde(default)]
     pub schema_validation: SchemaValidation,
 }
@@ -335,4 +341,9 @@ pub fn verdict_status_rank(s: &VerdictStatus) -> u8 {
         VerdictStatus::Pass => 2,
         VerdictStatus::Skip => 3,
     }
+}
+
+/// Validate a sensor ID for safe path usage.
+pub fn is_valid_sensor_id(id: &str) -> bool {
+    !id.is_empty() && !id.contains("..") && !id.contains('/') && !id.contains('\\')
 }

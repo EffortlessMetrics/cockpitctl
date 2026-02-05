@@ -24,6 +24,15 @@ jobs:
       - name: Tests
         run: cargo test --workspace --all-targets
 
+      - name: Schema sync check
+        run: cargo run -p xtask -- schema-sync-check
+
+      - name: Package List (cockpitctl)
+        run: cargo package --list -p cockpitctl
+
+      - name: Package List (cockpitctl-types)
+        run: cargo package --list -p cockpitctl-types
+
       # Optional: mutation tests (expensive)
       # - name: Mutation tests
       #   run: cargo install cargo-mutants && cargo mutants --workspace

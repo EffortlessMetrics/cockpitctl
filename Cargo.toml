@@ -17,6 +17,7 @@ rust-version = "1.75"
 repository = "https://github.com/EffortlessMetrics/cockpitctl"
 homepage = "https://github.com/EffortlessMetrics/cockpitctl"
 authors = ["Effortless Metrics"]
+readme = "README.md"
 
 [workspace.dependencies]
 anyhow = "1"

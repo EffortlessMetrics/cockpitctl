@@ -3,15 +3,13 @@
 //! These tests verify the full pipeline with strict schema validation enabled,
 //! ensuring that schema violations are properly surfaced as findings.
 
-#![allow(deprecated)] // Command::cargo_bin still widely used
-
 use assert_cmd::Command;
 use std::fs;
 use tempfile::TempDir;
 
 /// Create the ingest command with common settings.
 fn cmd() -> Command {
-    let mut cmd = Command::cargo_bin("cockpitctl").expect("binary exists");
+    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd
 }
@@ -629,18 +627,18 @@ fn config_strict_cli_lax_skips_validation() {
 }
 
 // =============================================================================
-// Test: Config says lax but CLI says strict = no validation (config controls)
+// Test: Config says lax but CLI says strict = strict validation (CLI override)
 // =============================================================================
 
 #[test]
-fn config_lax_cli_strict_respects_config() {
+fn config_lax_cli_strict_overrides_config() {
     let setup = TestSetup::new();
     // Config says lax.
     setup.write_config(&lax_config_single_sensor("testsensor"));
     // Report violates schema.
     setup.write_sensor_report("testsensor", invalid_report_extra_field());
 
-    // CLI says strict - but config says lax, so validation is skipped by the use case.
+    // CLI says strict - this should enforce validation.
     cmd()
         .args([
             "ingest",
@@ -652,19 +650,18 @@ fn config_lax_cli_strict_respects_config() {
             "strict",
         ])
         .assert()
-        .success();
+        .code(2);
 
     let report = setup.read_cockpit_report();
     let json: serde_json::Value = serde_json::from_str(&report).expect("parse cockpit report");
 
-    // No schema violation because config says lax (use case skips validation).
     let highlights = json["highlights"].as_array().expect("highlights array");
     let has_violation = highlights
         .iter()
         .any(|h| h["finding"]["code"].as_str() == Some("cockpit.schema_violation"));
     assert!(
-        !has_violation,
-        "config lax should skip validation even if CLI says strict"
+        has_violation,
+        "CLI strict should override config lax and produce SCHEMA_VIOLATION"
     );
 }
 

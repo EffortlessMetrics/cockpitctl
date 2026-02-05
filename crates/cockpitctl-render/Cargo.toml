@@ -5,9 +5,10 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+homepage.workspace = true
 authors.workspace = true
 description = "PR comment renderer with budgeting and stable markers"
-readme = "../../README.md"
+readme.workspace = true
 keywords = ["ci", "pr-comment", "markdown", "rendering"]
 categories = ["development-tools", "text-processing"]
 

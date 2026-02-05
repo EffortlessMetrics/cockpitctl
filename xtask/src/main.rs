@@ -32,6 +32,17 @@ enum Commands {
 
     /// Print instructions for regenerating golden fixtures.
     FixturesHelp,
+
+    /// Verify embedded schema copies match the root schemas.
+    SchemaSyncCheck {
+        /// Directory containing root JSON schema files
+        #[arg(long, default_value = "schemas")]
+        root_dir: PathBuf,
+
+        /// Directory containing embedded JSON schema files
+        #[arg(long, default_value = "crates/cockpitctl-types/schemas")]
+        embedded_dir: PathBuf,
+    },
 }
 
 fn main() {
@@ -47,6 +58,10 @@ fn run(cli: Cli) -> Result<()> {
         Commands::SchemaCheck { dir } => schema_check(dir),
         Commands::ValidateSchemas { dir, fix } => validate_schemas(dir, fix),
         Commands::FixturesHelp => fixtures_help(),
+        Commands::SchemaSyncCheck {
+            root_dir,
+            embedded_dir,
+        } => schema_sync_check(root_dir, embedded_dir),
     }
 }
 
@@ -81,6 +96,31 @@ fn fixtures_help() -> Result<()> {
     eprintln!("  cp fixtures/happy_path/artifacts/cockpit/report.json fixtures/happy_path/expected/report.json");
     eprintln!("  cp fixtures/happy_path/artifacts/cockpit/comment.md fixtures/happy_path/expected/comment.md");
     eprintln!();
+    Ok(())
+}
+
+fn schema_sync_check(root_dir: PathBuf, embedded_dir: PathBuf) -> Result<()> {
+    let files = ["sensor.report.v1.json", "cockpit.report.v1.json"];
+
+    for name in files {
+        let root_path = root_dir.join(name);
+        let embedded_path = embedded_dir.join(name);
+        let root = fs::read_to_string(&root_path)
+            .with_context(|| format!("read root schema {}", root_path.display()))?;
+        let embedded = fs::read_to_string(&embedded_path)
+            .with_context(|| format!("read embedded schema {}", embedded_path.display()))?;
+
+        if root != embedded {
+            anyhow::bail!(
+                "embedded schema does not match root: {} vs {}",
+                root_path.display(),
+                embedded_path.display()
+            );
+        }
+
+        eprintln!("ok: embedded schema matches root: {}", root_path.display());
+    }
+
     Ok(())
 }
 

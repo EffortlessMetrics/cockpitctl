@@ -30,21 +30,23 @@ fn any_verdict_status() -> impl Strategy<Value = VerdictStatus> {
 
 fn any_finding_sort_key() -> impl Strategy<Value = FindingSortKey> {
     (
-        0u8..=2,                       // severity_rank (Error=0, Warn=1, Info=2)
-        "[a-z_][a-z0-9_]{0,20}",       // sensor_id
+        0u8..=2,                 // severity_rank (Error=0, Warn=1, Info=2)
+        "[a-z_][a-z0-9_]{0,20}", // sensor_id
         prop::option::of("[a-z/._-]{0,50}").prop_map(|o| o.unwrap_or_default()), // path
-        any::<u32>(),                  // line
-        "[A-Z][A-Z0-9_]{0,20}",        // code
-        ".{0,100}",                    // message
+        any::<u32>(),            // line
+        "[A-Z][A-Z0-9_]{0,20}",  // code
+        ".{0,100}",              // message
     )
-        .prop_map(|(severity_rank, sensor_id, path, line, code, message)| FindingSortKey {
-            severity_rank,
-            sensor_id,
-            path,
-            line,
-            code,
-            message,
-        })
+        .prop_map(
+            |(severity_rank, sensor_id, path, line, code, message)| FindingSortKey {
+                severity_rank,
+                sensor_id,
+                path,
+                line,
+                code,
+                message,
+            },
+        )
 }
 
 // ============================================================================
@@ -123,7 +125,11 @@ fn verdict_status_rank_covers_all_variants() {
     let mut sorted = ranks.clone();
     sorted.sort();
     sorted.dedup();
-    assert_eq!(sorted.len(), 4, "Each verdict status must have a unique rank");
+    assert_eq!(
+        sorted.len(),
+        4,
+        "Each verdict status must have a unique rank"
+    );
 
     // Fail is worst (lowest rank), Skip is best (highest rank).
     assert!(

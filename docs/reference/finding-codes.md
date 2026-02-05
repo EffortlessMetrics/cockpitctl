@@ -61,7 +61,7 @@ Emitted when a receipt fails JSON Schema validation (only in strict mode).
 **Severity:** Always `"error"`
 
 **When it appears:**
-- `--schema-validation strict` is active (CLI) AND `schema_validation = "strict"` (config)
+- Effective schema validation is `strict` (from config or explicit CLI override)
 - Receipt is valid JSON but violates the JSON Schema
 - Provides detailed field-level validation errors
 

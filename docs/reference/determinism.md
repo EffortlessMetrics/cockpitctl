@@ -81,7 +81,7 @@ Sensors in configured sections appear first (in section order), then any "Other"
 When a finding lacks a `fingerprint` field, cockpitctl derives one:
 
 ```
-sha256(sensor_id + code + path + line + col + message)
+sha256(sensor_id + code + message + path + line)
 ```
 
 This derived fingerprint is used for:

@@ -46,6 +46,7 @@ crates/
   cockpitctl-render    # PR comment renderer (budgeted)
   cockpitctl-io        # filesystem adapters (read receipts, write outputs)
   cockpitctl-cli       # `cockpitctl` binary (clap)
+    features/          # cucumber feature files
 xtask/                 # schema + fixture tooling
 docs/                  # requirements/design/architecture/implementation plan
 schemas/               # JSON Schemas (source-of-truth)
@@ -56,8 +57,8 @@ fuzz/                  # cargo-fuzz harness (optional)
 
 ## Development (recommended)
 - Unit tests: `cargo test`
-- Snapshots/goldens: `cargo test -p cockpitctl-cli --test ingest_golden`
-- BDD: `cargo test -p cockpitctl-cli --test bdd` (optional; see `features/`)
+- Snapshots/goldens: `cargo test -p cockpitctl --test ingest_golden`
+- BDD: `cargo test -p cockpitctl --test bdd` (optional; see `crates/cockpitctl-cli/features/`)
 - Fuzz: `cargo fuzz run parse_receipt` (optional)
 - Mutation: `cargo mutants` (optional)
 

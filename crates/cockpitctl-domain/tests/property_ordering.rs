@@ -40,21 +40,19 @@ fn any_location() -> impl Strategy<Value = Option<Location>> {
         prop::option::of(1u32..10000u32),
         prop::option::of(1u32..1000u32),
     ))
-    .prop_map(|opt| {
-        opt.map(|(path, line, col)| Location { path, line, col })
-    })
+    .prop_map(|opt| opt.map(|(path, line, col)| Location { path, line, col }))
 }
 
 fn any_finding() -> impl Strategy<Value = Finding> {
     (
         any_severity(),
-        prop::option::of("[A-Z][A-Z0-9_]{0,20}"),   // check_id
-        "[A-Z][A-Z0-9_./-]{0,30}",                  // code
-        ".{1,100}",                                 // message
+        prop::option::of("[A-Z][A-Z0-9_]{0,20}"), // check_id
+        "[A-Z][A-Z0-9_./-]{0,30}",                // code
+        ".{1,100}",                               // message
         any_location(),
-        prop::option::of(".{0,50}"),               // help
+        prop::option::of(".{0,50}"),                  // help
         prop::option::of("https?://[a-z.]+/[a-z/]*"), // url
-        prop::option::of("[a-f0-9]{64}"),          // fingerprint
+        prop::option::of("[a-f0-9]{64}"),             // fingerprint
     )
         .prop_map(
             |(severity, check_id, code, message, location, help, url, fingerprint)| Finding {
@@ -77,7 +75,7 @@ fn any_findings(max_len: usize) -> impl Strategy<Value = Vec<Finding>> {
 
 fn any_highlight() -> impl Strategy<Value = Highlight> {
     (
-        "[a-z_][a-z0-9_-]{0,20}",  // sensor_id
+        "[a-z_][a-z0-9_-]{0,20}", // sensor_id
         any_finding(),
     )
         .prop_map(|(sensor_id, finding)| Highlight { sensor_id, finding })
@@ -110,14 +108,14 @@ fn any_verdict() -> impl Strategy<Value = Verdict> {
 
 fn any_sensor_summary() -> impl Strategy<Value = SensorSummary> {
     (
-        "[a-z_][a-z0-9_-]{0,20}",         // id
-        any::<bool>(),                     // blocking
+        "[a-z_][a-z0-9_-]{0,20}", // id
+        any::<bool>(),            // blocking
         prop_oneof![
             Just(MissingPolicy::Skip),
             Just(MissingPolicy::Warn),
             Just(MissingPolicy::Fail),
         ],
-        any::<bool>(),                     // present
+        any::<bool>(), // present
         any_verdict(),
     )
         .prop_map(|(id, blocking, missing, present, verdict)| SensorSummary {
@@ -158,9 +156,9 @@ fn any_sensor_policy() -> impl Strategy<Value = SensorPolicy> {
 
 fn any_cockpit_config() -> impl Strategy<Value = CockpitConfig> {
     (
-        any::<bool>(),       // warn_is_fail
-        1usize..20,          // max_highlights
-        1usize..50,          // max_per_sensor_findings
+        any::<bool>(),                                    // warn_is_fail
+        1usize..20,                                       // max_highlights
+        1usize..50,                                       // max_per_sensor_findings
         prop::collection::vec("[A-Z][a-z]{0,15}", 0..10), // section_order
         prop::collection::btree_map("[a-z_][a-z0-9_-]{0,15}", any_sensor_policy(), 0..10),
     )

@@ -108,6 +108,15 @@ Match the verdict to your findings:
 - `warn` findings only → `warn` verdict
 - No findings → `pass` verdict
 
+### Counts Must Match Findings
+
+The `verdict.counts` must reflect the findings array:
+
+- Count `info`, `warn`, and `error` severities accurately
+- `cockpitctl` recomputes counts and emits `cockpit.receipt_inconsistent` if they differ
+
+Keep counts consistent to avoid noisy highlights and confusion.
+
 ## Tool-Specific Data
 
 Put custom data in `data` fields:
@@ -134,6 +143,16 @@ Put custom data in `data` fields:
 ```
 
 cockpitctl passes `data` through without interpretation.
+
+## Fingerprint Stability
+
+If you provide `fingerprint`, it must be **stable across runs** for the same finding:
+
+- Use a deterministic hash (e.g., SHA-256 hex, 64 chars)
+- Include stable inputs like `sensor_id`, `code`, `message`, and location (`path`, `line`)
+- Avoid timestamps, random IDs, or run-specific data
+
+Stable fingerprints enable deduplication and deterministic highlights.
 
 ## Run Metadata
 

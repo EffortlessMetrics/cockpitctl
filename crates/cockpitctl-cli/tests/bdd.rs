@@ -2,7 +2,6 @@
 //!
 //! Runs feature files from `features/` directory using proper Gherkin syntax.
 
-use assert_cmd::Command;
 use cucumber::{given, then, when, World};
 use serde_json::Value;
 use std::fs;
@@ -150,13 +149,12 @@ fn capture_report(world: &mut IngestWorld) {
     world.captured_report = Some(serde_json::to_string_pretty(&report).unwrap());
 }
 
-#[allow(deprecated)] // cargo_bin still works for our use case
 fn run_ingest_impl(world: &mut IngestWorld) {
     let fixture_path = world.fixture_path.as_ref().expect("fixture not set up");
     let artifacts = fixture_path.join("artifacts");
     let config = fixture_path.join("cockpit.toml");
 
-    let mut cmd = Command::cargo_bin("cockpitctl").expect("binary exists");
+    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",
@@ -449,8 +447,7 @@ fn run_cli_command(world: &mut IngestWorld, command: String) {
     let subcommand = parts[1];
     let dir = world.fixture_path.as_ref().expect("directory not set");
 
-    #[allow(deprecated)]
-    let mut cmd = Command::cargo_bin("cockpitctl").expect("binary exists");
+    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
     cmd.current_dir(dir);
     cmd.arg(subcommand);
 
@@ -474,8 +471,7 @@ fn run_cli_with_input(world: &mut IngestWorld, command: String, input_path: Stri
     let dir = world.fixture_path.as_ref().expect("directory not set");
     let full_input = dir.join(&input_path);
 
-    #[allow(deprecated)]
-    let mut cmd = Command::cargo_bin("cockpitctl").expect("binary exists");
+    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
     cmd.current_dir(dir);
     cmd.arg(subcommand);
     cmd.args(["--input", full_input.to_string_lossy().as_ref()]);
@@ -517,7 +513,7 @@ fn file_contains(world: &mut IngestWorld, filename: String, expected: String) {
 fn main() {
     // Run cucumber with the feature files
     let features = std::env::var("CARGO_MANIFEST_DIR")
-        .map(|d| Path::new(&d).join("../../features"))
+        .map(|d| Path::new(&d).join("features"))
         .unwrap_or_else(|_| PathBuf::from("features"));
 
     futures::executor::block_on(IngestWorld::cucumber().with_default_cli().run(features));

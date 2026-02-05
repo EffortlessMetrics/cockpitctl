@@ -1,6 +1,3 @@
-#![allow(deprecated)] // Command::cargo_bin still widely used
-
-use assert_cmd::Command;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -23,7 +20,7 @@ fn ingest_happy_path_fixture_matches_golden() {
     let out_dir = artifacts.join("cockpit");
     let _ = fs::remove_dir_all(&out_dir);
 
-    let mut cmd = Command::cargo_bin("cockpitctl").expect("binary exists");
+    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",
@@ -55,7 +52,7 @@ fn ingest_missing_receipt_fixture_matches_golden_and_exits_2() {
     let out_dir = artifacts.join("cockpit");
     let _ = fs::remove_dir_all(&out_dir);
 
-    let mut cmd = Command::cargo_bin("cockpitctl").expect("binary exists");
+    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",

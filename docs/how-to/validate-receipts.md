@@ -5,12 +5,16 @@ This guide shows how to use cockpitctl's validate command to check receipt and r
 ## The validate Command
 
 ```bash
-cockpitctl validate --input <file>
+cockpitctl validate --input <file> [--strict|--lax]
 ```
 
 Validates that a JSON file conforms to either:
 - `sensor.report.v1` (sensor receipt)
 - `cockpit.report.v1` (cockpit report)
+
+**Modes:**
+- `--strict` (default): Validate against embedded JSON Schemas.
+- `--lax`: Skip JSON Schema validation; only parse JSON into Rust struct shapes.
 
 ## Validating Sensor Receipts
 
@@ -18,9 +22,9 @@ Validates that a JSON file conforms to either:
 cockpitctl validate --input artifacts/builddiag/report.json
 ```
 
-**Success:**
+**Success (strict):**
 ```
-Valid sensor.report.v1
+ok: validated as sensor.report.v1
 ```
 
 **Failure:**
@@ -131,7 +135,7 @@ The validate command performs:
 - Required field presence
 - Type checking
 - Enum value validation
-- Strict top-level field checking
+- Strict top-level field checking (in strict mode)
 
 It does **not** check:
 - Semantic consistency (counts matching findings)

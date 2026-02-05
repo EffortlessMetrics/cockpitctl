@@ -6,11 +6,13 @@
 use anyhow::{Context, Result};
 use cockpitctl_domain::{
     build_cockpit_report, select_highlights, sort_sensor_summaries, summarize_sensor_report,
-    synthesize_invalid_sensor, synthesize_missing_sensor, synthesize_schema_violation_sensor,
-    synthesize_sensors_truncated,
+    synthesize_invalid_sensor, synthesize_missing_sensor, synthesize_path_traversal_highlight,
+    synthesize_path_traversal_sensor, synthesize_receipt_oversized_sensor,
+    synthesize_schema_violation_sensor, synthesize_sensors_truncated,
 };
 use cockpitctl_types::{
-    CockpitConfig, CockpitReport, MissingPolicy, RunInfo, SchemaValidation, SensorPolicy, ToolInfo,
+    is_valid_sensor_id, CockpitConfig, CockpitReport, MissingPolicy, RunInfo, SchemaValidation,
+    ToolInfo,
 };
 
 /// Result of sensor discovery, including any truncation info.
@@ -21,6 +23,23 @@ pub struct DiscoveredSensors {
     pub truncated: bool,
     /// Total number of sensors found before truncation (if truncated).
     pub total_found: usize,
+    /// Sensor IDs that were rejected due to invalid path traversal.
+    pub invalid_sensor_ids: Vec<String>,
+}
+
+/// Result of reading a sensor report.
+pub enum ReportRead {
+    Missing,
+    Bytes(Vec<u8>),
+    Oversized { size: u64, cap: usize },
+    UnsafePath,
+}
+
+/// Result of checking for a sensor comment.
+pub enum CommentRead {
+    Missing,
+    Present(String),
+    UnsafePath,
 }
 
 /// Ports: where receipts come from.
@@ -30,13 +49,13 @@ pub trait ReceiptSource {
     fn discovered_sensors(&self) -> Result<DiscoveredSensors>;
 
     /// Read the report.json bytes for a sensor if present.
-    fn read_report_bytes(&self, sensor_id: &str) -> Result<Option<Vec<u8>>>;
+    fn read_report_bytes(&self, sensor_id: &str) -> Result<ReportRead>;
 
     /// Return canonical relative path to the sensor's report.json.
     fn report_path(&self, sensor_id: &str) -> String;
 
     /// Return canonical relative path to the sensor's comment.md if present.
-    fn comment_path_if_present(&self, sensor_id: &str) -> Result<Option<String>>;
+    fn comment_path_if_present(&self, sensor_id: &str) -> Result<CommentRead>;
 }
 
 /// Ports: policy source (cockpit.toml).
@@ -79,6 +98,7 @@ pub struct IngestRequest {
     pub labels: Vec<String>, // optional; label-gates may use this
     pub tool: ToolInfo,
     pub run: RunInfo,
+    pub schema_validation_override: Option<SchemaValidation>,
 }
 
 /// Result of ingestion, including the computed report and recommended exit code.
@@ -128,25 +148,16 @@ where
             .context("discover sensors")?;
         let discovered = discovery.sensors;
 
-        let cfg = if let Some(cfg) = self.policy.load_config().context("load cockpit.toml")? {
-            cfg
-        } else {
-            // Default policy: all discovered sensors are blocking, missing policy = skip.
-            let mut cfg = CockpitConfig::default();
-            for id in &discovered {
-                cfg.sensors.insert(
-                    id.clone(),
-                    SensorPolicy {
-                        blocking: true,
-                        missing: MissingPolicy::Skip,
-                        section: None,
-                        require_label: None,
-                        repro: None,
-                    },
-                );
-            }
-            cfg
-        };
+        // Default policy: no expected sensors; discovered sensors are informational.
+        let cfg: CockpitConfig = self
+            .policy
+            .load_config()
+            .context("load cockpit.toml")?
+            .unwrap_or_default();
+
+        let effective_schema_validation = req
+            .schema_validation_override
+            .unwrap_or(cfg.policy.schema_validation);
 
         // Expected sensors are those declared in policy; if empty, treat discovered as expected.
         let expected: Vec<String> = if !cfg.sensors.is_empty() {
@@ -157,6 +168,15 @@ where
 
         let mut sensor_summaries = Vec::new();
         let mut highlight_candidates = Vec::new();
+
+        for invalid in &discovery.invalid_sensor_ids {
+            let report_path = self.receipts.report_path(invalid);
+            highlight_candidates.push(synthesize_path_traversal_highlight(
+                invalid,
+                &report_path,
+                None,
+            ));
+        }
 
         // Add warning if sensor discovery was truncated.
         if discovery.truncated {
@@ -173,15 +193,34 @@ where
             let policy = cfg.sensors.get(&sensor_id).cloned().unwrap_or_default();
             sensor_blocking.insert(sensor_id.clone(), policy.blocking);
 
+            if !is_valid_sensor_id(&sensor_id) {
+                let report_path = self.receipts.report_path(&sensor_id);
+                let (summary, highlight) =
+                    synthesize_path_traversal_sensor(&sensor_id, &policy, &report_path, None, None);
+                sensor_summaries.push(summary);
+                highlight_candidates.push(highlight);
+                continue;
+            }
+
+            let mut comment_path: Option<String> = None;
+            match self.receipts.comment_path_if_present(&sensor_id)? {
+                CommentRead::Present(p) => comment_path = Some(p),
+                CommentRead::Missing => {}
+                CommentRead::UnsafePath => {
+                    let unsafe_path = format!("artifacts/{}/comment.md", sensor_id);
+                    highlight_candidates.push(synthesize_path_traversal_highlight(
+                        &sensor_id,
+                        &unsafe_path,
+                        Some("comment.md".to_string()),
+                    ));
+                }
+            }
+
             // Label-gate: if require_label is set and not present, treat as skipped/missing=skip.
             if let Some(label) = &policy.require_label {
                 if !req.labels.iter().any(|l| l == label) {
                     // Synthesized "skipped due to missing label"
                     let report_path = self.receipts.report_path(&sensor_id);
-                    let comment_path = self
-                        .receipts
-                        .comment_path_if_present(&sensor_id)
-                        .unwrap_or(None);
                     let mut p = policy.clone();
                     p.missing = MissingPolicy::Skip;
                     let (summary, _) =
@@ -192,21 +231,47 @@ where
             }
 
             let report_path = self.receipts.report_path(&sensor_id);
-            let comment_path = self.receipts.comment_path_if_present(&sensor_id)?;
 
-            let bytes_opt = self.receipts.read_report_bytes(&sensor_id)?;
-            let Some(bytes) = bytes_opt else {
-                let (summary, h) =
-                    synthesize_missing_sensor(&sensor_id, &policy, &report_path, comment_path);
-                sensor_summaries.push(summary);
-                if let Some(h) = h {
-                    highlight_candidates.push(h);
+            let bytes = match self.receipts.read_report_bytes(&sensor_id)? {
+                ReportRead::Missing => {
+                    let (summary, h) =
+                        synthesize_missing_sensor(&sensor_id, &policy, &report_path, comment_path);
+                    sensor_summaries.push(summary);
+                    if let Some(h) = h {
+                        highlight_candidates.push(h);
+                    }
+                    continue;
                 }
-                continue;
+                ReportRead::UnsafePath => {
+                    let (summary, highlight) = synthesize_path_traversal_sensor(
+                        &sensor_id,
+                        &policy,
+                        &report_path,
+                        comment_path,
+                        Some("report.json".to_string()),
+                    );
+                    sensor_summaries.push(summary);
+                    highlight_candidates.push(highlight);
+                    continue;
+                }
+                ReportRead::Oversized { size, cap } => {
+                    let (summary, highlight) = synthesize_receipt_oversized_sensor(
+                        &sensor_id,
+                        &policy,
+                        &report_path,
+                        comment_path,
+                        size,
+                        cap,
+                    );
+                    sensor_summaries.push(summary);
+                    highlight_candidates.push(highlight);
+                    continue;
+                }
+                ReportRead::Bytes(bytes) => bytes,
             };
 
             // Schema validation (if enabled).
-            if matches!(cfg.policy.schema_validation, SchemaValidation::Strict) {
+            if matches!(effective_schema_validation, SchemaValidation::Strict) {
                 match self.schema_validator.validate_receipt(&bytes)? {
                     SchemaValidationResult::Valid => {}
                     SchemaValidationResult::Invalid(errors) => {

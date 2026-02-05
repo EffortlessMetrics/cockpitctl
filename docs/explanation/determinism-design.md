@@ -112,7 +112,7 @@ When findings lack fingerprints, they're derived deterministically:
 
 ```rust
 let fingerprint = sha256(
-    sensor_id + code + path + line + col + message
+    sensor_id + code + message + path + line
 );
 ```
 

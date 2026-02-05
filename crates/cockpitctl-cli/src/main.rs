@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
-use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator};
+use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator, SchemaValidator};
 use cockpitctl_io::{FsLayout, FsOutputSink, FsPolicySource, FsReceiptSource, JsonSchemaValidator};
 use cockpitctl_render::render_comment;
 use cockpitctl_types::{RunInfo, SchemaValidation, ToolInfo};
@@ -50,11 +50,11 @@ enum Commands {
 
         /// Schema validation mode for sensor receipts.
         ///
-        /// - lax: Skip JSON schema validation; only parse receipts as JSON (default).
+        /// - lax: Skip JSON schema validation; only parse receipts as JSON.
         /// - strict: Validate receipts against schemas/sensor.report.v1.json; schema
         ///   violations are surfaced as findings rather than causing parse errors.
-        #[arg(long, value_enum, default_value_t = SchemaValidationMode::Lax)]
-        schema_validation: SchemaValidationMode,
+        #[arg(long, value_enum)]
+        schema_validation: Option<SchemaValidationMode>,
     },
 
     /// Write a starter cockpit.toml (does not overwrite).
@@ -68,6 +68,14 @@ enum Commands {
         /// Path to a JSON receipt or cockpit report.
         #[arg(long)]
         input: String,
+
+        /// Perform strict JSON Schema validation (default).
+        #[arg(long, conflicts_with = "lax")]
+        strict: bool,
+
+        /// Skip JSON Schema validation; only parse as JSON.
+        #[arg(long, conflicts_with = "strict")]
+        lax: bool,
     },
 }
 
@@ -92,7 +100,7 @@ fn run(cli: Cli) -> Result<i32> {
             schema_validation,
         } => cmd_ingest(&artifacts, &config, label, schema_validation),
         Commands::Init { path } => cmd_init(&path),
-        Commands::Validate { input } => cmd_validate(&input),
+        Commands::Validate { input, strict, lax } => cmd_validate(&input, strict, lax),
     }
 }
 
@@ -109,7 +117,7 @@ fn cmd_ingest(
     artifacts: &str,
     config: &str,
     labels: Vec<String>,
-    schema_validation: SchemaValidationMode,
+    schema_validation: Option<SchemaValidationMode>,
 ) -> Result<i32> {
     let layout = FsLayout::new(artifacts, config);
 
@@ -132,18 +140,24 @@ fn cmd_ingest(
         ci: None,
     };
 
-    let req = IngestRequest { labels, tool, run };
+    let schema_validation_override = schema_validation.map(SchemaValidation::from);
+    let req = IngestRequest {
+        labels,
+        tool,
+        run,
+        schema_validation_override,
+    };
 
     // Execute with the appropriate schema validator based on CLI flag.
-    match schema_validation {
-        SchemaValidationMode::Lax => {
+    match schema_validation_override {
+        Some(SchemaValidation::Lax) => {
             let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, |r, cfg| {
                 render_comment(r, cfg)
             });
             let result = uc.execute(req).context("ingest")?;
             Ok(result.exit_code)
         }
-        SchemaValidationMode::Strict => {
+        _ => {
             let validator = JsonSchemaValidator::sensor_report_v1()
                 .context("load sensor.report.v1 JSON schema")?;
             let uc = IngestUseCase::new(receipts, policy, output, validator, |r, cfg| {
@@ -172,18 +186,81 @@ fn cmd_init(path: &str) -> Result<i32> {
     Ok(0)
 }
 
-fn cmd_validate(input: &str) -> Result<i32> {
+fn cmd_validate(input: &str, _strict: bool, lax: bool) -> Result<i32> {
     let bytes = std::fs::read(input).with_context(|| format!("read {}", input))?;
+    let mode = if lax {
+        SchemaValidation::Lax
+    } else {
+        SchemaValidation::Strict
+    };
 
-    // Try sensor report first, then cockpit report.
-    if serde_json::from_slice::<cockpitctl_types::SensorReport>(&bytes).is_ok() {
-        eprintln!("ok: parsed as sensor.report.v1 shape");
-        return Ok(0);
-    }
-    if serde_json::from_slice::<cockpitctl_types::CockpitReport>(&bytes).is_ok() {
-        eprintln!("ok: parsed as cockpit.report.v1 shape");
-        return Ok(0);
-    }
+    match mode {
+        SchemaValidation::Lax => {
+            // Try sensor report first, then cockpit report.
+            if serde_json::from_slice::<cockpitctl_types::SensorReport>(&bytes).is_ok() {
+                eprintln!("ok: parsed as sensor.report.v1 shape");
+                return Ok(0);
+            }
+            if serde_json::from_slice::<cockpitctl_types::CockpitReport>(&bytes).is_ok() {
+                eprintln!("ok: parsed as cockpit.report.v1 shape");
+                return Ok(0);
+            }
 
-    anyhow::bail!("input did not parse as SensorReport or CockpitReport")
+            anyhow::bail!("input did not parse as SensorReport or CockpitReport")
+        }
+        SchemaValidation::Strict => {
+            let value: serde_json::Value =
+                serde_json::from_slice(&bytes).context("parse JSON input")?;
+            let schema_hint = value.get("schema").and_then(|s| s.as_str());
+
+            let mut candidates = Vec::new();
+            if schema_hint == Some("cockpit.report.v1") {
+                candidates.push((
+                    "cockpit.report.v1",
+                    JsonSchemaValidator::cockpit_report_v1()
+                        .context("load cockpit.report.v1 JSON schema")?,
+                ));
+            } else if schema_hint.is_some() {
+                candidates.push((
+                    "sensor.report.v1",
+                    JsonSchemaValidator::sensor_report_v1()
+                        .context("load sensor.report.v1 JSON schema")?,
+                ));
+            } else {
+                candidates.push((
+                    "sensor.report.v1",
+                    JsonSchemaValidator::sensor_report_v1()
+                        .context("load sensor.report.v1 JSON schema")?,
+                ));
+                candidates.push((
+                    "cockpit.report.v1",
+                    JsonSchemaValidator::cockpit_report_v1()
+                        .context("load cockpit.report.v1 JSON schema")?,
+                ));
+            }
+
+            let mut errors = Vec::new();
+            for (label, validator) in candidates {
+                match validator.validate_receipt(&bytes)? {
+                    cockpitctl_ingest::SchemaValidationResult::Valid => {
+                        eprintln!("ok: validated as {}", label);
+                        return Ok(0);
+                    }
+                    cockpitctl_ingest::SchemaValidationResult::Invalid(errs) => {
+                        errors.push(format!(
+                            "{}: {}",
+                            label,
+                            if errs.is_empty() {
+                                "schema validation failed".to_string()
+                            } else {
+                                errs.join("; ")
+                            }
+                        ));
+                    }
+                }
+            }
+
+            anyhow::bail!("strict validation failed:\n{}", errors.join("\n"))
+        }
+    }
 }
