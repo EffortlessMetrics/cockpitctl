@@ -86,10 +86,13 @@ fn any_highlights(max_len: usize) -> impl Strategy<Value = Vec<Highlight>> {
 }
 
 fn any_verdict_counts() -> impl Strategy<Value = VerdictCounts> {
-    (0u64..1000, 0u64..1000, 0u64..1000).prop_map(|(info, warn, error)| VerdictCounts {
-        info,
-        warn,
-        error,
+    (0u64..1000, 0u64..1000, 0u64..1000, 0u64..100).prop_map(|(info, warn, error, suppressed)| {
+        VerdictCounts {
+            info,
+            warn,
+            error,
+            suppressed,
+        }
     })
 }
 

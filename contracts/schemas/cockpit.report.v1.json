@@ -308,6 +308,11 @@
                   "warn": {
                     "minimum": 0,
                     "type": "integer"
+                  },
+                  "suppressed": {
+                    "minimum": 0,
+                    "type": "integer",
+                    "default": 0
                   }
                 },
                 "required": [
@@ -391,6 +396,11 @@
             "warn": {
               "minimum": 0,
               "type": "integer"
+            },
+            "suppressed": {
+              "minimum": 0,
+              "type": "integer",
+              "default": 0
             }
           },
           "required": [

@@ -15,14 +15,14 @@ struct Cli {
 enum Commands {
     /// Basic schema sanity checks (JSON parse + required fields).
     SchemaCheck {
-        #[arg(long, default_value = "schemas")]
+        #[arg(long, default_value = "contracts/schemas")]
         dir: PathBuf,
     },
 
     /// Validate that JSON Schema files are valid JSON and conform to JSON Schema spec.
     ValidateSchemas {
         /// Directory containing JSON schema files
-        #[arg(long, default_value = "schemas")]
+        #[arg(long, default_value = "contracts/schemas")]
         dir: PathBuf,
 
         /// Reformat JSON files with consistent indentation
@@ -33,15 +33,19 @@ enum Commands {
     /// Print instructions for regenerating golden fixtures.
     FixturesHelp,
 
-    /// Verify embedded schema copies match the root schemas.
-    SchemaSyncCheck {
-        /// Directory containing root JSON schema files
-        #[arg(long, default_value = "schemas")]
-        root_dir: PathBuf,
+    /// Conformance harness: validate sensor receipts against the protocol.
+    Conform {
+        /// Path to the sensor report to validate.
+        #[arg(long)]
+        report: PathBuf,
 
-        /// Directory containing embedded JSON schema files
-        #[arg(long, default_value = "crates/cockpitctl-types/schemas")]
-        embedded_dir: PathBuf,
+        /// Optional golden file to check determinism against.
+        #[arg(long)]
+        golden: Option<PathBuf>,
+
+        /// Check survivability: verify status=fail has explanatory findings.
+        #[arg(long)]
+        survivability: bool,
     },
 }
 
@@ -58,10 +62,11 @@ fn run(cli: Cli) -> Result<()> {
         Commands::SchemaCheck { dir } => schema_check(dir),
         Commands::ValidateSchemas { dir, fix } => validate_schemas(dir, fix),
         Commands::FixturesHelp => fixtures_help(),
-        Commands::SchemaSyncCheck {
-            root_dir,
-            embedded_dir,
-        } => schema_sync_check(root_dir, embedded_dir),
+        Commands::Conform {
+            report,
+            golden,
+            survivability,
+        } => conform(report, golden, survivability),
     }
 }
 
@@ -99,28 +104,71 @@ fn fixtures_help() -> Result<()> {
     Ok(())
 }
 
-fn schema_sync_check(root_dir: PathBuf, embedded_dir: PathBuf) -> Result<()> {
-    let files = ["sensor.report.v1.json", "cockpit.report.v1.json"];
+fn conform(report: PathBuf, golden: Option<PathBuf>, survivability: bool) -> Result<()> {
+    use cockpitctl_types::{SensorReport, VerdictStatus, SENSOR_REPORT_V1_SCHEMA_JSON};
 
-    for name in files {
-        let root_path = root_dir.join(name);
-        let embedded_path = embedded_dir.join(name);
-        let root = fs::read_to_string(&root_path)
-            .with_context(|| format!("read root schema {}", root_path.display()))?;
-        let embedded = fs::read_to_string(&embedded_path)
-            .with_context(|| format!("read embedded schema {}", embedded_path.display()))?;
+    eprintln!("conformance check: {}", report.display());
 
-        if root != embedded {
-            anyhow::bail!(
-                "embedded schema does not match root: {} vs {}",
-                root_path.display(),
-                embedded_path.display()
-            );
+    // Step 1: Read the report
+    let content =
+        fs::read_to_string(&report).with_context(|| format!("read {}", report.display()))?;
+
+    // Step 2: Parse as JSON
+    let value: serde_json::Value = serde_json::from_str(&content)
+        .with_context(|| format!("parse json {}", report.display()))?;
+
+    // Step 3: Schema validation
+    let schema: serde_json::Value = serde_json::from_str(SENSOR_REPORT_V1_SCHEMA_JSON)
+        .context("parse embedded sensor.report.v1 schema")?;
+
+    let validator =
+        jsonschema::validator_for(&schema).context("compile sensor.report.v1 schema")?;
+
+    let errors: Vec<_> = validator.iter_errors(&value).collect();
+    if !errors.is_empty() {
+        eprintln!("  FAIL: schema validation errors:");
+        for e in &errors {
+            eprintln!("    - {}", e);
         }
+        anyhow::bail!("schema validation failed with {} error(s)", errors.len());
+    }
+    eprintln!("  ok: schema validation passed");
 
-        eprintln!("ok: embedded schema matches root: {}", root_path.display());
+    // Step 4: Determinism check (if golden provided)
+    if let Some(golden_path) = golden {
+        let golden_content = fs::read_to_string(&golden_path)
+            .with_context(|| format!("read golden {}", golden_path.display()))?;
+
+        if content != golden_content {
+            eprintln!("  FAIL: report does not match golden file");
+            eprintln!("    golden: {}", golden_path.display());
+            eprintln!("    actual: {}", report.display());
+            anyhow::bail!("determinism check failed: report differs from golden");
+        }
+        eprintln!("  ok: determinism check passed (matches golden)");
     }
 
+    // Step 5: Survivability check (if requested)
+    if survivability {
+        let parsed: SensorReport =
+            serde_json::from_value(value).context("parse as SensorReport")?;
+
+        if parsed.verdict.status == VerdictStatus::Fail {
+            let has_explanatory = !parsed.findings.is_empty() || !parsed.verdict.reasons.is_empty();
+
+            if !has_explanatory {
+                eprintln!("  FAIL: status=fail but no findings or reasons");
+                anyhow::bail!(
+                    "survivability check failed: status=fail requires explanatory findings or reasons"
+                );
+            }
+            eprintln!("  ok: survivability check passed (fail has explanations)");
+        } else {
+            eprintln!("  ok: survivability check skipped (status != fail)");
+        }
+    }
+
+    eprintln!("conformance: PASS");
     Ok(())
 }
 

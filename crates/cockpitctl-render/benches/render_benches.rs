@@ -100,6 +100,7 @@ fn generate_sensor_summary(rng: &mut impl Rng, sensor_id: &str, _section: &str) 
                 info: rng.gen_range(0..10),
                 warn: rng.gen_range(0..5),
                 error: rng.gen_range(0..3),
+                suppressed: 0,
             },
             reasons: vec![],
         },
@@ -124,6 +125,7 @@ fn generate_run_info() -> RunInfo {
         host: None,
         git: None,
         ci: None,
+        capabilities: Vec::new(),
     }
 }
 
@@ -237,6 +239,10 @@ fn generate_report(
             error: sensor_summaries
                 .iter()
                 .map(|s| s.verdict.counts.error)
+                .sum(),
+            suppressed: sensor_summaries
+                .iter()
+                .map(|s| s.verdict.counts.suppressed)
                 .sum(),
         },
         reasons: vec![],

@@ -156,6 +156,15 @@
         "started_at": {
           "format": "date-time",
           "type": "string"
+        },
+        "capabilities": {
+          "description": "Declared capabilities (e.g., 'git', 'baseline', 'lcov').",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
         }
       },
       "required": [
@@ -205,6 +214,11 @@
             "warn": {
               "minimum": 0,
               "type": "integer"
+            },
+            "suppressed": {
+              "minimum": 0,
+              "type": "integer",
+              "default": 0
             }
           },
           "required": [

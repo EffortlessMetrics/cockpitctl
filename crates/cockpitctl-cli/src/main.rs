@@ -138,6 +138,7 @@ fn cmd_ingest(
         host: None,
         git: None,
         ci: None,
+        capabilities: Vec::new(),
     };
 
     let schema_validation_override = schema_validation.map(SchemaValidation::from);

@@ -11,10 +11,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Embedded JSON Schema for sensor.report.v1.
-pub const SENSOR_REPORT_V1_SCHEMA_JSON: &str = include_str!("../schemas/sensor.report.v1.json");
+pub const SENSOR_REPORT_V1_SCHEMA_JSON: &str =
+    include_str!("../../../contracts/schemas/sensor.report.v1.json");
 
 /// Embedded JSON Schema for cockpit.report.v1.
-pub const COCKPIT_REPORT_V1_SCHEMA_JSON: &str = include_str!("../schemas/cockpit.report.v1.json");
+pub const COCKPIT_REPORT_V1_SCHEMA_JSON: &str =
+    include_str!("../../../contracts/schemas/cockpit.report.v1.json");
+
+/// Embedded JSON Schema for buildfix.plan.v1.
+pub const BUILDFIX_PLAN_V1_SCHEMA_JSON: &str =
+    include_str!("../../../contracts/schemas/buildfix.plan.v1.json");
 
 /// A schema identifier string, e.g. `builddiag.report.v1`.
 pub type SchemaId = String;
@@ -28,11 +34,17 @@ pub enum VerdictStatus {
     Skip,
 }
 
+fn is_zero(v: &u64) -> bool {
+    *v == 0
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct VerdictCounts {
     pub info: u64,
     pub warn: u64,
     pub error: u64,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub suppressed: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -102,6 +114,9 @@ pub struct RunInfo {
     pub git: Option<GitInfo>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ci: Option<CiInfo>,
+    /// Declared capabilities (e.g., "git", "baseline", "lcov").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub capabilities: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -346,4 +361,51 @@ pub fn verdict_status_rank(s: &VerdictStatus) -> u8 {
 /// Validate a sensor ID for safe path usage.
 pub fn is_valid_sensor_id(id: &str) -> bool {
     !id.is_empty() && !id.contains("..") && !id.contains('/') && !id.contains('\\')
+}
+
+// ============================================================================
+// Buildfix types (actuator protocol)
+// ============================================================================
+
+/// Safety level for a fix.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SafetyLevel {
+    /// No side effects; safe to apply automatically.
+    Safe,
+    /// Requires confirmation before applying.
+    Guarded,
+    /// May break things; use with caution.
+    Unsafe,
+}
+
+/// Reference to a finding that a fix addresses.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct FindingRef {
+    pub sensor_id: String,
+    pub fingerprint: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+}
+
+/// A single fix in a buildfix plan.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Fix {
+    pub id: String,
+    pub safety: SafetyLevel,
+    pub description: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub finding_refs: Vec<FindingRef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub preconditions: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<Value>,
+}
+
+/// A buildfix plan: a set of fixes to apply.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BuildfixPlan {
+    pub schema: SchemaId,
+    pub tool: ToolInfo,
+    pub fixes: Vec<Fix>,
 }
