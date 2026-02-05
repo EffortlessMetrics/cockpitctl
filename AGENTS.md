@@ -1,16 +1,100 @@
 # AGENTS.md
 
-This file provides guidance to Codex (OpenAI) when working with code in this repository.
+This file is the one-page, drift-resistant description of cockpitctl and its core contracts.
 
-## Project Overview
+## cockpitctl in one page
 
-**cockpitctl** is a "director" application that ingests sensor receipts and produces a single merge decision surface. It reads receipts from `artifacts/<sensor>/report.json`, applies composition policy from `cockpit.toml`, and outputs an aggregate report and PR comment.
+### What it is
 
-Key constraints: No running sensors, no network calls, treats receipts as untrusted input, tool-specific payload is opaque.
+`cockpitctl` is an offline director that compiles many sensor receipts into:
 
-Note: the CLI crate lives at `crates/cockpitctl-cli`, but the package/binary name is `cockpitctl`.
+- Machine evidence: `artifacts/cockpit/report.json` (`cockpit.report.v1`)
+- Human surface: `artifacts/cockpit/comment.md` (deterministic markdown)
+- CI semantics: exit code (`0` pass, `2` policy fail, `1` runtime error)
 
-## Build & Test Commands
+### What it is not
+
+- Not a sensor runner
+- Not a GitHub API client
+- Not an orchestrator (that is CI/Flow Studio)
+
+## The three contracts that matter
+
+### 1) Receipt contract (inputs)
+
+Sensors write exactly one canonical receipt each:
+
+```
+artifacts/<sensor_id>/report.json   # sensor.report.v1
+```
+
+Lax mode means: skip JSON Schema validation. It does not mean accept invalid shape.
+Serde parsing can still fail and should surface as a cockpit finding.
+
+### 2) Cockpit contract (outputs)
+
+`cockpitctl ingest` always writes (even on exit code `2`):
+
+```
+artifacts/cockpit/report.json    # cockpit.report.v1
+artifacts/cockpit/comment.md     # stable markers, budgeted
+```
+
+Everything higher-level should consume `cockpit.report.v1` as the canonical evidence object.
+The comment is just one renderer.
+
+### 3) Precedence contract (policy vs CLI)
+
+Config is the default. CLI only overrides when explicitly provided.
+
+- `cockpit.toml` supplies defaults (`schema_validation = "lax"` unless set)
+- CLI `--schema-validation ...` overrides only if the user actually passes it
+
+## How it interfaces with the cockpit stack
+
+`cockpitctl` is the bottom layer. It produces a stable cockpit receipt that everything else
+can treat as evidence:
+
+- PR bots: post `comment.md` (or render from `report.json`)
+- Dashboards: ingest `cockpit.report.v1`
+- Flow Studio: store/compare/diff cockpit receipts across runs, attach provenance, aggregate runs
+
+The rule: higher layers should not parse 10 sensor formats. They should parse one cockpit format.
+
+## Repo shape and responsibilities (clean boundaries)
+
+Workspace layout:
+
+- `cockpitctl-types`: stable DTOs, rankings, embedded schemas
+- `cockpitctl-domain`: pure determinism, selection logic, normalization
+- `cockpitctl-ingest`: orchestration + ports + precedence + exit semantics
+- `cockpitctl-io`: filesystem adapters + safety limits + traversal protection
+- `cockpitctl-render`: markdown renderer + budgets + stable markers
+- `cockpitctl-cli`: clap + subcommands (only clap crate)
+- `xtask`: schema checks, fixture tooling
+
+Key internal invariants (what tests are buying you):
+
+- Deterministic ordering and capping
+- Stable PR surface (goldens + BDD)
+- Safety is "controlled findings", not crashes (oversize/traversal)
+
+## Definition of done (operational)
+
+1. Strict validation works from any working directory
+   - No runtime dependence on repo-root `schemas/`; use embedded schema bytes
+2. Warnings really are errors
+   - No `#[allow(deprecated)]` hiding harness issues
+3. Packaging is boring
+   - `cargo package --list -p cockpitctl` ships no fixtures or docs junk
+   - Embedded schemas are included in `cockpitctl-types`
+   - CI enforces `cargo run -p xtask -- schema-sync-check`
+4. The precedence contract is reflected everywhere
+   - Code, tests, docs, and BDD features
+
+## Ops appendix (agent essentials)
+
+Build and test:
 
 ```bash
 # Build
@@ -38,46 +122,7 @@ cargo fuzz run parse_receipt
 cargo mutants --workspace
 ```
 
-## Architecture
-
-Hexagonal/Clean architecture with microcrates. Dependencies point inward; domain crates must not depend on clap, filesystem, or network.
-
-```
-cockpitctl-types   → DTOs, stable IDs, ordering helpers (no external deps except serde/time)
-cockpitctl-domain  → Policy evaluation, highlight selection, normalization (uses sha2/hex)
-cockpitctl-ingest  → Use case boundary with ports (traits): ReceiptSource, PolicySource, OutputSink
-cockpitctl-render  → PR comment renderer with stable markers and truncation
-cockpitctl-io      → Filesystem adapters implementing the ports
-cockpitctl-cli     → Binary entry point (clap), wires adapters to use case
-xtask              → Schema checks, fixture tooling
-```
-
-## Key Contracts
-
-- `schemas/sensor.report.v1.json` - Input receipt envelope
-- `schemas/cockpit.report.v1.json` - Director output
-- `templates/cockpit.comment.v1.md` - Comment contract
-
-Verdict states: `pass | warn | fail | skip` (no others allowed)
-
-Exit codes: `0` (pass), `2` (policy fail), `1` (runtime error)
-
-## Determinism Requirements
-
-All output must be byte-stable given identical inputs:
-- Sensor discovery: lexical order
-- Findings sort: `severity desc → sensor_id → path → line → code → message`
-- Highlights sort: `severity desc → blocking-first → sensor_id → path → line → code`
-
-## Safety Constraints
-
-Receipts are untrusted:
-- Refuse path traversal (`..`) in sensor IDs
-- Avoid following symlinks out of artifacts root
-- Cap receipt file size (2MB default)
-- Cap number of receipts processed
-
-## CLI Usage
+CLI usage:
 
 ```bash
 cockpitctl ingest --artifacts artifacts --config cockpit.toml
@@ -85,7 +130,20 @@ cockpitctl init --path cockpit.toml          # Write starter config
 cockpitctl validate --input report.json       # Validate receipt/report
 ```
 
-## Fixture Regeneration
+Determinism requirements (must be byte-stable):
+
+- Sensor discovery: lexical order
+- Findings sort: severity desc -> sensor_id -> path -> line -> code -> message
+- Highlights sort: severity desc -> blocking-first -> sensor_id -> path -> line -> code
+
+Safety constraints (untrusted receipts):
+
+- Refuse path traversal (`..`) in sensor IDs
+- Avoid following symlinks out of artifacts root
+- Cap receipt file size (2MB default)
+- Cap number of receipts processed
+
+Fixture regeneration:
 
 ```bash
 cargo run -p xtask -- fixtures-help

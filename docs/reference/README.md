@@ -42,6 +42,12 @@ Sort keys and ordering guarantees.
 
 Size caps, path restrictions, and robustness measures.
 
+## Contracts
+
+### [Compatibility Promise](compatibility.md)
+
+SemVer policy, schema stability guarantees, and deprecation process for v1 contracts.
+
 ## Related
 
 - [How-to Guides](../how-to/README.md) - For task-oriented guidance

@@ -666,6 +666,80 @@ fn config_lax_cli_strict_overrides_config() {
 }
 
 // =============================================================================
+// Test: Config says strict and no CLI flag = strict validation (config default)
+// =============================================================================
+
+#[test]
+fn config_strict_no_cli_uses_config() {
+    let setup = TestSetup::new();
+    // Config says strict.
+    setup.write_config(&strict_config_single_sensor("testsensor"));
+    // Report violates schema.
+    setup.write_sensor_report("testsensor", invalid_report_extra_field());
+
+    // No CLI flag: config should apply.
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .code(2);
+
+    let report = setup.read_cockpit_report();
+    let json: serde_json::Value = serde_json::from_str(&report).expect("parse cockpit report");
+
+    let highlights = json["highlights"].as_array().expect("highlights array");
+    let has_violation = highlights
+        .iter()
+        .any(|h| h["finding"]["code"].as_str() == Some("cockpit.schema_violation"));
+    assert!(
+        has_violation,
+        "config strict should enforce schema validation when CLI flag is unset"
+    );
+}
+
+// =============================================================================
+// Test: Config says lax and no CLI flag = lax validation (config default)
+// =============================================================================
+
+#[test]
+fn config_lax_no_cli_uses_config() {
+    let setup = TestSetup::new();
+    // Config says lax.
+    setup.write_config(&lax_config_single_sensor("testsensor"));
+    // Report violates schema.
+    setup.write_sensor_report("testsensor", invalid_report_extra_field());
+
+    // No CLI flag: config should apply.
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+
+    let report = setup.read_cockpit_report();
+    let json: serde_json::Value = serde_json::from_str(&report).expect("parse cockpit report");
+
+    let highlights = json["highlights"].as_array().expect("highlights array");
+    let has_violation = highlights
+        .iter()
+        .any(|h| h["finding"]["code"].as_str() == Some("cockpit.schema_violation"));
+    assert!(
+        !has_violation,
+        "config lax should skip schema validation when CLI flag is unset"
+    );
+}
+
+// =============================================================================
 // Test: Verify schema violation errors array contains details
 // =============================================================================
 

@@ -1,0 +1,81 @@
+{
+  "schema": "manychecker.report.v1",
+  "tool": {
+    "name": "manychecker",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T12:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 2,
+      "warn": 2,
+      "error": 2
+    },
+    "reasons": []
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "manychecker.critical_issue",
+      "message": "Critical error in core module",
+      "location": {
+        "path": "src/core.rs",
+        "line": 10
+      },
+      "fingerprint": "error001234567890abcdef1234567890abcdef1234567890abcdef12345678"
+    },
+    {
+      "severity": "error",
+      "code": "manychecker.security_flaw",
+      "message": "Security vulnerability detected",
+      "location": {
+        "path": "src/auth.rs",
+        "line": 25
+      },
+      "fingerprint": "error002234567890abcdef1234567890abcdef1234567890abcdef12345678"
+    },
+    {
+      "severity": "warn",
+      "code": "manychecker.deprecated_api",
+      "message": "Using deprecated API call",
+      "location": {
+        "path": "src/legacy.rs",
+        "line": 50
+      },
+      "fingerprint": "warn001234567890abcdef1234567890abcdef1234567890abcdef123456780"
+    },
+    {
+      "severity": "warn",
+      "code": "manychecker.performance",
+      "message": "Potential performance issue",
+      "location": {
+        "path": "src/slow.rs",
+        "line": 100
+      },
+      "fingerprint": "warn002234567890abcdef1234567890abcdef1234567890abcdef123456780"
+    },
+    {
+      "severity": "info",
+      "code": "manychecker.suggestion",
+      "message": "Consider refactoring this module",
+      "location": {
+        "path": "src/utils.rs",
+        "line": 200
+      },
+      "fingerprint": "info001234567890abcdef1234567890abcdef1234567890abcdef123456780"
+    },
+    {
+      "severity": "info",
+      "code": "manychecker.style",
+      "message": "Style improvement recommended",
+      "location": {
+        "path": "src/format.rs",
+        "line": 300
+      },
+      "fingerprint": "info002234567890abcdef1234567890abcdef1234567890abcdef123456780"
+    }
+  ]
+}

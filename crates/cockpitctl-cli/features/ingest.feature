@@ -54,6 +54,15 @@ Feature: cockpitctl ingest
     And the cockpit report contains a highlight "dupescanner.duplicate_code"
     And the highlights are ordered by severity descending
 
+  Scenario: highlights are capped to max_highlights policy limit
+    Given a fixture "highlight_cap"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the verdict status is "fail"
+    And the highlights count is exactly 3
+    And the highlights are ordered by severity descending
+    And the cockpit comment matches the golden file
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Input Validation
   # ─────────────────────────────────────────────────────────────────────────────
@@ -106,6 +115,28 @@ Feature: cockpitctl ingest
     When I run "cockpitctl ingest" on the fixture
     Then the comment contains "<!-- cockpit:begin -->"
     And the comment contains "<!-- cockpit:end -->"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Label-Gated Sensors
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: label-required sensor is skipped when label is missing
+    Given a fixture "label_gated"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "pass"
+    And the sensor "builddiag" has verdict status "pass"
+    And the sensor "perftest" has verdict status "skip"
+    And the highlights array is empty
+
+  Scenario: label-required sensor processes when label is present
+    Given a fixture "label_gated"
+    When I run "cockpitctl ingest" on the fixture with "--label needs-perf-test"
+    Then the exit code is 0
+    And the verdict status is "warn"
+    And the sensor "builddiag" has verdict status "pass"
+    And the sensor "perftest" has verdict status "warn"
+    And the cockpit report contains a highlight "perftest.regression"
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Determinism

@@ -277,6 +277,23 @@ fn highlights_array_empty(world: &mut IngestWorld) {
     );
 }
 
+#[then(expr = "the highlights count is exactly {int}")]
+fn highlights_count_exactly(world: &mut IngestWorld, expected: usize) {
+    let report = world.read_report();
+    let highlights = report
+        .get("highlights")
+        .and_then(|h| h.as_array())
+        .expect("highlights array not found");
+
+    assert_eq!(
+        highlights.len(),
+        expected,
+        "expected {} highlights, got {}",
+        expected,
+        highlights.len()
+    );
+}
+
 #[then("the highlights are ordered by severity descending")]
 fn highlights_ordered_by_severity(world: &mut IngestWorld) {
     let report = world.read_report();
@@ -351,6 +368,32 @@ fn report_contains_sensors(world: &mut IngestWorld, sensor1: String, sensor2: St
         "sensor '{}' not found in {:?}",
         sensor2,
         sensor_ids
+    );
+}
+
+#[then(expr = "the sensor {string} has verdict status {string}")]
+fn sensor_has_verdict_status(world: &mut IngestWorld, sensor_id: String, expected_status: String) {
+    let report = world.read_report();
+    let sensors = report
+        .get("sensors")
+        .and_then(|s| s.as_array())
+        .expect("sensors array not found");
+
+    let sensor = sensors
+        .iter()
+        .find(|s| s.get("id").and_then(|id| id.as_str()) == Some(&sensor_id))
+        .unwrap_or_else(|| panic!("sensor '{}' not found", sensor_id));
+
+    let status = sensor
+        .get("verdict")
+        .and_then(|v| v.get("status"))
+        .and_then(|s| s.as_str())
+        .expect("verdict.status not found for sensor");
+
+    assert_eq!(
+        status, expected_status,
+        "sensor '{}' verdict status mismatch: expected '{}', got '{}'",
+        sensor_id, expected_status, status
     );
 }
 
