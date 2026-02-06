@@ -152,3 +152,4 @@ Finding codes are part of cockpitctl's API:
 
 - [Safety Limits](safety-limits.md) - Size caps and path rules
 - [Debug Failing Ingest](../how-to/debug-failing-ingest.md) - Troubleshooting
+- [Token Registry](../../contracts/docs/tokens.md) — canonical reason tokens and identity tuples

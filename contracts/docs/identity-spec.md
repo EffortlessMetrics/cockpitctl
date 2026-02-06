@@ -89,3 +89,7 @@ The optional `check_id` field provides additional categorization:
 - `clippy::pedantic`
 - `security/injection`
 - `performance`
+
+## See Also
+
+- [Token Registry](tokens.md) — canonical reason tokens and identity tuples
