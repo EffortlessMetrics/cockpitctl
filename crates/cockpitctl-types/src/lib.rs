@@ -11,16 +11,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Embedded JSON Schema for sensor.report.v1.
-pub const SENSOR_REPORT_V1_SCHEMA_JSON: &str =
-    include_str!("../../../contracts/schemas/sensor.report.v1.json");
+pub const SENSOR_REPORT_V1_SCHEMA_JSON: &str = include_str!("../schemas/sensor.report.v1.json");
 
 /// Embedded JSON Schema for cockpit.report.v1.
-pub const COCKPIT_REPORT_V1_SCHEMA_JSON: &str =
-    include_str!("../../../contracts/schemas/cockpit.report.v1.json");
+pub const COCKPIT_REPORT_V1_SCHEMA_JSON: &str = include_str!("../schemas/cockpit.report.v1.json");
 
 /// Embedded JSON Schema for buildfix.plan.v1.
-pub const BUILDFIX_PLAN_V1_SCHEMA_JSON: &str =
-    include_str!("../../../contracts/schemas/buildfix.plan.v1.json");
+pub const BUILDFIX_PLAN_V1_SCHEMA_JSON: &str = include_str!("../schemas/buildfix.plan.v1.json");
 
 /// A schema identifier string, e.g. `builddiag.report.v1`.
 pub type SchemaId = String;

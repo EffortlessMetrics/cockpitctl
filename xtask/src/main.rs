@@ -33,6 +33,12 @@ enum Commands {
     /// Print instructions for regenerating golden fixtures.
     FixturesHelp,
 
+    /// Check that crate-local schema copies match contracts/schemas/.
+    SchemaSyncCheck,
+
+    /// Copy contracts/schemas/*.json → crates/cockpitctl-types/schemas/.
+    SchemaSyncFix,
+
     /// Conformance harness: validate sensor receipts against the protocol.
     Conform {
         /// Path to the sensor report to validate.
@@ -49,6 +55,12 @@ enum Commands {
     },
 }
 
+const SCHEMA_FILES: &[&str] = &[
+    "sensor.report.v1.json",
+    "cockpit.report.v1.json",
+    "buildfix.plan.v1.json",
+];
+
 fn main() {
     let cli = Cli::parse();
     if let Err(e) = run(cli) {
@@ -62,12 +74,66 @@ fn run(cli: Cli) -> Result<()> {
         Commands::SchemaCheck { dir } => schema_check(dir),
         Commands::ValidateSchemas { dir, fix } => validate_schemas(dir, fix),
         Commands::FixturesHelp => fixtures_help(),
+        Commands::SchemaSyncCheck => schema_sync_check(),
+        Commands::SchemaSyncFix => schema_sync_fix(),
         Commands::Conform {
             report,
             golden,
             survivability,
         } => conform(report, golden, survivability),
     }
+}
+
+fn schema_sync_check() -> Result<()> {
+    let source = PathBuf::from("contracts/schemas");
+    let dest = PathBuf::from("crates/cockpitctl-types/schemas");
+    let mut mismatches = Vec::new();
+
+    for &name in SCHEMA_FILES {
+        let src = source.join(name);
+        let dst = dest.join(name);
+
+        let src_bytes = fs::read(&src).with_context(|| format!("read {}", src.display()))?;
+        let dst_bytes = fs::read(&dst).with_context(|| format!("read {}", dst.display()))?;
+
+        if src_bytes != dst_bytes {
+            mismatches.push(name);
+            eprintln!("  MISMATCH: {}", name);
+        } else {
+            eprintln!("  ok: {}", name);
+        }
+    }
+
+    if mismatches.is_empty() {
+        eprintln!(
+            "schema-sync-check: all {} files in sync",
+            SCHEMA_FILES.len()
+        );
+        Ok(())
+    } else {
+        anyhow::bail!(
+            "schema-sync-check: {} file(s) out of sync — run `cargo run -p xtask -- schema-sync-fix`",
+            mismatches.len()
+        )
+    }
+}
+
+fn schema_sync_fix() -> Result<()> {
+    let source = PathBuf::from("contracts/schemas");
+    let dest = PathBuf::from("crates/cockpitctl-types/schemas");
+
+    fs::create_dir_all(&dest).with_context(|| format!("create {}", dest.display()))?;
+
+    for &name in SCHEMA_FILES {
+        let src = source.join(name);
+        let dst = dest.join(name);
+        fs::copy(&src, &dst)
+            .with_context(|| format!("copy {} → {}", src.display(), dst.display()))?;
+        eprintln!("  copied: {}", name);
+    }
+
+    eprintln!("schema-sync-fix: {} files synced", SCHEMA_FILES.len());
+    Ok(())
 }
 
 fn schema_check(dir: PathBuf) -> Result<()> {

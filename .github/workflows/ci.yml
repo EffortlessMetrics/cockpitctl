@@ -33,6 +33,9 @@ jobs:
       - name: Package List (cockpitctl-types)
         run: cargo package --list -p cockpitctl-types
 
+      - name: Publish dry-run (cockpitctl-types)
+        run: cargo publish --dry-run -p cockpitctl-types
+
       # Optional: mutation tests (expensive)
       # - name: Mutation tests
       #   run: cargo install cargo-mutants && cargo mutants --workspace
