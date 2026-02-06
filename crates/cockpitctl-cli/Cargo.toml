@@ -12,6 +12,10 @@ readme.workspace = true
 keywords = ["ci", "cd", "cli", "sensors", "merge-decisions"]
 categories = ["command-line-utilities", "development-tools"]
 
+[lib]
+name = "cockpitctl"
+path = "src/lib.rs"
+
 [[bin]]
 name = "cockpitctl"
 path = "src/main.rs"
@@ -22,6 +26,7 @@ clap.workspace = true
 serde_json.workspace = true
 time.workspace = true
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.1.0" }
+cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.1.0" }
 cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.1.0" }
 cockpitctl-render = { path = "../cockpitctl-render", version = "0.1.0" }
 cockpitctl-io = { path = "../cockpitctl-io", version = "0.1.0" }
@@ -34,6 +39,7 @@ serde_json.workspace = true
 tempfile.workspace = true
 cucumber.workspace = true
 futures.workspace = true
+toml.workspace = true
 
 [[test]]
 name = "bdd"

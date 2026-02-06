@@ -1,0 +1,167 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.1.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T12:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 1,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "builddiag",
+      "blocking": true,
+      "missing": "fail",
+      "present": true,
+      "report_path": "artifacts/builddiag/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": []
+    },
+    {
+      "id": "coverage",
+      "blocking": false,
+      "missing": "skip",
+      "present": true,
+      "report_path": "artifacts/coverage/report.json",
+      "verdict": {
+        "status": "skip",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": [
+          "no_baseline_found"
+        ]
+      },
+      "truncated": false,
+      "errors": []
+    },
+    {
+      "id": "linter",
+      "blocking": true,
+      "missing": "fail",
+      "present": false,
+      "report_path": "artifacts/linter/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": [
+          "invalid_receipt"
+        ]
+      },
+      "truncated": false,
+      "errors": [
+        "key must be a string at line 1 column 3"
+      ]
+    },
+    {
+      "id": "perftest",
+      "blocking": false,
+      "missing": "warn",
+      "present": false,
+      "report_path": "artifacts/perftest/report.json",
+      "verdict": {
+        "status": "warn",
+        "counts": {
+          "info": 0,
+          "warn": 1,
+          "error": 0
+        },
+        "reasons": [
+          "missing_receipt"
+        ]
+      },
+      "truncated": false,
+      "errors": []
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "linter",
+      "finding": {
+        "severity": "error",
+        "check_id": "cockpit.invalid_receipt",
+        "code": "cockpit.invalid_receipt",
+        "message": "Invalid receipt for sensor `linter` at `artifacts/linter/report.json`: key must be a string at line 1 column 3",
+        "help": "Validate that the sensor wrote JSON matching sensor.report.v1.",
+        "fingerprint": "89cb1e58b54e907886d2140ed2763e6773561807e386ad4f9ccae967ab132858"
+      }
+    },
+    {
+      "sensor_id": "perftest",
+      "finding": {
+        "severity": "warn",
+        "check_id": "cockpit.missing_receipt",
+        "code": "cockpit.missing_receipt",
+        "message": "Expected receipt for sensor `perftest` but it was not found at `artifacts/perftest/report.json`.",
+        "help": "Ensure the sensor ran and wrote artifacts/<sensor>/report.json.",
+        "fingerprint": "2e711a3575c8ed876e5ab354b1f34689d496b98a1662c39805b1baed4b706280"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Policy",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "builddiag",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Repo contract",
+        "repro": "builddiag check --profile team"
+      },
+      {
+        "id": "coverage",
+        "blocking": false,
+        "missing": "skip",
+        "section": "Policy",
+        "repro": "coverage run --lcov"
+      },
+      {
+        "id": "linter",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Policy",
+        "repro": "linter check --all"
+      },
+      {
+        "id": "perftest",
+        "blocking": false,
+        "missing": "warn",
+        "section": "Other",
+        "repro": "perftest run --baseline main"
+      }
+    ]
+  }
+}

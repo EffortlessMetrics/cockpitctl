@@ -139,6 +139,46 @@ Feature: cockpitctl ingest
     And the cockpit report contains a highlight "perftest.regression"
 
   # ─────────────────────────────────────────────────────────────────────────────
+  # Mixed Failure Modes
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: skip verdict sensor surfaces correctly
+    Given a fixture "skip_receipt"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "pass"
+    And the sensor "builddiag" has verdict status "pass"
+    And the sensor "coverage" has verdict status "skip"
+    And the highlights array is empty
+    And the cockpit report matches the golden file
+    And the cockpit comment matches the golden file
+
+  Scenario: tool error with runtime failure finding
+    Given a fixture "tool_error"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the verdict status is "fail"
+    And the sensor "builddiag" has verdict status "pass"
+    And the sensor "linter" has verdict status "fail"
+    And the cockpit report contains a highlight "linter.runtime_error"
+    And the cockpit report matches the golden file
+    And the cockpit comment matches the golden file
+
+  Scenario: mixed verdicts with multiple failure modes
+    Given a fixture "mixed_verdicts"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the verdict status is "fail"
+    And the sensor "builddiag" has verdict status "pass"
+    And the sensor "linter" has verdict status "fail"
+    And the sensor "coverage" has verdict status "skip"
+    And the sensor "perftest" has verdict status "warn"
+    And the cockpit report contains a highlight "cockpit.invalid_receipt"
+    And the cockpit report contains a highlight "cockpit.missing_receipt"
+    And the cockpit report matches the golden file
+    And the cockpit comment matches the golden file
+
+  # ─────────────────────────────────────────────────────────────────────────────
   # Determinism
   # ─────────────────────────────────────────────────────────────────────────────
 

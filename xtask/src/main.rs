@@ -73,6 +73,37 @@ enum Commands {
         #[arg(long)]
         sensor_id: Option<String>,
     },
+
+    /// Validate every sensor receipt in an artifacts/ directory at once.
+    ConformDir {
+        /// Artifacts directory to scan.
+        #[arg(long)]
+        dir: PathBuf,
+
+        /// Also validate cockpit/report.json against cockpit.report.v1 schema.
+        #[arg(long)]
+        validate_cockpit: bool,
+
+        /// Run all conformance checks per report.
+        #[arg(long)]
+        all: bool,
+
+        /// Per-report path hygiene check.
+        #[arg(long)]
+        path_hygiene: bool,
+
+        /// Per-report ordering check.
+        #[arg(long)]
+        ordering: bool,
+
+        /// Per-report reason token lint.
+        #[arg(long)]
+        reason_lint: bool,
+
+        /// Per-report survivability check.
+        #[arg(long)]
+        survivability: bool,
+    },
 }
 
 const SCHEMA_FILES: &[&str] = &[
@@ -114,6 +145,24 @@ fn run(cli: Cli) -> Result<()> {
             reason_lint,
             all,
             sensor_id,
+        ),
+        Commands::ConformDir {
+            dir,
+            validate_cockpit,
+            all,
+            path_hygiene,
+            ordering,
+            reason_lint,
+            survivability,
+        } => conform_dir(
+            dir,
+            validate_cockpit,
+            &ConformChecks {
+                path_hygiene: path_hygiene || all,
+                ordering: ordering || all,
+                reason_lint: reason_lint || all,
+                survivability: survivability || all,
+            },
         ),
     }
 }
@@ -304,30 +353,26 @@ fn check_reason_tokens(report: &cockpitctl_types::SensorReport) -> Vec<String> {
     violations
 }
 
-#[allow(clippy::too_many_arguments)]
-fn conform(
-    report: PathBuf,
-    golden: Option<PathBuf>,
-    survivability: bool,
+// ─────────────────────────────────────────────────────────────────────────────
+// Conformance: reusable single-report check
+// ─────────────────────────────────────────────────────────────────────────────
+
+struct ConformChecks {
     path_hygiene: bool,
     ordering: bool,
     reason_lint: bool,
-    all: bool,
-    sensor_id: Option<String>,
-) -> Result<()> {
+    survivability: bool,
+}
+
+/// Validate a single sensor report from its already-read content.
+/// Returns Ok(()) on success, Err on any check failure.
+fn conform_single(content: &str, sensor_id: &str, checks: &ConformChecks) -> Result<()> {
     use cockpitctl_types::{SensorReport, VerdictStatus, SENSOR_REPORT_V1_SCHEMA_JSON};
 
-    eprintln!("conformance check: {}", report.display());
+    // Parse as JSON
+    let value: serde_json::Value = serde_json::from_str(content).context("parse JSON")?;
 
-    // Step 1: Read the report
-    let content =
-        fs::read_to_string(&report).with_context(|| format!("read {}", report.display()))?;
-
-    // Step 2: Parse as JSON
-    let value: serde_json::Value = serde_json::from_str(&content)
-        .with_context(|| format!("parse json {}", report.display()))?;
-
-    // Step 3: Schema validation
+    // Schema validation
     let schema: serde_json::Value = serde_json::from_str(SENSOR_REPORT_V1_SCHEMA_JSON)
         .context("parse embedded sensor.report.v1 schema")?;
 
@@ -344,25 +389,11 @@ fn conform(
     }
     eprintln!("  ok: schema validation passed");
 
-    // Step 4: Determinism check (if golden provided)
-    if let Some(golden_path) = golden {
-        let golden_content = fs::read_to_string(&golden_path)
-            .with_context(|| format!("read golden {}", golden_path.display()))?;
-
-        if content != golden_content {
-            eprintln!("  FAIL: report does not match golden file");
-            eprintln!("    golden: {}", golden_path.display());
-            eprintln!("    actual: {}", report.display());
-            anyhow::bail!("determinism check failed: report differs from golden");
-        }
-        eprintln!("  ok: determinism check passed (matches golden)");
-    }
-
     // Parse for extended checks
     let parsed: SensorReport = serde_json::from_value(value).context("parse as SensorReport")?;
 
-    // Step 5: Survivability check (if requested)
-    if survivability {
+    // Survivability check
+    if checks.survivability {
         if parsed.verdict.status == VerdictStatus::Fail {
             let has_explanatory = !parsed.findings.is_empty() || !parsed.verdict.reasons.is_empty();
 
@@ -378,11 +409,10 @@ fn conform(
         }
     }
 
-    // Collect all violations from new checks
     let mut all_violations = Vec::new();
 
-    // Step 6: Path hygiene check
-    if path_hygiene || all {
+    // Path hygiene check
+    if checks.path_hygiene {
         let violations = check_path_hygiene(&parsed);
         if violations.is_empty() {
             eprintln!("  ok: path hygiene passed");
@@ -394,10 +424,9 @@ fn conform(
         }
     }
 
-    // Step 7: Ordering check
-    if ordering || all {
-        let sid = sensor_id.as_deref().unwrap_or("unknown");
-        let violations = check_ordering(&parsed, sid);
+    // Ordering check
+    if checks.ordering {
+        let violations = check_ordering(&parsed, sensor_id);
         if violations.is_empty() {
             eprintln!("  ok: ordering passed");
         } else {
@@ -408,8 +437,8 @@ fn conform(
         }
     }
 
-    // Step 8: Reason token lint
-    if reason_lint || all {
+    // Reason token lint
+    if checks.reason_lint {
         let violations = check_reason_tokens(&parsed);
         if violations.is_empty() {
             eprintln!("  ok: reason-lint passed");
@@ -428,7 +457,169 @@ fn conform(
         );
     }
 
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn conform(
+    report: PathBuf,
+    golden: Option<PathBuf>,
+    survivability: bool,
+    path_hygiene: bool,
+    ordering: bool,
+    reason_lint: bool,
+    all: bool,
+    sensor_id: Option<String>,
+) -> Result<()> {
+    eprintln!("conformance check: {}", report.display());
+
+    let content =
+        fs::read_to_string(&report).with_context(|| format!("read {}", report.display()))?;
+
+    // Determinism check (if golden provided) — before delegating to conform_single.
+    if let Some(golden_path) = golden {
+        let golden_content = fs::read_to_string(&golden_path)
+            .with_context(|| format!("read golden {}", golden_path.display()))?;
+
+        if content != golden_content {
+            eprintln!("  FAIL: report does not match golden file");
+            eprintln!("    golden: {}", golden_path.display());
+            eprintln!("    actual: {}", report.display());
+            anyhow::bail!("determinism check failed: report differs from golden");
+        }
+        eprintln!("  ok: determinism check passed (matches golden)");
+    }
+
+    let sid = sensor_id.as_deref().unwrap_or("unknown");
+    let checks = ConformChecks {
+        path_hygiene: path_hygiene || all,
+        ordering: ordering || all,
+        reason_lint: reason_lint || all,
+        survivability,
+    };
+
+    conform_single(&content, sid, &checks)?;
+
     eprintln!("conformance: PASS");
+    Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// conform-dir: validate all sensor receipts in an artifacts/ directory
+// ─────────────────────────────────────────────────────────────────────────────
+
+fn conform_dir(dir: PathBuf, validate_cockpit: bool, checks: &ConformChecks) -> Result<()> {
+    use cockpitctl_types::COCKPIT_REPORT_V1_SCHEMA_JSON;
+
+    if !dir.exists() {
+        anyhow::bail!("artifacts directory does not exist: {}", dir.display());
+    }
+
+    eprintln!("conform-dir: scanning {}", dir.display());
+
+    let mut entries: Vec<_> = fs::read_dir(&dir)
+        .with_context(|| format!("read dir {}", dir.display()))?
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_dir())
+        .collect();
+
+    entries.sort_by_key(|e| e.file_name());
+
+    let mut results: Vec<(String, &str)> = Vec::new();
+    let mut had_failure = false;
+
+    for entry in &entries {
+        let name = entry.file_name().to_string_lossy().to_string();
+
+        // Skip cockpit subdirectory during sensor enumeration.
+        if name == "cockpit" {
+            continue;
+        }
+
+        let report_path = entry.path().join("report.json");
+        eprintln!();
+        eprintln!("--- sensor: {} ---", name);
+
+        if !report_path.exists() {
+            eprintln!("  skip: no report.json found");
+            results.push((name, "skip (no report.json)"));
+            continue;
+        }
+
+        let content = match fs::read_to_string(&report_path) {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("  FAIL: could not read report: {}", e);
+                results.push((name, "FAIL (read error)"));
+                had_failure = true;
+                continue;
+            }
+        };
+
+        match conform_single(&content, &name, checks) {
+            Ok(()) => {
+                results.push((name, "PASS"));
+            }
+            Err(e) => {
+                eprintln!("  FAIL: {:#}", e);
+                results.push((name, "FAIL"));
+                had_failure = true;
+            }
+        }
+    }
+
+    // Optionally validate cockpit/report.json against cockpit.report.v1 schema.
+    if validate_cockpit {
+        let cockpit_report = dir.join("cockpit").join("report.json");
+        eprintln!();
+        eprintln!("--- cockpit report ---");
+
+        if cockpit_report.exists() {
+            let content = fs::read_to_string(&cockpit_report)
+                .with_context(|| format!("read {}", cockpit_report.display()))?;
+
+            let value: serde_json::Value = serde_json::from_str(&content)
+                .with_context(|| format!("parse json {}", cockpit_report.display()))?;
+
+            let schema: serde_json::Value = serde_json::from_str(COCKPIT_REPORT_V1_SCHEMA_JSON)
+                .context("parse embedded cockpit.report.v1 schema")?;
+
+            let validator =
+                jsonschema::validator_for(&schema).context("compile cockpit.report.v1 schema")?;
+
+            let errors: Vec<_> = validator.iter_errors(&value).collect();
+            if !errors.is_empty() {
+                eprintln!("  FAIL: cockpit report schema validation errors:");
+                for e in &errors {
+                    eprintln!("    - {}", e);
+                }
+                results.push(("cockpit".to_string(), "FAIL"));
+                had_failure = true;
+            } else {
+                eprintln!("  ok: cockpit report schema validation passed");
+                results.push(("cockpit".to_string(), "PASS"));
+            }
+        } else {
+            eprintln!("  skip: no cockpit/report.json found");
+            results.push(("cockpit".to_string(), "skip (not found)"));
+        }
+    }
+
+    // Print summary table.
+    eprintln!();
+    eprintln!("Summary:");
+    eprintln!("  {:<20} Status", "Sensor");
+    eprintln!("  {:<20} ------", "------");
+    for (name, status) in &results {
+        eprintln!("  {:<20} {}", name, status);
+    }
+
+    if had_failure {
+        anyhow::bail!("conform-dir: one or more sensors failed conformance checks");
+    }
+
+    eprintln!();
+    eprintln!("conform-dir: PASS ({} sensor(s) checked)", results.len());
     Ok(())
 }
 
