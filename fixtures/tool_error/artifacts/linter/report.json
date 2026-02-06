@@ -14,12 +14,13 @@
       "warn": 0,
       "error": 1
     },
-    "reasons": ["runtime_error"]
+    "reasons": ["tool_error"]
   },
   "findings": [
     {
       "severity": "error",
-      "code": "linter.runtime_error",
+      "check_id": "tool.runtime",
+      "code": "runtime_error",
       "message": "Linter process crashed with exit code 137 (OOM killed)"
     }
   ]

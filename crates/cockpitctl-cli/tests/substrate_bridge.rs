@@ -8,12 +8,12 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-use cockpitctl::ingest::{
+use cockpitctl_core::ingest::{
     CommentRead, DiscoveredSensors, IngestRequest, IngestUseCase, NoOpSchemaValidator, OutputSink,
     PolicySource, ReceiptSource, ReportRead,
 };
-use cockpitctl::render::render_comment;
-use cockpitctl::types::{CockpitConfig, RunInfo, ToolInfo};
+use cockpitctl_core::render::render_comment;
+use cockpitctl_core::types::{CockpitConfig, RunInfo, ToolInfo};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // In-memory adapters
@@ -245,7 +245,7 @@ missing = "fail"
     assert_eq!(result.exit_code, 2, "missing blocking sensor should exit 2");
     assert_eq!(
         result.report.verdict.status,
-        cockpitctl::types::VerdictStatus::Fail
+        cockpitctl_core::types::VerdictStatus::Fail
     );
 
     let has_missing = result
@@ -326,9 +326,9 @@ missing = "skip"
             "tool": {"name": "coverage", "version": "1.0"},
             "run": {
                 "started_at": "2026-02-02T11:59:05Z",
-                "capabilities": {"baseline": {"status": "unavailable", "reason": "no_baseline_found"}}
+                "capabilities": {"baseline": {"status": "unavailable", "reason": "no_baseline"}}
             },
-            "verdict": {"status": "skip", "counts": {"info": 0, "warn": 0, "error": 0}, "reasons": ["no_baseline_found"]},
+            "verdict": {"status": "skip", "counts": {"info": 0, "warn": 0, "error": 0}, "reasons": ["no_baseline"]},
             "findings": []
         }"#
         .to_vec(),
@@ -353,7 +353,7 @@ missing = "skip"
         .expect("coverage sensor not found");
     assert_eq!(
         coverage.verdict.status,
-        cockpitctl::types::VerdictStatus::Skip
+        cockpitctl_core::types::VerdictStatus::Skip
     );
     assert!(
         result.report.highlights.is_empty(),
@@ -394,15 +394,32 @@ missing = "skip"
     });
     let result = uc.execute(make_request()).unwrap();
 
-    let has_truncated = result
-        .report
-        .highlights
-        .iter()
-        .any(|h| h.finding.code == "cockpit.sensors_truncated");
-    assert!(
-        has_truncated,
-        "should contain cockpit.sensors_truncated highlight"
+    // Assert full highlight structure
+    assert_eq!(
+        result.report.highlights.len(),
+        1,
+        "should have exactly one highlight"
     );
+    let hl = &result.report.highlights[0];
+    assert_eq!(hl.finding.code, "cockpit.sensors_truncated");
+    assert_eq!(
+        hl.finding.severity,
+        cockpitctl_core::types::Severity::Warn,
+        "truncation is a warning, not a failure"
+    );
+    assert!(
+        hl.finding.message.contains("1") && hl.finding.message.contains("101"),
+        "message should mention counts (1 processed, 101 found): {}",
+        hl.finding.message
+    );
+
+    // Truncation is a warning, not a failure
+    assert_eq!(
+        result.report.verdict.status,
+        cockpitctl_core::types::VerdictStatus::Pass,
+        "truncation warning should not cause failure"
+    );
+    assert_eq!(result.exit_code, 0, "truncation warning exits 0");
 }
 
 /// OutputSink captures both report and comment.

@@ -69,6 +69,10 @@ enum Commands {
         #[arg(long)]
         all: bool,
 
+        /// Check tool_error identity: require canonical check_id/code.
+        #[arg(long)]
+        tool_error_identity: bool,
+
         /// Sensor ID (required for --ordering).
         #[arg(long)]
         sensor_id: Option<String>,
@@ -103,6 +107,14 @@ enum Commands {
         /// Per-report survivability check.
         #[arg(long)]
         survivability: bool,
+
+        /// Per-report tool_error identity check.
+        #[arg(long)]
+        tool_error_identity: bool,
+
+        /// Allow missing report.json (skip instead of fail).
+        #[arg(long)]
+        allow_missing_report: bool,
     },
 }
 
@@ -134,6 +146,7 @@ fn run(cli: Cli) -> Result<()> {
             path_hygiene,
             ordering,
             reason_lint,
+            tool_error_identity,
             all,
             sensor_id,
         } => conform(
@@ -143,6 +156,7 @@ fn run(cli: Cli) -> Result<()> {
             path_hygiene,
             ordering,
             reason_lint,
+            tool_error_identity,
             all,
             sensor_id,
         ),
@@ -154,6 +168,8 @@ fn run(cli: Cli) -> Result<()> {
             ordering,
             reason_lint,
             survivability,
+            tool_error_identity,
+            allow_missing_report,
         } => conform_dir(
             dir,
             validate_cockpit,
@@ -162,7 +178,9 @@ fn run(cli: Cli) -> Result<()> {
                 ordering: ordering || all,
                 reason_lint: reason_lint || all,
                 survivability: survivability || all,
+                tool_error_identity: tool_error_identity || all,
             },
+            allow_missing_report,
         ),
     }
 }
@@ -333,6 +351,28 @@ fn check_ordering(report: &cockpitctl_types::SensorReport, sensor_id: &str) -> V
     violations
 }
 
+fn check_tool_error_identity(report: &cockpitctl_types::SensorReport) -> Vec<String> {
+    let mut violations = Vec::new();
+
+    if !report.verdict.reasons.iter().any(|r| r == "tool_error") {
+        return violations;
+    }
+
+    let has_canonical = report
+        .findings
+        .iter()
+        .any(|f| f.check_id.as_deref() == Some("tool.runtime") && f.code == "runtime_error");
+
+    if !has_canonical {
+        violations.push(
+            "verdict.reasons contains \"tool_error\" but no finding has check_id=\"tool.runtime\" + code=\"runtime_error\""
+                .to_string(),
+        );
+    }
+
+    violations
+}
+
 fn check_reason_tokens(report: &cockpitctl_types::SensorReport) -> Vec<String> {
     let mut violations = Vec::new();
 
@@ -368,6 +408,7 @@ struct ConformChecks {
     ordering: bool,
     reason_lint: bool,
     survivability: bool,
+    tool_error_identity: bool,
 }
 
 /// Validate a single sensor report from its already-read content.
@@ -456,6 +497,19 @@ fn conform_single(content: &str, sensor_id: &str, checks: &ConformChecks) -> Res
         }
     }
 
+    // Tool error identity check
+    if checks.tool_error_identity {
+        let violations = check_tool_error_identity(&parsed);
+        if violations.is_empty() {
+            eprintln!("  ok: tool-error-identity passed");
+        } else {
+            for v in &violations {
+                eprintln!("  FAIL: tool-error-identity: {}", v);
+            }
+            all_violations.extend(violations);
+        }
+    }
+
     if !all_violations.is_empty() {
         anyhow::bail!(
             "conformance failed with {} violation(s)",
@@ -474,9 +528,14 @@ fn conform(
     path_hygiene: bool,
     ordering: bool,
     reason_lint: bool,
+    tool_error_identity: bool,
     all: bool,
     sensor_id: Option<String>,
 ) -> Result<()> {
+    if (ordering || all) && sensor_id.is_none() {
+        anyhow::bail!("--ordering requires --sensor-id");
+    }
+
     eprintln!("conformance check: {}", report.display());
 
     let content =
@@ -501,7 +560,8 @@ fn conform(
         path_hygiene: path_hygiene || all,
         ordering: ordering || all,
         reason_lint: reason_lint || all,
-        survivability,
+        survivability: survivability || all,
+        tool_error_identity: tool_error_identity || all,
     };
 
     conform_single(&content, sid, &checks)?;
@@ -514,7 +574,12 @@ fn conform(
 // conform-dir: validate all sensor receipts in an artifacts/ directory
 // ─────────────────────────────────────────────────────────────────────────────
 
-fn conform_dir(dir: PathBuf, validate_cockpit: bool, checks: &ConformChecks) -> Result<()> {
+fn conform_dir(
+    dir: PathBuf,
+    validate_cockpit: bool,
+    checks: &ConformChecks,
+    allow_missing_report: bool,
+) -> Result<()> {
     use cockpitctl_types::COCKPIT_REPORT_V1_SCHEMA_JSON;
 
     if !dir.exists() {
@@ -547,8 +612,14 @@ fn conform_dir(dir: PathBuf, validate_cockpit: bool, checks: &ConformChecks) -> 
         eprintln!("--- sensor: {} ---", name);
 
         if !report_path.exists() {
-            eprintln!("  skip: no report.json found");
-            results.push((name, "skip (no report.json)"));
+            if allow_missing_report {
+                eprintln!("  skip: no report.json found");
+                results.push((name, "skip (no report.json)"));
+            } else {
+                eprintln!("  FAIL: no report.json found (use --allow-missing-report to skip)");
+                results.push((name, "FAIL (no report.json)"));
+                had_failure = true;
+            }
             continue;
         }
 

@@ -160,7 +160,7 @@ Feature: cockpitctl ingest
     And the verdict status is "fail"
     And the sensor "builddiag" has verdict status "pass"
     And the sensor "linter" has verdict status "fail"
-    And the cockpit report contains a highlight "linter.runtime_error"
+    And the cockpit report contains a highlight "runtime_error"
     And the cockpit report matches the golden file
     And the cockpit comment matches the golden file
 

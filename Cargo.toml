@@ -6,6 +6,7 @@ members = [
   "crates/cockpitctl-ingest",
   "crates/cockpitctl-render",
   "crates/cockpitctl-io",
+  "crates/cockpitctl-core",
   "crates/cockpitctl-cli",
   "xtask",
 ]

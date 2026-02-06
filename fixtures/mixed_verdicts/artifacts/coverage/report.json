@@ -9,7 +9,7 @@
     "capabilities": {
       "baseline": {
         "status": "unavailable",
-        "reason": "no_baseline_found"
+        "reason": "no_baseline"
       }
     }
   },
@@ -20,7 +20,7 @@
       "warn": 0,
       "error": 0
     },
-    "reasons": ["no_baseline_found"]
+    "reasons": ["no_baseline"]
   },
   "findings": []
 }
