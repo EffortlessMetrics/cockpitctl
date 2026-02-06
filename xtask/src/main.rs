@@ -246,9 +246,15 @@ fn fixtures_help() -> Result<()> {
     eprintln!("Golden fixtures live under ./fixtures/*.");
     eprintln!("To regenerate, run cockpitctl ingest on each fixture and copy outputs:");
     eprintln!();
-    eprintln!("  cargo run -p cockpitctl -- ingest --artifacts fixtures/happy_path/artifacts --config fixtures/happy_path/cockpit.toml");
-    eprintln!("  cp fixtures/happy_path/artifacts/cockpit/report.json fixtures/happy_path/expected/report.json");
-    eprintln!("  cp fixtures/happy_path/artifacts/cockpit/comment.md fixtures/happy_path/expected/comment.md");
+    eprintln!(
+        "  cargo run -p cockpitctl -- ingest --artifacts fixtures/happy_path/artifacts --config fixtures/happy_path/cockpit.toml"
+    );
+    eprintln!(
+        "  cp fixtures/happy_path/artifacts/cockpit/report.json fixtures/happy_path/expected/report.json"
+    );
+    eprintln!(
+        "  cp fixtures/happy_path/artifacts/cockpit/comment.md fixtures/happy_path/expected/comment.md"
+    );
     eprintln!();
     Ok(())
 }
@@ -262,31 +268,31 @@ fn is_valid_reason_token(s: &str) -> bool {
 fn check_path_hygiene(report: &cockpitctl_types::SensorReport) -> Vec<String> {
     let mut violations = Vec::new();
     for (i, f) in report.findings.iter().enumerate() {
-        if let Some(loc) = &f.location {
-            if let Some(path) = &loc.path {
-                if path.starts_with('/') || path.starts_with('\\') {
-                    violations.push(format!(
-                        "finding[{}]: absolute path (starts with / or \\): {}",
-                        i, path
-                    ));
-                } else if path.len() >= 2
-                    && path.as_bytes()[0].is_ascii_alphabetic()
-                    && path.as_bytes()[1] == b':'
-                {
-                    violations.push(format!(
-                        "finding[{}]: absolute path (drive letter): {}",
-                        i, path
-                    ));
-                }
-                if path.contains("..") {
-                    violations.push(format!(
-                        "finding[{}]: path traversal (contains ..): {}",
-                        i, path
-                    ));
-                }
-                if path.contains('\\') {
-                    violations.push(format!("finding[{}]: backslash in path: {}", i, path));
-                }
+        if let Some(loc) = &f.location
+            && let Some(path) = &loc.path
+        {
+            if path.starts_with('/') || path.starts_with('\\') {
+                violations.push(format!(
+                    "finding[{}]: absolute path (starts with / or \\): {}",
+                    i, path
+                ));
+            } else if path.len() >= 2
+                && path.as_bytes()[0].is_ascii_alphabetic()
+                && path.as_bytes()[1] == b':'
+            {
+                violations.push(format!(
+                    "finding[{}]: absolute path (drive letter): {}",
+                    i, path
+                ));
+            }
+            if path.contains("..") {
+                violations.push(format!(
+                    "finding[{}]: path traversal (contains ..): {}",
+                    i, path
+                ));
+            }
+            if path.contains('\\') {
+                violations.push(format!("finding[{}]: backslash in path: {}", i, path));
             }
         }
     }
@@ -294,7 +300,7 @@ fn check_path_hygiene(report: &cockpitctl_types::SensorReport) -> Vec<String> {
 }
 
 fn check_ordering(report: &cockpitctl_types::SensorReport, sensor_id: &str) -> Vec<String> {
-    use cockpitctl_types::{severity_rank, FindingSortKey};
+    use cockpitctl_types::{FindingSortKey, severity_rank};
 
     let keys: Vec<FindingSortKey> = report
         .findings
@@ -340,13 +346,13 @@ fn check_reason_tokens(report: &cockpitctl_types::SensorReport) -> Vec<String> {
     }
 
     for (name, cap) in &report.run.capabilities {
-        if let Some(reason) = &cap.reason {
-            if !is_valid_reason_token(reason) {
-                violations.push(format!(
-                    "capabilities.{}.reason: invalid token {:?}",
-                    name, reason
-                ));
-            }
+        if let Some(reason) = &cap.reason
+            && !is_valid_reason_token(reason)
+        {
+            violations.push(format!(
+                "capabilities.{}.reason: invalid token {:?}",
+                name, reason
+            ));
         }
     }
 
@@ -367,7 +373,7 @@ struct ConformChecks {
 /// Validate a single sensor report from its already-read content.
 /// Returns Ok(()) on success, Err on any check failure.
 fn conform_single(content: &str, sensor_id: &str, checks: &ConformChecks) -> Result<()> {
-    use cockpitctl_types::{SensorReport, VerdictStatus, SENSOR_REPORT_V1_SCHEMA_JSON};
+    use cockpitctl_types::{SENSOR_REPORT_V1_SCHEMA_JSON, SensorReport, VerdictStatus};
 
     // Parse as JSON
     let value: serde_json::Value = serde_json::from_str(content).context("parse JSON")?;

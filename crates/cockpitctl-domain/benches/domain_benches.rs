@@ -5,9 +5,10 @@
 //! These benchmarks measure performance of key domain operations that matter at scale
 //! (large repos with many sensors and findings).
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use rand::prelude::*;
 use std::collections::BTreeMap;
+use std::hint::black_box;
 
 use cockpitctl_domain::{derive_fingerprint, select_highlights, sort_findings};
 use cockpitctl_types::{
@@ -21,7 +22,7 @@ use cockpitctl_types::{
 
 /// Generate a random severity weighted towards errors/warnings (more realistic).
 fn random_severity(rng: &mut impl Rng) -> Severity {
-    match rng.gen_range(0..10) {
+    match rng.random_range(0..10) {
         0..=3 => Severity::Error,
         4..=6 => Severity::Warn,
         _ => Severity::Info,
@@ -31,23 +32,23 @@ fn random_severity(rng: &mut impl Rng) -> Severity {
 /// Generate a synthetic finding with randomized fields.
 fn generate_finding(rng: &mut impl Rng, index: usize) -> Finding {
     let severity = random_severity(rng);
-    let code = format!("CODE_{:04}", rng.gen_range(0..100));
+    let code = format!("CODE_{:04}", rng.random_range(0..100));
     let message = format!(
         "Finding message {} with some additional context to simulate real-world length",
         index
     );
 
     // 80% of findings have a location
-    let location = if rng.gen_bool(0.8) {
+    let location = if rng.random_bool(0.8) {
         Some(Location {
             path: Some(format!(
                 "src/module_{}/file_{}.rs",
-                rng.gen_range(0..20),
-                rng.gen_range(0..50)
+                rng.random_range(0..20),
+                rng.random_range(0..50)
             )),
-            line: Some(rng.gen_range(1..1000)),
-            col: if rng.gen_bool(0.5) {
-                Some(rng.gen_range(1..120))
+            line: Some(rng.random_range(1..1000)),
+            col: if rng.random_bool(0.5) {
+                Some(rng.random_range(1..120))
             } else {
                 None
             },
@@ -58,16 +59,16 @@ fn generate_finding(rng: &mut impl Rng, index: usize) -> Finding {
 
     Finding {
         severity,
-        check_id: Some(format!("check_{}", rng.gen_range(0..50))),
+        check_id: Some(format!("check_{}", rng.random_range(0..50))),
         code,
         message,
         location,
-        help: if rng.gen_bool(0.3) {
+        help: if rng.random_bool(0.3) {
             Some("Consider fixing this issue by following best practices.".to_string())
         } else {
             None
         },
-        url: if rng.gen_bool(0.2) {
+        url: if rng.random_bool(0.2) {
             Some("https://docs.example.com/rules/ABC123".to_string())
         } else {
             None

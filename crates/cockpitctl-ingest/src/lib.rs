@@ -11,8 +11,8 @@ use cockpitctl_domain::{
     synthesize_schema_violation_sensor, synthesize_sensors_truncated,
 };
 use cockpitctl_types::{
-    is_valid_sensor_id, CockpitConfig, CockpitReport, MissingPolicy, RunInfo, SchemaValidation,
-    ToolInfo,
+    CockpitConfig, CockpitReport, MissingPolicy, RunInfo, SchemaValidation, ToolInfo,
+    is_valid_sensor_id,
 };
 
 /// Result of sensor discovery, including any truncation info.
@@ -217,17 +217,17 @@ where
             }
 
             // Label-gate: if require_label is set and not present, treat as skipped/missing=skip.
-            if let Some(label) = &policy.require_label {
-                if !req.labels.iter().any(|l| l == label) {
-                    // Synthesized "skipped due to missing label"
-                    let report_path = self.receipts.report_path(&sensor_id);
-                    let mut p = policy.clone();
-                    p.missing = MissingPolicy::Skip;
-                    let (summary, _) =
-                        synthesize_missing_sensor(&sensor_id, &p, &report_path, comment_path);
-                    sensor_summaries.push(summary);
-                    continue;
-                }
+            if let Some(label) = &policy.require_label
+                && !req.labels.iter().any(|l| l == label)
+            {
+                // Synthesized "skipped due to missing label"
+                let report_path = self.receipts.report_path(&sensor_id);
+                let mut p = policy.clone();
+                p.missing = MissingPolicy::Skip;
+                let (summary, _) =
+                    synthesize_missing_sensor(&sensor_id, &p, &report_path, comment_path);
+                sensor_summaries.push(summary);
+                continue;
             }
 
             let report_path = self.receipts.report_path(&sensor_id);

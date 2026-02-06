@@ -6,9 +6,9 @@
 //! No filesystem, no clap, no network.
 
 use cockpitctl_types::{
-    severity_rank, verdict_status_rank, CockpitConfig, CockpitReport, Finding, FindingSortKey,
-    Highlight, MissingPolicy, PolicySensorSnapshot, PolicySnapshot, RunInfo, SensorPolicy,
-    SensorReport, SensorSummary, Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus,
+    CockpitConfig, CockpitReport, Finding, FindingSortKey, Highlight, MissingPolicy,
+    PolicySensorSnapshot, PolicySnapshot, RunInfo, SensorPolicy, SensorReport, SensorSummary,
+    Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus, severity_rank, verdict_status_rank,
 };
 use sha2::{Digest, Sha256};
 
@@ -559,9 +559,7 @@ pub fn synthesize_receipt_inconsistent(
             computed.error
         ),
         location: None,
-        help: Some(
-            "Ensure receipt verdict counts match the findings array.".to_string(),
-        ),
+        help: Some("Ensure receipt verdict counts match the findings array.".to_string()),
         url: None,
         fingerprint: Some(format!(
             "cockpit.receipt_inconsistent:{}:{}:{}:{}:{}:{}:{}",
@@ -615,9 +613,15 @@ pub fn synthesize_sensors_truncated(processed: usize, total_found: usize) -> Hig
             processed, total_found
         ),
         location: None,
-        help: Some("This is a safety limit to prevent DoS. Consider reviewing why so many sensors exist.".to_string()),
+        help: Some(
+            "This is a safety limit to prevent DoS. Consider reviewing why so many sensors exist."
+                .to_string(),
+        ),
         url: None,
-        fingerprint: Some(format!("cockpit.sensors_truncated:{}:{}", processed, total_found)),
+        fingerprint: Some(format!(
+            "cockpit.sensors_truncated:{}:{}",
+            processed, total_found
+        )),
         data: None,
     };
     Highlight {

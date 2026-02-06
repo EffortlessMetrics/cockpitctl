@@ -6,7 +6,7 @@ use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator, Schem
 use cockpitctl_io::{FsLayout, FsOutputSink, FsPolicySource, FsReceiptSource, JsonSchemaValidator};
 use cockpitctl_render::render_comment;
 use cockpitctl_types::{RunInfo, SchemaValidation, ToolInfo};
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 /// CLI schema validation mode for sensor receipts.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, ValueEnum)]

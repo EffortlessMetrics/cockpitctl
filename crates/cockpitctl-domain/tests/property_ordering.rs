@@ -7,8 +7,8 @@ use cockpitctl_domain::{
     select_highlights, sort_findings, sort_sensor_summaries,
 };
 use cockpitctl_types::{
-    severity_rank, CockpitConfig, Finding, Highlight, Location, MissingPolicy, Policy,
-    SensorPolicy, SensorSummary, Severity, Verdict, VerdictCounts, VerdictStatus,
+    CockpitConfig, Finding, Highlight, Location, MissingPolicy, Policy, SensorPolicy,
+    SensorSummary, Severity, Verdict, VerdictCounts, VerdictStatus, severity_rank,
 };
 use proptest::prelude::*;
 use std::collections::BTreeMap;

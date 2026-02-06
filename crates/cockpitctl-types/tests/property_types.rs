@@ -3,7 +3,7 @@
 //! Tests invariants for ranking functions, sort keys, and type conversions.
 
 use cockpitctl_types::{
-    severity_rank, verdict_status_rank, FindingSortKey, Severity, VerdictStatus,
+    FindingSortKey, Severity, VerdictStatus, severity_rank, verdict_status_rank,
 };
 use proptest::prelude::*;
 

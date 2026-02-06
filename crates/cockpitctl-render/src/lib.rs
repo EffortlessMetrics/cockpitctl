@@ -8,7 +8,7 @@
 //! It should not parse sensor-specific markdown. Link only.
 
 use cockpitctl_types::{
-    severity_rank, CockpitConfig, CockpitReport, Highlight, Severity, VerdictStatus,
+    CockpitConfig, CockpitReport, Highlight, Severity, VerdictStatus, severity_rank,
 };
 
 /// Result of annotation rendering, tracking whether truncation occurred.
@@ -90,11 +90,7 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
                     if let Some(line) = l.line {
                         s.push_str(&format!(":{}", line));
                     }
-                    if s.is_empty() {
-                        None
-                    } else {
-                        Some(s)
-                    }
+                    if s.is_empty() { None } else { Some(s) }
                 }
                 None => None,
             };
@@ -150,10 +146,10 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
             if let Some(c) = &s.comment_path {
                 line.push_str(&format!(" · comment `{}`", c));
             }
-            if let Some(p) = cfg.sensors.get(&s.id) {
-                if let Some(repro) = &p.repro {
-                    line.push_str(&format!("\n  - repro: `{}`", repro));
-                }
+            if let Some(p) = cfg.sensors.get(&s.id)
+                && let Some(repro) = &p.repro
+            {
+                line.push_str(&format!("\n  - repro: `{}`", repro));
             }
             out.push_str(&format!("{}\n", line));
         }
@@ -224,11 +220,7 @@ pub fn render_annotations(
                     if let Some(line) = l.line {
                         s.push_str(&format!(":{}", line));
                     }
-                    if s.is_empty() {
-                        None
-                    } else {
-                        Some(s)
-                    }
+                    if s.is_empty() { None } else { Some(s) }
                 }
                 None => None,
             };

@@ -4,9 +4,10 @@
 //!
 //! These benchmarks measure performance of comment rendering with large reports.
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use rand::prelude::*;
 use std::collections::BTreeMap;
+use std::hint::black_box;
 
 use cockpitctl_render::render_comment;
 use cockpitctl_types::{
@@ -20,7 +21,7 @@ use cockpitctl_types::{
 // ============================================================================
 
 fn random_severity(rng: &mut impl Rng) -> Severity {
-    match rng.gen_range(0..10) {
+    match rng.random_range(0..10) {
         0..=3 => Severity::Error,
         4..=6 => Severity::Warn,
         _ => Severity::Info,
@@ -28,7 +29,7 @@ fn random_severity(rng: &mut impl Rng) -> Severity {
 }
 
 fn random_verdict_status(rng: &mut impl Rng) -> VerdictStatus {
-    match rng.gen_range(0..10) {
+    match rng.random_range(0..10) {
         0..=5 => VerdictStatus::Pass,
         6..=7 => VerdictStatus::Warn,
         8 => VerdictStatus::Fail,
@@ -40,22 +41,22 @@ fn generate_finding(rng: &mut impl Rng, index: usize) -> Finding {
     let severity = random_severity(rng);
     Finding {
         severity,
-        check_id: Some(format!("check_{}", rng.gen_range(0..50))),
-        code: format!("CODE_{:04}", rng.gen_range(0..100)),
+        check_id: Some(format!("check_{}", rng.random_range(0..50))),
+        code: format!("CODE_{:04}", rng.random_range(0..100)),
         message: format!(
             "Finding message {} with context about the issue found in the codebase during analysis",
             index
         ),
-        location: if rng.gen_bool(0.8) {
+        location: if rng.random_bool(0.8) {
             Some(Location {
                 path: Some(format!(
                     "src/module_{}/file_{}.rs",
-                    rng.gen_range(0..20),
-                    rng.gen_range(0..50)
+                    rng.random_range(0..20),
+                    rng.random_range(0..50)
                 )),
-                line: Some(rng.gen_range(1..1000)),
-                col: if rng.gen_bool(0.5) {
-                    Some(rng.gen_range(1..120))
+                line: Some(rng.random_range(1..1000)),
+                col: if rng.random_bool(0.5) {
+                    Some(rng.random_range(1..120))
                 } else {
                     None
                 },
@@ -63,13 +64,13 @@ fn generate_finding(rng: &mut impl Rng, index: usize) -> Finding {
         } else {
             None
         },
-        help: if rng.gen_bool(0.3) {
+        help: if rng.random_bool(0.3) {
             Some("Consider fixing this issue.".to_string())
         } else {
             None
         },
         url: None,
-        fingerprint: Some(format!("fp_{:016x}", rng.gen::<u64>())),
+        fingerprint: Some(format!("fp_{:016x}", rng.random::<u64>())),
         data: None,
     }
 }
@@ -85,11 +86,11 @@ fn generate_sensor_summary(rng: &mut impl Rng, sensor_id: &str, _section: &str) 
     let status = random_verdict_status(rng);
     SensorSummary {
         id: sensor_id.to_string(),
-        blocking: rng.gen_bool(0.3),
+        blocking: rng.random_bool(0.3),
         missing: MissingPolicy::Skip,
         present: true,
         report_path: format!("artifacts/{}/report.json", sensor_id),
-        comment_path: if rng.gen_bool(0.4) {
+        comment_path: if rng.random_bool(0.4) {
             Some(format!("artifacts/{}/comment.md", sensor_id))
         } else {
             None
@@ -97,14 +98,14 @@ fn generate_sensor_summary(rng: &mut impl Rng, sensor_id: &str, _section: &str) 
         verdict: Verdict {
             status,
             counts: VerdictCounts {
-                info: rng.gen_range(0..10),
-                warn: rng.gen_range(0..5),
-                error: rng.gen_range(0..3),
+                info: rng.random_range(0..10),
+                warn: rng.random_range(0..5),
+                error: rng.random_range(0..3),
                 suppressed: 0,
             },
             reasons: vec![],
         },
-        truncated: rng.gen_bool(0.1),
+        truncated: rng.random_bool(0.1),
         errors: vec![],
     }
 }
@@ -179,7 +180,7 @@ fn generate_report(
                 missing: MissingPolicy::Skip,
                 section: Some(section.to_string()),
                 require_label: None,
-                repro: if rng.gen_bool(0.3) {
+                repro: if rng.random_bool(0.3) {
                     Some(format!("./run-sensor.sh {}", i))
                 } else {
                     None

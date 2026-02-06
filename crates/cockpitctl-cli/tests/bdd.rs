@@ -2,7 +2,7 @@
 //!
 //! Runs feature files from `features/` directory using proper Gherkin syntax.
 
-use cucumber::{given, then, when, World};
+use cucumber::{World, given, then, when};
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};

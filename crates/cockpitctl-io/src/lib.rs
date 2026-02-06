@@ -7,7 +7,7 @@ use cockpitctl_ingest::{
     CommentRead, DiscoveredSensors, OutputSink, PolicySource, ReceiptSource, ReportRead,
     SchemaValidationResult, SchemaValidator,
 };
-use cockpitctl_types::{is_valid_sensor_id, CockpitConfig};
+use cockpitctl_types::{CockpitConfig, is_valid_sensor_id};
 use jsonschema::Validator;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -319,7 +319,7 @@ impl SchemaValidator for JsonSchemaValidator {
                 .validator
                 .iter_errors(&value)
                 .map(|e| {
-                    let path = e.instance_path.to_string();
+                    let path = e.instance_path().to_string();
                     if path.is_empty() {
                         e.to_string()
                     } else {
