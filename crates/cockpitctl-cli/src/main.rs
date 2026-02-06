@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator, SchemaValidator};
@@ -138,7 +140,7 @@ fn cmd_ingest(
         host: None,
         git: None,
         ci: None,
-        capabilities: Vec::new(),
+        capabilities: BTreeMap::new(),
     };
 
     let schema_validation_override = schema_validation.map(SchemaValidation::from);

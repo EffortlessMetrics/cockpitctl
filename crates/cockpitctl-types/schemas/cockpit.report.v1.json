@@ -241,6 +241,20 @@
         "started_at": {
           "format": "date-time",
           "type": "string"
+        },
+        "capabilities": {
+          "description": "Declared capabilities.",
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status"],
+            "properties": {
+              "status": { "enum": ["available", "unavailable", "skipped"] },
+              "reason": { "type": "string", "pattern": "^[a-z0-9_]+$" }
+            }
+          }
         }
       },
       "required": [

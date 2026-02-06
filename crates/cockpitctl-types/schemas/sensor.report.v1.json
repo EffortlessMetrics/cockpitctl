@@ -158,13 +158,18 @@
           "type": "string"
         },
         "capabilities": {
-          "description": "Declared capabilities (e.g., 'git', 'baseline', 'lcov').",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "default": []
+          "description": "Declared capabilities.",
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status"],
+            "properties": {
+              "status": { "enum": ["available", "unavailable", "skipped"] },
+              "reason": { "type": "string", "pattern": "^[a-z0-9_]+$" }
+            }
+          }
         }
       },
       "required": [

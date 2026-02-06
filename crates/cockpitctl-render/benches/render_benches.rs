@@ -125,7 +125,7 @@ fn generate_run_info() -> RunInfo {
         host: None,
         git: None,
         ci: None,
-        capabilities: Vec::new(),
+        capabilities: BTreeMap::new(),
     }
 }
 

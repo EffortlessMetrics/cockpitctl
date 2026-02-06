@@ -7,6 +7,8 @@
 //!
 //! It must not depend on filesystem, clap, or network.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -98,6 +100,21 @@ pub struct CiInfo {
     pub job: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CapabilityStatus {
+    Available,
+    Unavailable,
+    Skipped,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Capability {
+    pub status: CapabilityStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunInfo {
     pub started_at: String, // RFC3339
@@ -112,8 +129,8 @@ pub struct RunInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ci: Option<CiInfo>,
     /// Declared capabilities (e.g., "git", "baseline", "lcov").
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub capabilities: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub capabilities: BTreeMap<String, Capability>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
