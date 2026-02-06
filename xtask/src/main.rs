@@ -52,6 +52,26 @@ enum Commands {
         /// Check survivability: verify status=fail has explanatory findings.
         #[arg(long)]
         survivability: bool,
+
+        /// Check finding location paths for hygiene violations.
+        #[arg(long)]
+        path_hygiene: bool,
+
+        /// Check that findings are sorted in canonical order.
+        #[arg(long)]
+        ordering: bool,
+
+        /// Check that reason tokens match ^[a-z0-9_]+$.
+        #[arg(long)]
+        reason_lint: bool,
+
+        /// Run all conformance checks.
+        #[arg(long)]
+        all: bool,
+
+        /// Sensor ID (required for --ordering).
+        #[arg(long)]
+        sensor_id: Option<String>,
     },
 }
 
@@ -80,7 +100,21 @@ fn run(cli: Cli) -> Result<()> {
             report,
             golden,
             survivability,
-        } => conform(report, golden, survivability),
+            path_hygiene,
+            ordering,
+            reason_lint,
+            all,
+            sensor_id,
+        } => conform(
+            report,
+            golden,
+            survivability,
+            path_hygiene,
+            ordering,
+            reason_lint,
+            all,
+            sensor_id,
+        ),
     }
 }
 
@@ -170,7 +204,117 @@ fn fixtures_help() -> Result<()> {
     Ok(())
 }
 
-fn conform(report: PathBuf, golden: Option<PathBuf>, survivability: bool) -> Result<()> {
+fn is_valid_reason_token(s: &str) -> bool {
+    !s.is_empty()
+        && s.bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+}
+
+fn check_path_hygiene(report: &cockpitctl_types::SensorReport) -> Vec<String> {
+    let mut violations = Vec::new();
+    for (i, f) in report.findings.iter().enumerate() {
+        if let Some(loc) = &f.location {
+            if let Some(path) = &loc.path {
+                if path.starts_with('/') || path.starts_with('\\') {
+                    violations.push(format!(
+                        "finding[{}]: absolute path (starts with / or \\): {}",
+                        i, path
+                    ));
+                } else if path.len() >= 2
+                    && path.as_bytes()[0].is_ascii_alphabetic()
+                    && path.as_bytes()[1] == b':'
+                {
+                    violations.push(format!(
+                        "finding[{}]: absolute path (drive letter): {}",
+                        i, path
+                    ));
+                }
+                if path.contains("..") {
+                    violations.push(format!(
+                        "finding[{}]: path traversal (contains ..): {}",
+                        i, path
+                    ));
+                }
+                if path.contains('\\') {
+                    violations.push(format!("finding[{}]: backslash in path: {}", i, path));
+                }
+            }
+        }
+    }
+    violations
+}
+
+fn check_ordering(report: &cockpitctl_types::SensorReport, sensor_id: &str) -> Vec<String> {
+    use cockpitctl_types::{severity_rank, FindingSortKey};
+
+    let keys: Vec<FindingSortKey> = report
+        .findings
+        .iter()
+        .map(|f| FindingSortKey {
+            severity_rank: severity_rank(&f.severity),
+            sensor_id: sensor_id.to_string(),
+            path: f
+                .location
+                .as_ref()
+                .and_then(|l| l.path.as_deref())
+                .unwrap_or("")
+                .to_string(),
+            line: f.location.as_ref().and_then(|l| l.line).unwrap_or(0),
+            code: f.code.clone(),
+            message: f.message.clone(),
+        })
+        .collect();
+
+    let mut violations = Vec::new();
+    for i in 1..keys.len() {
+        if keys[i] < keys[i - 1] {
+            violations.push(format!(
+                "finding[{}] is out of order (severity_rank={}, code={}) < finding[{}] (severity_rank={}, code={})",
+                i, keys[i].severity_rank, keys[i].code,
+                i - 1, keys[i - 1].severity_rank, keys[i - 1].code,
+            ));
+        }
+    }
+    violations
+}
+
+fn check_reason_tokens(report: &cockpitctl_types::SensorReport) -> Vec<String> {
+    let mut violations = Vec::new();
+
+    for (i, reason) in report.verdict.reasons.iter().enumerate() {
+        if !is_valid_reason_token(reason) {
+            violations.push(format!(
+                "verdict.reasons[{}]: invalid token {:?}",
+                i, reason
+            ));
+        }
+    }
+
+    for (name, cap) in &report.run.capabilities {
+        if let Some(reason) = &cap.reason {
+            if !is_valid_reason_token(reason) {
+                violations.push(format!(
+                    "capabilities.{}.reason: invalid token {:?}",
+                    name, reason
+                ));
+            }
+        }
+    }
+
+    violations
+}
+
+#[allow(clippy::too_many_arguments)]
+fn conform(
+    report: PathBuf,
+    golden: Option<PathBuf>,
+    survivability: bool,
+    path_hygiene: bool,
+    ordering: bool,
+    reason_lint: bool,
+    all: bool,
+    sensor_id: Option<String>,
+) -> Result<()> {
     use cockpitctl_types::{SensorReport, VerdictStatus, SENSOR_REPORT_V1_SCHEMA_JSON};
 
     eprintln!("conformance check: {}", report.display());
@@ -214,11 +358,11 @@ fn conform(report: PathBuf, golden: Option<PathBuf>, survivability: bool) -> Res
         eprintln!("  ok: determinism check passed (matches golden)");
     }
 
+    // Parse for extended checks
+    let parsed: SensorReport = serde_json::from_value(value).context("parse as SensorReport")?;
+
     // Step 5: Survivability check (if requested)
     if survivability {
-        let parsed: SensorReport =
-            serde_json::from_value(value).context("parse as SensorReport")?;
-
         if parsed.verdict.status == VerdictStatus::Fail {
             let has_explanatory = !parsed.findings.is_empty() || !parsed.verdict.reasons.is_empty();
 
@@ -232,6 +376,56 @@ fn conform(report: PathBuf, golden: Option<PathBuf>, survivability: bool) -> Res
         } else {
             eprintln!("  ok: survivability check skipped (status != fail)");
         }
+    }
+
+    // Collect all violations from new checks
+    let mut all_violations = Vec::new();
+
+    // Step 6: Path hygiene check
+    if path_hygiene || all {
+        let violations = check_path_hygiene(&parsed);
+        if violations.is_empty() {
+            eprintln!("  ok: path hygiene passed");
+        } else {
+            for v in &violations {
+                eprintln!("  FAIL: path-hygiene: {}", v);
+            }
+            all_violations.extend(violations);
+        }
+    }
+
+    // Step 7: Ordering check
+    if ordering || all {
+        let sid = sensor_id.as_deref().unwrap_or("unknown");
+        let violations = check_ordering(&parsed, sid);
+        if violations.is_empty() {
+            eprintln!("  ok: ordering passed");
+        } else {
+            for v in &violations {
+                eprintln!("  FAIL: ordering: {}", v);
+            }
+            all_violations.extend(violations);
+        }
+    }
+
+    // Step 8: Reason token lint
+    if reason_lint || all {
+        let violations = check_reason_tokens(&parsed);
+        if violations.is_empty() {
+            eprintln!("  ok: reason-lint passed");
+        } else {
+            for v in &violations {
+                eprintln!("  FAIL: reason-lint: {}", v);
+            }
+            all_violations.extend(violations);
+        }
+    }
+
+    if !all_violations.is_empty() {
+        anyhow::bail!(
+            "conformance failed with {} violation(s)",
+            all_violations.len()
+        );
     }
 
     eprintln!("conformance: PASS");
