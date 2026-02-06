@@ -397,9 +397,22 @@ pub enum SafetyLevel {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FindingRef {
     pub sensor_id: String,
-    pub fingerprint: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fingerprint: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub check_id: Option<String>,
+}
+
+/// Preconditions that must hold before applying a fix.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Preconditions {
+    pub repo_head: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub receipt_digests: Vec<String>,
 }
 
 /// A single fix in a buildfix plan.
@@ -410,8 +423,8 @@ pub struct Fix {
     pub description: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub finding_refs: Vec<FindingRef>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub preconditions: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preconditions: Option<Preconditions>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }

@@ -57,7 +57,7 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["sensor_id", "fingerprint"],
+              "required": ["sensor_id"],
               "properties": {
                 "sensor_id": {
                   "type": "string",
@@ -72,17 +72,31 @@
                 "code": {
                   "type": "string",
                   "description": "Optional code of the finding."
+                },
+                "tool": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Tool name for routing."
+                },
+                "check_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Check ID for routing."
                 }
               }
             }
           },
           "preconditions": {
-            "type": "array",
-            "default": [],
-            "description": "Conditions that must be true before applying this fix.",
-            "items": {
-              "type": "string",
-              "minLength": 1
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["repo_head"],
+            "properties": {
+              "repo_head": { "type": "string", "minLength": 1 },
+              "receipt_digests": {
+                "type": "array",
+                "default": [],
+                "items": { "type": "string", "minLength": 1 }
+              }
             }
           },
           "data": {
