@@ -29,37 +29,46 @@ Outputs:
 - `artifacts/cockpit/comment.md`
 
 ## Policy (`cockpit.toml`)
-See: `docs/config.md` and `cockpit.toml.example`.
+See: `docs/reference/config.md` for full reference.
 
 ## Contracts
-- `schemas/sensor.report.v1.json` (input bus)
-- `schemas/cockpit.report.v1.json` (director output)
+- `contracts/schemas/sensor.report.v1.json` (input bus)
+- `contracts/schemas/cockpit.report.v1.json` (director output)
+- `contracts/schemas/buildfix.plan.v1.json` (fix plan)
 - `templates/cockpit.comment.v1.md` (comment contract)
+- `contracts/docs/tokens.md` (reason token registry)
+- `contracts/docs/identity-spec.md` (vocabulary and fingerprint rules)
 
 ## Repository layout
 
 ```
 crates/
-  cockpitctl-types     # DTOs (sensor + cockpit), stable IDs
+  cockpitctl-types     # DTOs (sensor + cockpit), stable IDs, embedded schemas
   cockpitctl-domain    # policy evaluation, ordering, highlight selection
   cockpitctl-ingest    # use case + ports (clean/hexagonal boundary)
   cockpitctl-render    # PR comment renderer (budgeted)
   cockpitctl-io        # filesystem adapters (read receipts, write outputs)
+  cockpitctl-core      # facade crate — re-exports all microcrates as one dependency
   cockpitctl-cli       # `cockpitctl` binary (clap)
     features/          # cucumber feature files
-xtask/                 # schema + fixture tooling
-docs/                  # requirements/design/architecture/implementation plan
-schemas/               # JSON Schemas (source-of-truth)
+xtask/                 # schema sync, conformance harness, fixture tooling
+contracts/
+  schemas/             # JSON Schemas (source-of-truth)
+  docs/                # protocol specifications (tokens, identity)
+docs/                  # user-facing documentation (Diataxis)
 fixtures/              # golden fixture inputs + expected outputs
 templates/             # comment contract template
 fuzz/                  # cargo-fuzz harness (optional)
 ```
 
 ## Development (recommended)
-- Unit tests: `cargo test`
+- Unit tests: `cargo test --workspace --all-targets`
 - Snapshots/goldens: `cargo test -p cockpitctl --test ingest_golden`
 - BDD: `cargo test -p cockpitctl --test bdd` (optional; see `crates/cockpitctl-cli/features/`)
+- Conformance: `cargo run -p xtask -- conform --report <file> --all --sensor-id <id>`
+- Conformance (batch): `cargo run -p xtask -- conform-dir --dir artifacts --all --validate-cockpit`
+- Schema sync: `cargo run -p xtask -- schema-sync-check`
 - Fuzz: `cargo fuzz run parse_receipt` (optional)
 - Mutation: `cargo mutants` (optional)
 
-See `docs/implementation_plan.md` for the staged plan and “Definition of Done”.
+See `CHANGELOG.md` for recent changes, `ROADMAP.md` for planned work, and `docs/` for full documentation.

@@ -41,7 +41,7 @@ jobs:
 
       - name: Ensure cockpitctl-core has no CLI dependencies
         run: |
-          if cargo tree -p cockpitctl-core -e normal --prefix none | grep -Eq '^(clap|clap_derive|clap_builder)( |$)'; then
+          if cargo tree -p cockpitctl-core -e normal --prefix none | grep -Eq '^[[:space:]]*(clap|clap_derive|clap_builder)([[:space:]]|$)'; then
             echo "FAIL: clap leaked into cockpitctl-core normal dependencies"
             cargo tree -p cockpitctl-core -e normal
             exit 1

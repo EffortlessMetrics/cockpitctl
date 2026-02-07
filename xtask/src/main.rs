@@ -396,6 +396,17 @@ fn check_cockpit_reason_tokens(report: &cockpitctl_types::CockpitReport) -> Vec<
         }
     }
 
+    for (name, cap) in &report.run.capabilities {
+        if let Some(reason) = &cap.reason
+            && !is_valid_reason_token(reason)
+        {
+            violations.push(format!(
+                "run.capabilities.{}.reason: invalid token {:?}",
+                name, reason
+            ));
+        }
+    }
+
     violations
 }
 

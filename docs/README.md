@@ -30,8 +30,9 @@ Building tools that emit receipts:
 
 1. [Write a Conformant Sensor](how-to/write-conformant-sensor.md) - Sensor authoring guide
 2. [Sensor Report Schema](reference/sensor-report-schema.md) - Receipt envelope spec
-3. [Test Sensor Conformance](how-to/test-sensor-conformance.md) - Validation and testing
-4. [Composition Model](explanation/composition-model.md) - How sensors work together
+3. [Test Sensor Conformance](how-to/test-sensor-conformance.md) - Validation and conformance harness
+4. [Token Registry](../contracts/docs/tokens.md) - Reason tokens and identity tuples
+5. [Composition Model](explanation/composition-model.md) - How sensors work together
 
 ### Maintainers
 
@@ -41,6 +42,8 @@ Understanding the system:
 2. [Hexagonal Architecture](explanation/hexagonal-architecture.md) - Code organization
 3. [Trust Boundaries](explanation/trust-boundaries.md) - Security model
 4. [Determinism Design](explanation/determinism-design.md) - Why byte-stability matters
+5. [Identity Specification](../contracts/docs/identity-spec.md) - Vocabulary and fingerprint rules
+6. [Compatibility Promise](reference/compatibility.md) - SemVer and contract stability
 
 ## Documentation Structure
 
@@ -51,4 +54,8 @@ docs/
 ├── reference/          Technical specifications
 ├── explanation/        Conceptual understanding
 └── archive/            Historical documents
+
+contracts/docs/
+├── tokens.md           Canonical reason token registry
+└── identity-spec.md    Vocabulary and fingerprint rules
 ```

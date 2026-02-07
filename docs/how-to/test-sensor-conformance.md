@@ -207,6 +207,45 @@ fn regression_issue_42() {
 }
 ```
 
+## xtask Conformance Harness
+
+cockpitctl ships an `xtask conform` command for automated protocol conformance checking. This is the recommended way to validate sensor receipts in CI.
+
+### Single Report
+
+```bash
+cargo run -p xtask -- conform \
+  --report artifacts/my-sensor/report.json \
+  --sensor-id my-sensor \
+  --all
+```
+
+The `--all` flag enables every check. Individual checks can be toggled:
+
+| Flag | What it checks |
+|------|---------------|
+| `--path-hygiene` | No absolute paths, backslashes, or `..` in finding locations |
+| `--ordering` | Findings sorted in canonical order (requires `--sensor-id`) |
+| `--reason-lint` | Reason tokens match `^[a-z0-9_]+$` |
+| `--survivability` | `status=fail` has explanatory findings or reasons |
+| `--tool-error-identity` | `tool_error` reason has canonical `check_id`/`code` |
+| `--golden <FILE>` | Output matches a golden file byte-for-byte |
+
+### Batch (All Sensors)
+
+```bash
+cargo run -p xtask -- conform-dir \
+  --dir artifacts \
+  --all \
+  --validate-cockpit
+```
+
+This scans every `artifacts/<sensor>/report.json`, runs conformance checks per sensor, and optionally validates the cockpit report against the `cockpit.report.v1` schema.
+
+Additional flags:
+- `--allow-missing-report` — skip sensors that lack a `report.json` instead of failing
+- `--validate-cockpit` — also validate `artifacts/cockpit/report.json`
+
 ## Version Compatibility
 
 When updating sensor versions:

@@ -19,20 +19,20 @@
   "findings": [
     {
       "severity": "warn",
-      "code": "linter.unused_variable",
-      "message": "Unused variable: `temp`",
-      "location": {
-        "path": "src/main.rs",
-        "line": 15
-      }
-    },
-    {
-      "severity": "warn",
       "code": "linter.missing_docs",
       "message": "Missing documentation for public function `process`",
       "location": {
         "path": "src/lib.rs",
         "line": 42
+      }
+    },
+    {
+      "severity": "warn",
+      "code": "linter.unused_variable",
+      "message": "Unused variable: `temp`",
+      "location": {
+        "path": "src/main.rs",
+        "line": 15
       }
     }
   ]

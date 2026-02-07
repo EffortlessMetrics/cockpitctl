@@ -198,9 +198,22 @@ artifacts/<sensor-id>/comment.md
 
 cockpitctl will link to it but won't inline it.
 
+## Reason Tokens
+
+The `verdict.reasons` array carries machine-readable tokens explaining the verdict. Tokens must match `^[a-z0-9_]+$` (lowercase ASCII, digits, underscores only).
+
+Common sensor-emitted tokens:
+
+| Token | When to use |
+|-------|-------------|
+| `tool_error` | The tool crashed or hit a runtime error |
+| `no_baseline` | A baseline-dependent check had no baseline |
+
+Sensors may define additional tokens. See [Token Registry](../../contracts/docs/tokens.md) for the full list.
+
 ## Error Handling
 
-When your sensor fails internally:
+When your sensor fails internally, use the `tool_error` reason token and the canonical identity tuple (`check_id: "tool.runtime"`, `code: "runtime_error"`):
 
 ```json
 {
@@ -215,12 +228,15 @@ When your sensor fails internally:
   "findings": [
     {
       "severity": "error",
-      "code": "my-sensor.runtime-error",
+      "check_id": "tool.runtime",
+      "code": "runtime_error",
       "message": "Failed to parse config: invalid TOML at line 5"
     }
   ]
 }
 ```
+
+The `tool_error` identity is enforced by `xtask conform --tool-error-identity`. Using the canonical `check_id`/`code` pair ensures cockpitctl and downstream consumers can detect tool failures consistently.
 
 Always emit a receipt if possible, even on failure. This surfaces errors in cockpitctl rather than silently missing.
 
