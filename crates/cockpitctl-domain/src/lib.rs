@@ -233,7 +233,9 @@ pub fn overall_verdict(sensor_summaries: &[SensorSummary], cfg: &CockpitConfig) 
         let mut effective_status = s.verdict.status.clone();
         if cfg.policy.warn_is_fail && matches!(effective_status, VerdictStatus::Warn) {
             effective_status = VerdictStatus::Fail;
-            reasons.push(format!("warn_is_fail:{}", s.id));
+            if !reasons.contains(&"warn_is_fail".to_string()) {
+                reasons.push("warn_is_fail".to_string());
+            }
         }
 
         if verdict_status_rank(&effective_status) < verdict_status_rank(&worst) {
@@ -650,9 +652,7 @@ pub fn summarize_sensor_report(
     let mut verdict = report.verdict.clone();
     let mut highlights = Vec::new();
     if verdict.counts != computed {
-        verdict
-            .reasons
-            .push(cockpit_codes::RECEIPT_INCONSISTENT.to_string());
+        verdict.reasons.push("receipt_inconsistent".to_string());
         verdict.counts = computed;
         highlights.push(synthesize_receipt_inconsistent(
             sensor_id,

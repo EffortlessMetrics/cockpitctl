@@ -373,6 +373,32 @@ fn check_tool_error_identity(report: &cockpitctl_types::SensorReport) -> Vec<Str
     violations
 }
 
+fn check_cockpit_reason_tokens(report: &cockpitctl_types::CockpitReport) -> Vec<String> {
+    let mut violations = Vec::new();
+
+    for (i, reason) in report.verdict.reasons.iter().enumerate() {
+        if !is_valid_reason_token(reason) {
+            violations.push(format!(
+                "verdict.reasons[{}]: invalid token {:?}",
+                i, reason
+            ));
+        }
+    }
+
+    for (si, sensor) in report.sensors.iter().enumerate() {
+        for (ri, reason) in sensor.verdict.reasons.iter().enumerate() {
+            if !is_valid_reason_token(reason) {
+                violations.push(format!(
+                    "sensors[{}].verdict.reasons[{}]: invalid token {:?}",
+                    si, ri, reason
+                ));
+            }
+        }
+    }
+
+    violations
+}
+
 fn check_reason_tokens(report: &cockpitctl_types::SensorReport) -> Vec<String> {
     let mut violations = Vec::new();
 
@@ -674,7 +700,28 @@ fn conform_dir(
                 had_failure = true;
             } else {
                 eprintln!("  ok: cockpit report schema validation passed");
-                results.push(("cockpit".to_string(), "PASS"));
+
+                // Reason-lint on cockpit report
+                let mut cockpit_failed = false;
+                if checks.reason_lint {
+                    let parsed: cockpitctl_types::CockpitReport = serde_json::from_value(value)
+                        .context("parse cockpit report for reason-lint")?;
+                    let violations = check_cockpit_reason_tokens(&parsed);
+                    if violations.is_empty() {
+                        eprintln!("  ok: cockpit reason-lint passed");
+                    } else {
+                        for v in &violations {
+                            eprintln!("  FAIL: cockpit reason-lint: {}", v);
+                        }
+                        cockpit_failed = true;
+                        had_failure = true;
+                    }
+                }
+
+                results.push((
+                    "cockpit".to_string(),
+                    if cockpit_failed { "FAIL" } else { "PASS" },
+                ));
             }
         } else {
             eprintln!("  skip: no cockpit/report.json found");

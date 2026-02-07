@@ -10,8 +10,6 @@ Reason tokens must match `^[a-z0-9_]+$` (lowercase ASCII letters, digits, and un
 - `xtask conform --reason-lint` validates tokens in fixture files
 - `is_valid_reason_token()` in xtask checks `verdict.reasons[]` and `capabilities.*.reason`
 
-**Exception:** `warn_is_fail:<sensor_id>` is parameterized and uses a colon separator (see Policy-Derived Reason Tokens below).
-
 ## Sensor-Emitted Reason Tokens
 
 These tokens are set by sensors in their `verdict.reasons[]` array. This is an **open set** — sensors may define additional tokens.
@@ -32,18 +30,15 @@ These tokens are injected by cockpitctl into per-sensor `verdict.reasons[]` duri
 | `schema_violation` | Receipt failed JSON Schema validation (strict mode) | `synthesize_schema_violation_sensor` |
 | `path_traversal` | Sensor ID contains `..` path traversal | `synthesize_path_traversal_sensor` |
 | `receipt_oversized` | Receipt file exceeds size limit (default 2 MB) | `synthesize_receipt_oversized_sensor` |
-
-**Note:** `cockpit.receipt_inconsistent` appears as a finding code but is **not** pushed to `verdict.reasons[]` — it is surfaced only as a finding with `code = "cockpit.receipt_inconsistent"`. This inconsistency with the other synthesized tokens is documented here for future resolution.
+| `receipt_inconsistent` | Receipt claimed counts don't match findings | `summarize_sensor_report` |
 
 ## Policy-Derived Reason Tokens
 
 These tokens are injected into the **aggregate** verdict's `reasons[]` by policy evaluation.
 
-| Pattern | Example | Meaning |
-|---------|---------|---------|
-| `warn_is_fail:<sensor_id>` | `warn_is_fail:linter` | The `warn_is_fail` policy escalated warnings to failures for this sensor |
-
-The colon-separated format is an **exception** to the `^[a-z0-9_]+$` format rule. The conformance linter validates the prefix but permits the parameterized suffix.
+| Token | Meaning |
+|-------|---------|
+| `warn_is_fail` | The `warn_is_fail` policy escalated at least one blocking sensor's warnings to failures. Affected sensors are visible in `sensors[]` entries where `blocking=true`, `verdict.status="warn"`, and `policy.warn_is_fail=true`. |
 
 ## Capability Reason Tokens
 
@@ -74,6 +69,7 @@ When a reason token implies a specific finding, the finding must use the canonic
 | `schema_violation` | `cockpit.schema_violation` | `cockpit.schema_violation` |
 | `path_traversal` | `cockpit.path_traversal` | `cockpit.path_traversal` |
 | `receipt_oversized` | `cockpit.receipt_oversized` | `cockpit.receipt_oversized` |
+| `receipt_inconsistent` | `cockpit.receipt_inconsistent` | `cockpit.receipt_inconsistent` |
 
 These constants are defined in `cockpitctl-domain::cockpit_codes`.
 
@@ -82,7 +78,6 @@ These constants are defined in `cockpitctl-domain::cockpit_codes`.
 Finding codes (`cockpit.*`) are documented in [finding-codes.md](../../docs/reference/finding-codes.md). They are not duplicated here.
 
 Additional cockpit-synthesized finding codes that do not have a corresponding reason token:
-- `cockpit.receipt_inconsistent` — receipt claimed counts don't match findings
 - `cockpit.sensors_truncated` — sensor discovery hit the `max_receipts` safety limit
 
 ## Stability
