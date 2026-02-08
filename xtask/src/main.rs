@@ -73,6 +73,14 @@ enum Commands {
         #[arg(long)]
         tool_error_identity: bool,
 
+        /// Validate sensor ID matches [a-zA-Z0-9_-]+.
+        #[arg(long)]
+        sensor_id_format: bool,
+
+        /// Validate artifact pointer fields and path safety.
+        #[arg(long)]
+        artifact_pointers: bool,
+
         /// Sensor ID (required for --ordering).
         #[arg(long)]
         sensor_id: Option<String>,
@@ -112,6 +120,18 @@ enum Commands {
         #[arg(long)]
         tool_error_identity: bool,
 
+        /// Per-report sensor ID format check.
+        #[arg(long)]
+        sensor_id_format: bool,
+
+        /// Per-report artifact pointer validation.
+        #[arg(long)]
+        artifact_pointers: bool,
+
+        /// Validate presence semantics in cockpit report (requires --validate-cockpit).
+        #[arg(long)]
+        presence_semantics: bool,
+
         /// Allow missing report.json (skip instead of fail).
         #[arg(long)]
         allow_missing_report: bool,
@@ -122,6 +142,7 @@ const SCHEMA_FILES: &[&str] = &[
     "sensor.report.v1.json",
     "cockpit.report.v1.json",
     "buildfix.plan.v1.json",
+    "cockpit.promote.v1.json",
 ];
 
 fn main() {
@@ -147,6 +168,8 @@ fn run(cli: Cli) -> Result<()> {
             ordering,
             reason_lint,
             tool_error_identity,
+            sensor_id_format,
+            artifact_pointers,
             all,
             sensor_id,
         } => conform(
@@ -157,6 +180,8 @@ fn run(cli: Cli) -> Result<()> {
             ordering,
             reason_lint,
             tool_error_identity,
+            sensor_id_format,
+            artifact_pointers,
             all,
             sensor_id,
         ),
@@ -169,6 +194,9 @@ fn run(cli: Cli) -> Result<()> {
             reason_lint,
             survivability,
             tool_error_identity,
+            sensor_id_format,
+            artifact_pointers,
+            presence_semantics,
             allow_missing_report,
         } => conform_dir(
             dir,
@@ -179,8 +207,11 @@ fn run(cli: Cli) -> Result<()> {
                 reason_lint: reason_lint || all,
                 survivability: survivability || all,
                 tool_error_identity: tool_error_identity || all,
+                sensor_id_format: sensor_id_format || all,
+                artifact_pointers: artifact_pointers || all,
             },
             allow_missing_report,
+            presence_semantics || all,
         ),
     }
 }
@@ -436,6 +467,74 @@ fn check_reason_tokens(report: &cockpitctl_types::SensorReport) -> Vec<String> {
     violations
 }
 
+fn check_sensor_id_format(sensor_id: &str) -> Vec<String> {
+    let mut violations = Vec::new();
+    let valid = !sensor_id.is_empty()
+        && sensor_id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-');
+    if !valid {
+        violations.push(format!(
+            "sensor_id {:?} does not match [a-zA-Z0-9_-]+",
+            sensor_id
+        ));
+    }
+    violations
+}
+
+fn check_artifact_pointers(report: &cockpitctl_types::SensorReport) -> Vec<String> {
+    let mut violations = Vec::new();
+    for (i, artifact) in report.artifacts.iter().enumerate() {
+        if artifact.id.is_empty() {
+            violations.push(format!("artifacts[{}]: id is empty", i));
+        }
+        if artifact.path.is_empty() {
+            violations.push(format!("artifacts[{}]: path is empty", i));
+        } else {
+            if artifact.path.contains("..") {
+                violations.push(format!(
+                    "artifacts[{}]: path contains \"..\": {}",
+                    i, artifact.path
+                ));
+            }
+            if artifact.path.starts_with('/') || artifact.path.starts_with('\\') {
+                violations.push(format!(
+                    "artifacts[{}]: path is absolute (starts with / or \\): {}",
+                    i, artifact.path
+                ));
+            }
+            if artifact.path.len() >= 2
+                && artifact.path.as_bytes()[0].is_ascii_alphabetic()
+                && artifact.path.as_bytes()[1] == b':'
+            {
+                violations.push(format!(
+                    "artifacts[{}]: path is absolute (drive letter): {}",
+                    i, artifact.path
+                ));
+            }
+        }
+        if artifact.mime.is_empty() {
+            violations.push(format!("artifacts[{}]: mime is empty", i));
+        }
+    }
+    violations
+}
+
+fn check_presence_semantics(report: &cockpitctl_types::CockpitReport) -> Vec<String> {
+    use cockpitctl_types::Presence;
+
+    let mut violations = Vec::new();
+    for (i, sensor) in report.sensors.iter().enumerate() {
+        if sensor.missing_policy_applied.is_some() && sensor.presence != Presence::Missing {
+            violations.push(format!(
+                "sensors[{}] ({}): missing_policy_applied is set but presence is {:?}, expected \"missing\"",
+                i, sensor.id, sensor.presence
+            ));
+        }
+    }
+    violations
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Conformance: reusable single-report check
 // ─────────────────────────────────────────────────────────────────────────────
@@ -446,6 +545,8 @@ struct ConformChecks {
     reason_lint: bool,
     survivability: bool,
     tool_error_identity: bool,
+    sensor_id_format: bool,
+    artifact_pointers: bool,
 }
 
 /// Validate a single sensor report from its already-read content.
@@ -547,6 +648,32 @@ fn conform_single(content: &str, sensor_id: &str, checks: &ConformChecks) -> Res
         }
     }
 
+    // Sensor ID format check
+    if checks.sensor_id_format {
+        let violations = check_sensor_id_format(sensor_id);
+        if violations.is_empty() {
+            eprintln!("  ok: sensor-id-format passed");
+        } else {
+            for v in &violations {
+                eprintln!("  FAIL: sensor-id-format: {}", v);
+            }
+            all_violations.extend(violations);
+        }
+    }
+
+    // Artifact pointers check
+    if checks.artifact_pointers {
+        let violations = check_artifact_pointers(&parsed);
+        if violations.is_empty() {
+            eprintln!("  ok: artifact-pointers passed");
+        } else {
+            for v in &violations {
+                eprintln!("  FAIL: artifact-pointers: {}", v);
+            }
+            all_violations.extend(violations);
+        }
+    }
+
     if !all_violations.is_empty() {
         anyhow::bail!(
             "conformance failed with {} violation(s)",
@@ -566,6 +693,8 @@ fn conform(
     ordering: bool,
     reason_lint: bool,
     tool_error_identity: bool,
+    sensor_id_format: bool,
+    artifact_pointers: bool,
     all: bool,
     sensor_id: Option<String>,
 ) -> Result<()> {
@@ -599,6 +728,8 @@ fn conform(
         reason_lint: reason_lint || all,
         survivability: survivability || all,
         tool_error_identity: tool_error_identity || all,
+        sensor_id_format: sensor_id_format || all,
+        artifact_pointers: artifact_pointers || all,
     };
 
     conform_single(&content, sid, &checks)?;
@@ -616,6 +747,7 @@ fn conform_dir(
     validate_cockpit: bool,
     checks: &ConformChecks,
     allow_missing_report: bool,
+    presence_semantics: bool,
 ) -> Result<()> {
     use cockpitctl_types::COCKPIT_REPORT_V1_SCHEMA_JSON;
 
@@ -712,20 +844,39 @@ fn conform_dir(
             } else {
                 eprintln!("  ok: cockpit report schema validation passed");
 
-                // Reason-lint on cockpit report
                 let mut cockpit_failed = false;
-                if checks.reason_lint {
+                let needs_parse = checks.reason_lint || presence_semantics;
+
+                if needs_parse {
                     let parsed: cockpitctl_types::CockpitReport = serde_json::from_value(value)
-                        .context("parse cockpit report for reason-lint")?;
-                    let violations = check_cockpit_reason_tokens(&parsed);
-                    if violations.is_empty() {
-                        eprintln!("  ok: cockpit reason-lint passed");
-                    } else {
-                        for v in &violations {
-                            eprintln!("  FAIL: cockpit reason-lint: {}", v);
+                        .context("parse cockpit report for extended checks")?;
+
+                    // Reason-lint on cockpit report
+                    if checks.reason_lint {
+                        let violations = check_cockpit_reason_tokens(&parsed);
+                        if violations.is_empty() {
+                            eprintln!("  ok: cockpit reason-lint passed");
+                        } else {
+                            for v in &violations {
+                                eprintln!("  FAIL: cockpit reason-lint: {}", v);
+                            }
+                            cockpit_failed = true;
+                            had_failure = true;
                         }
-                        cockpit_failed = true;
-                        had_failure = true;
+                    }
+
+                    // Presence semantics on cockpit report
+                    if presence_semantics {
+                        let violations = check_presence_semantics(&parsed);
+                        if violations.is_empty() {
+                            eprintln!("  ok: cockpit presence-semantics passed");
+                        } else {
+                            for v in &violations {
+                                eprintln!("  FAIL: cockpit presence-semantics: {}", v);
+                            }
+                            cockpit_failed = true;
+                            had_failure = true;
+                        }
                     }
                 }
 
