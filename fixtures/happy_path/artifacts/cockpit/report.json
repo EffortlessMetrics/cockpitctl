@@ -21,7 +21,7 @@
       "id": "builddiag",
       "blocking": true,
       "missing": "fail",
-      "present": true,
+      "presence": "present",
       "report_path": "artifacts/builddiag/report.json",
       "verdict": {
         "status": "pass",
@@ -33,13 +33,14 @@
         "reasons": []
       },
       "truncated": false,
-      "errors": []
+      "errors": [],
+      "policy_outcome": "allowed"
     },
     {
       "id": "diffguard",
       "blocking": true,
       "missing": "fail",
-      "present": true,
+      "presence": "present",
       "report_path": "artifacts/diffguard/report.json",
       "verdict": {
         "status": "warn",
@@ -51,7 +52,8 @@
         "reasons": []
       },
       "truncated": false,
-      "errors": []
+      "errors": [],
+      "policy_outcome": "allowed"
     }
   ],
   "highlights": [

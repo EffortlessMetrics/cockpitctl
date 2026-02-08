@@ -21,7 +21,7 @@
       "id": "builddiag",
       "blocking": true,
       "missing": "fail",
-      "present": true,
+      "presence": "present",
       "report_path": "artifacts/builddiag/report.json",
       "verdict": {
         "status": "pass",
@@ -33,13 +33,14 @@
         "reasons": []
       },
       "truncated": false,
-      "errors": []
+      "errors": [],
+      "policy_outcome": "allowed"
     },
     {
       "id": "coverage",
       "blocking": false,
       "missing": "skip",
-      "present": true,
+      "presence": "present",
       "report_path": "artifacts/coverage/report.json",
       "verdict": {
         "status": "skip",
@@ -53,7 +54,8 @@
         ]
       },
       "truncated": false,
-      "errors": []
+      "errors": [],
+      "policy_outcome": "informational"
     }
   ],
   "highlights": [],

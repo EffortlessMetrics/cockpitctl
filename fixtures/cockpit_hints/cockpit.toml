@@ -1,0 +1,8 @@
+[policy]
+warn_is_fail = false
+section_order = ["Other"]
+
+[sensors.hintsensor]
+blocking = true
+missing = "fail"
+section = "Other"

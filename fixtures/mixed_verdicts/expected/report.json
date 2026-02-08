@@ -21,7 +21,7 @@
       "id": "builddiag",
       "blocking": true,
       "missing": "fail",
-      "present": true,
+      "presence": "present",
       "report_path": "artifacts/builddiag/report.json",
       "verdict": {
         "status": "pass",
@@ -33,13 +33,14 @@
         "reasons": []
       },
       "truncated": false,
-      "errors": []
+      "errors": [],
+      "policy_outcome": "allowed"
     },
     {
       "id": "coverage",
       "blocking": false,
       "missing": "skip",
-      "present": true,
+      "presence": "present",
       "report_path": "artifacts/coverage/report.json",
       "verdict": {
         "status": "skip",
@@ -53,13 +54,14 @@
         ]
       },
       "truncated": false,
-      "errors": []
+      "errors": [],
+      "policy_outcome": "informational"
     },
     {
       "id": "linter",
       "blocking": true,
       "missing": "fail",
-      "present": false,
+      "presence": "invalid",
       "report_path": "artifacts/linter/report.json",
       "verdict": {
         "status": "fail",
@@ -75,13 +77,14 @@
       "truncated": false,
       "errors": [
         "key must be a string at line 1 column 3"
-      ]
+      ],
+      "policy_outcome": "blocked"
     },
     {
       "id": "perftest",
       "blocking": false,
       "missing": "warn",
-      "present": false,
+      "presence": "missing",
       "report_path": "artifacts/perftest/report.json",
       "verdict": {
         "status": "warn",
@@ -95,7 +98,9 @@
         ]
       },
       "truncated": false,
-      "errors": []
+      "errors": [],
+      "missing_policy_applied": "warn",
+      "policy_outcome": "informational"
     }
   ],
   "highlights": [
