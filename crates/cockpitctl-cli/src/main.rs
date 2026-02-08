@@ -110,6 +110,13 @@ fn now_rfc3339() -> String {
     if let Ok(v) = std::env::var("COCKPITCTL_STARTED_AT") {
         return v;
     }
+    if let Ok(epoch) = std::env::var("SOURCE_DATE_EPOCH")
+        && let Ok(ts) = epoch.parse::<i64>()
+        && let Ok(dt) = OffsetDateTime::from_unix_timestamp(ts)
+        && let Ok(s) = dt.format(&Rfc3339)
+    {
+        return s;
+    }
     OffsetDateTime::now_utc()
         .format(&Rfc3339)
         .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string())

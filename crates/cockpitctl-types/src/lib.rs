@@ -21,6 +21,9 @@ pub const COCKPIT_REPORT_V1_SCHEMA_JSON: &str = include_str!("../schemas/cockpit
 /// Embedded JSON Schema for buildfix.plan.v1.
 pub const BUILDFIX_PLAN_V1_SCHEMA_JSON: &str = include_str!("../schemas/buildfix.plan.v1.json");
 
+/// Embedded JSON Schema for cockpit.promote.v1.
+pub const COCKPIT_PROMOTE_V1_SCHEMA_JSON: &str = include_str!("../schemas/cockpit.promote.v1.json");
+
 /// A schema identifier string, e.g. `builddiag.report.v1`.
 pub type SchemaId = String;
 
@@ -182,6 +185,8 @@ pub struct SensorReport {
     pub verdict: Verdict,
     #[serde(default)]
     pub findings: Vec<Finding>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub artifacts: Vec<ArtifactPointer>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }
@@ -194,6 +199,69 @@ pub enum MissingPolicy {
     Skip,
     Warn,
     Fail,
+}
+
+/// Presence state for a sensor in the cockpit report.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Presence {
+    Present,
+    Missing,
+    Invalid,
+}
+
+/// Policy outcome for a sensor after evaluation.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PolicyOutcome {
+    Blocked,
+    Allowed,
+    Informational,
+}
+
+/// Pointer to an artifact produced by a sensor.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ArtifactPointer {
+    pub id: String,
+    pub path: String,
+    pub mime: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+}
+
+/// Promotion hints for cockpit (`data._cockpit`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CockpitPromoteHints {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cards: Vec<PromoteCard>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub suggested_highlights: Vec<SuggestedHighlight>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub suggested_artifacts: Vec<SuggestedArtifact>,
+}
+
+/// A card promoted to the cockpit summary from a sensor.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PromoteCard {
+    pub id: String,
+    pub label: String,
+    pub value: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub severity: Option<Severity>,
+}
+
+/// A suggested highlight from a sensor via promotion.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SuggestedHighlight {
+    pub finding_fingerprint: String,
+}
+
+/// A suggested artifact from a sensor via promotion.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SuggestedArtifact {
+    pub artifact_id: String,
 }
 
 /// Schema validation mode for sensor receipts.
@@ -290,7 +358,7 @@ pub struct SensorSummary {
     pub id: String,
     pub blocking: bool,
     pub missing: MissingPolicy,
-    pub present: bool,
+    pub presence: Presence,
     pub report_path: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment_path: Option<String>,
@@ -299,6 +367,10 @@ pub struct SensorSummary {
     pub truncated: bool,
     #[serde(default)]
     pub errors: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub missing_policy_applied: Option<MissingPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub policy_outcome: Option<PolicyOutcome>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -374,7 +446,13 @@ pub fn verdict_status_rank(s: &VerdictStatus) -> u8 {
 
 /// Validate a sensor ID for safe path usage.
 pub fn is_valid_sensor_id(id: &str) -> bool {
-    !id.is_empty() && !id.contains("..") && !id.contains('/') && !id.contains('\\')
+    !id.is_empty()
+        && !id.contains("..")
+        && !id.contains('/')
+        && !id.contains('\\')
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
 }
 
 // ============================================================================

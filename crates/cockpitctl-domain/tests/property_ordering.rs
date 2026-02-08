@@ -7,7 +7,7 @@ use cockpitctl_domain::{
     select_highlights, sort_findings, sort_sensor_summaries,
 };
 use cockpitctl_types::{
-    CockpitConfig, Finding, Highlight, Location, MissingPolicy, Policy, SensorPolicy,
+    CockpitConfig, Finding, Highlight, Location, MissingPolicy, Policy, Presence, SensorPolicy,
     SensorSummary, Severity, Verdict, VerdictCounts, VerdictStatus, severity_rank,
 };
 use proptest::prelude::*;
@@ -118,19 +118,25 @@ fn any_sensor_summary() -> impl Strategy<Value = SensorSummary> {
             Just(MissingPolicy::Warn),
             Just(MissingPolicy::Fail),
         ],
-        any::<bool>(), // present
+        prop_oneof![
+            Just(Presence::Present),
+            Just(Presence::Missing),
+            Just(Presence::Invalid),
+        ],
         any_verdict(),
     )
-        .prop_map(|(id, blocking, missing, present, verdict)| SensorSummary {
+        .prop_map(|(id, blocking, missing, presence, verdict)| SensorSummary {
             id: id.clone(),
             blocking,
             missing,
-            present,
+            presence,
             report_path: format!("artifacts/{}/report.json", id),
             comment_path: None,
             verdict,
             truncated: false,
             errors: vec![],
+            missing_policy_applied: None,
+            policy_outcome: None,
         })
 }
 
@@ -695,7 +701,7 @@ proptest! {
             id: "sensor_a".to_string(),
             blocking: true,
             missing: MissingPolicy::Skip,
-            present: true,
+            presence: Presence::Present,
             report_path: "a/report.json".to_string(),
             comment_path: None,
             verdict: Verdict {
@@ -705,12 +711,14 @@ proptest! {
             },
             truncated: false,
             errors: vec![],
+            missing_policy_applied: None,
+            policy_outcome: None,
         };
         let s_b = SensorSummary {
             id: "sensor_b".to_string(),
             blocking: true,
             missing: MissingPolicy::Skip,
-            present: true,
+            presence: Presence::Present,
             report_path: "b/report.json".to_string(),
             comment_path: None,
             verdict: Verdict {
@@ -720,6 +728,8 @@ proptest! {
             },
             truncated: false,
             errors: vec![],
+            missing_policy_applied: None,
+            policy_outcome: None,
         };
 
         let cfg = CockpitConfig::default();

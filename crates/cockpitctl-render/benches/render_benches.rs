@@ -12,8 +12,8 @@ use std::hint::black_box;
 use cockpitctl_render::render_comment;
 use cockpitctl_types::{
     CockpitConfig, CockpitReport, Finding, Highlight, Location, MissingPolicy, Policy,
-    PolicySensorSnapshot, PolicySnapshot, RunInfo, SchemaValidation, SensorPolicy, SensorSummary,
-    Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus,
+    PolicySensorSnapshot, PolicySnapshot, Presence, RunInfo, SchemaValidation, SensorPolicy,
+    SensorSummary, Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus,
 };
 
 // ============================================================================
@@ -88,7 +88,7 @@ fn generate_sensor_summary(rng: &mut impl Rng, sensor_id: &str, _section: &str) 
         id: sensor_id.to_string(),
         blocking: rng.random_bool(0.3),
         missing: MissingPolicy::Skip,
-        present: true,
+        presence: Presence::Present,
         report_path: format!("artifacts/{}/report.json", sensor_id),
         comment_path: if rng.random_bool(0.4) {
             Some(format!("artifacts/{}/comment.md", sensor_id))
@@ -107,6 +107,8 @@ fn generate_sensor_summary(rng: &mut impl Rng, sensor_id: &str, _section: &str) 
         },
         truncated: rng.random_bool(0.1),
         errors: vec![],
+        missing_policy_applied: None,
+        policy_outcome: None,
     }
 }
 

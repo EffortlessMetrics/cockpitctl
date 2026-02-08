@@ -17,7 +17,10 @@ pub use cockpitctl_ingest::{
 };
 
 // Flatten the most-used types.
-pub use cockpitctl_types::{CockpitConfig, CockpitReport, SensorReport, ToolInfo, VerdictStatus};
+pub use cockpitctl_types::{
+    ArtifactPointer, CockpitConfig, CockpitReport, PolicyOutcome, Presence, SensorReport, ToolInfo,
+    VerdictStatus,
+};
 
 // Flatten the renderer.
 pub use cockpitctl_render::render_comment;

@@ -6,13 +6,25 @@
 //! No filesystem, no clap, no network.
 
 use cockpitctl_types::{
-    CockpitConfig, CockpitReport, Finding, FindingSortKey, Highlight, MissingPolicy,
-    PolicySensorSnapshot, PolicySnapshot, RunInfo, SensorPolicy, SensorReport, SensorSummary,
-    Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus, severity_rank, verdict_status_rank,
+    CockpitConfig, CockpitReport, Finding, FindingSortKey, Highlight, MissingPolicy, PolicyOutcome,
+    PolicySensorSnapshot, PolicySnapshot, Presence, RunInfo, SensorPolicy, SensorReport,
+    SensorSummary, Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus, severity_rank,
+    verdict_status_rank,
 };
 use sha2::{Digest, Sha256};
 
 pub const COCKPIT_SCHEMA_ID: &str = "cockpit.report.v1";
+
+/// Derive the policy outcome for a sensor given its blocking flag and verdict status.
+pub fn compute_policy_outcome(blocking: bool, status: &VerdictStatus) -> PolicyOutcome {
+    if !blocking {
+        PolicyOutcome::Informational
+    } else if matches!(status, VerdictStatus::Fail) {
+        PolicyOutcome::Blocked
+    } else {
+        PolicyOutcome::Allowed
+    }
+}
 
 /// A cockpit-level code for synthesized findings.
 pub mod cockpit_codes {
@@ -296,16 +308,20 @@ pub fn synthesize_missing_sensor(
         },
     };
 
+    let policy_outcome = compute_policy_outcome(policy.blocking, &verdict.status);
+
     let summary = SensorSummary {
         id: sensor_id.to_string(),
         blocking: policy.blocking,
         missing: policy.missing,
-        present: false,
+        presence: Presence::Missing,
         report_path: report_path.to_string(),
         comment_path,
         verdict,
         truncated: false,
         errors: vec![],
+        missing_policy_applied: Some(policy.missing),
+        policy_outcome: Some(policy_outcome),
     };
 
     let highlight = finding.map(|finding| Highlight {
@@ -344,16 +360,20 @@ pub fn synthesize_invalid_sensor(
         reasons: vec!["invalid_receipt".to_string()],
     };
 
+    let policy_outcome = compute_policy_outcome(policy.blocking, &VerdictStatus::Fail);
+
     let summary = SensorSummary {
         id: sensor_id.to_string(),
         blocking: policy.blocking,
         missing: policy.missing,
-        present: false,
+        presence: Presence::Invalid,
         report_path: report_path.to_string(),
         comment_path,
         verdict,
         truncated: false,
         errors: vec![error],
+        missing_policy_applied: None,
+        policy_outcome: Some(policy_outcome),
     };
 
     let highlight = Some(Highlight {
@@ -408,16 +428,20 @@ pub fn synthesize_schema_violation_sensor(
         reasons: vec!["schema_violation".to_string()],
     };
 
+    let policy_outcome = compute_policy_outcome(policy.blocking, &VerdictStatus::Fail);
+
     let summary = SensorSummary {
         id: sensor_id.to_string(),
         blocking: policy.blocking,
         missing: policy.missing,
-        present: false,
+        presence: Presence::Invalid,
         report_path: report_path.to_string(),
         comment_path,
         verdict,
         truncated: false,
         errors: validation_errors,
+        missing_policy_applied: None,
+        policy_outcome: Some(policy_outcome),
     };
 
     let highlight = Some(Highlight {
@@ -479,12 +503,14 @@ pub fn synthesize_path_traversal_sensor(
         id: sensor_id.to_string(),
         blocking: policy.blocking,
         missing: policy.missing,
-        present: false,
+        presence: Presence::Missing,
         report_path: report_path.to_string(),
         comment_path,
         verdict,
         truncated: false,
         errors: vec![format!("unsafe path rejected: {}", report_path)],
+        missing_policy_applied: None,
+        policy_outcome: Some(PolicyOutcome::Blocked),
     };
 
     (summary, highlight)
@@ -520,16 +546,20 @@ pub fn synthesize_receipt_oversized_sensor(
         reasons: vec!["receipt_oversized".to_string()],
     };
 
+    let policy_outcome = compute_policy_outcome(policy.blocking, &VerdictStatus::Fail);
+
     let summary = SensorSummary {
         id: sensor_id.to_string(),
         blocking: policy.blocking,
         missing: policy.missing,
-        present: false,
+        presence: Presence::Invalid,
         report_path: report_path.to_string(),
         comment_path,
         verdict,
         truncated: false,
         errors: vec![format!("receipt too large: {} bytes (cap {})", size, cap)],
+        missing_policy_applied: None,
+        policy_outcome: Some(policy_outcome),
     };
 
     let highlight = Highlight {
@@ -661,16 +691,20 @@ pub fn summarize_sensor_report(
         ));
     }
 
+    let policy_outcome = compute_policy_outcome(policy.blocking, &verdict.status);
+
     let summary = SensorSummary {
         id: sensor_id.to_string(),
         blocking: policy.blocking,
         missing: policy.missing,
-        present: true,
+        presence: Presence::Present,
         report_path: report_path.to_string(),
         comment_path,
         verdict,
         truncated,
         errors: vec![],
+        missing_policy_applied: None,
+        policy_outcome: Some(policy_outcome),
     };
 
     for f in surfaced {
