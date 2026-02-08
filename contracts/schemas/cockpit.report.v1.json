@@ -294,8 +294,26 @@
             ],
             "type": "string"
           },
-          "present": {
-            "type": "boolean"
+          "missing_policy_applied": {
+            "enum": [
+              "skip",
+              "warn",
+              "fail"
+            ]
+          },
+          "policy_outcome": {
+            "enum": [
+              "blocked",
+              "allowed",
+              "informational"
+            ]
+          },
+          "presence": {
+            "enum": [
+              "present",
+              "missing",
+              "invalid"
+            ]
           },
           "report_path": {
             "minLength": 1,
@@ -364,7 +382,7 @@
           "id",
           "blocking",
           "missing",
-          "present",
+          "presence",
           "verdict",
           "report_path"
         ],
