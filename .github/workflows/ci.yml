@@ -47,6 +47,18 @@ jobs:
             exit 1
           fi
 
+      - name: Conformance (happy_path)
+        run: |
+          export COCKPITCTL_STARTED_AT="2026-02-02T12:00:00Z"
+          cargo run -p cockpitctl -- ingest --artifacts fixtures/happy_path/artifacts --config fixtures/happy_path/cockpit.toml
+          cargo run -p xtask -- conform-dir --dir fixtures/happy_path/artifacts --all --validate-cockpit
+
+      - name: Conformance (reference_sensor)
+        run: |
+          export COCKPITCTL_STARTED_AT="2026-02-02T12:00:00Z"
+          cargo run -p cockpitctl -- ingest --artifacts fixtures/reference_sensor/artifacts --config fixtures/reference_sensor/cockpit.toml
+          cargo run -p xtask -- conform-dir --dir fixtures/reference_sensor/artifacts --all --validate-cockpit
+
       # Optional: mutation tests (expensive)
       # - name: Mutation tests
       #   run: cargo install cargo-mutants && cargo mutants --workspace

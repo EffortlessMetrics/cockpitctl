@@ -1,0 +1,23 @@
+name: Cockpit (simple)
+on:
+  pull_request:
+
+jobs:
+  cockpit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Sensor steps (examples — users replace with their own)
+      - name: Run builddiag
+        run: |
+          mkdir -p artifacts/builddiag
+          # builddiag check --output artifacts/builddiag/report.json
+          echo '{"schema":"sensor.report.v1","tool":{"name":"builddiag","version":"0.1.0"},"run":{"started_at":"2024-01-01T00:00:00Z"},"verdict":{"status":"pass","counts":{"info":0,"warn":0,"error":0}},"findings":[]}' > artifacts/builddiag/report.json
+
+      - name: Run cockpitctl
+        uses: ./
+        with:
+          artifacts-path: artifacts
+          config-path: cockpit.toml
+          post-comment: 'true'

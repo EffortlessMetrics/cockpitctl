@@ -34,6 +34,10 @@ inputs:
     description: 'Fail the action if cockpitctl returns a non-zero exit code'
     required: false
     default: 'true'
+  toolpack:
+    description: 'Path to toolpack.json for manifest-based installation'
+    required: false
+    default: ''
 
 outputs:
   exit-code:
@@ -115,6 +119,35 @@ runs:
         $dest = "$env:RUNNER_TEMP\cockpitctl.exe"
         Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing
         "$env:RUNNER_TEMP" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Verify checksum (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        if [[ -f /tmp/.cockpitctl-sha256 ]]; then
+          echo "Verifying checksum..."
+          sha256sum --check /tmp/.cockpitctl-sha256
+        else
+          echo "No checksum file found, skipping verification"
+        fi
+
+    - name: Verify checksum (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $checksumFile = "$env:RUNNER_TEMP\.cockpitctl-sha256"
+        if (Test-Path $checksumFile) {
+          Write-Host "Verifying checksum..."
+          $expected = (Get-Content $checksumFile).Split(" ")[0]
+          $actual = (Get-FileHash "$env:RUNNER_TEMP\cockpitctl.exe" -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) {
+            Write-Error "Checksum mismatch: expected $expected, got $actual"
+            exit 1
+          }
+          Write-Host "Checksum verified: $actual"
+        } else {
+          Write-Host "No checksum file found, skipping verification"
+        }
 
     - name: Verify installation
       shell: bash

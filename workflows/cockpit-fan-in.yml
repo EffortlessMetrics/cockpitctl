@@ -1,0 +1,62 @@
+name: Cockpit (fan-in)
+on:
+  pull_request:
+
+jobs:
+  sensor-builddiag:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run builddiag
+        run: |
+          mkdir -p artifacts/builddiag
+          # Replace with actual sensor command
+          echo '{"schema":"sensor.report.v1","tool":{"name":"builddiag","version":"0.1.0"},"run":{"started_at":"2024-01-01T00:00:00Z"},"verdict":{"status":"pass","counts":{"info":0,"warn":0,"error":0}},"findings":[]}' > artifacts/builddiag/report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sensor-builddiag
+          path: artifacts/builddiag/
+
+  sensor-linter:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run linter
+        run: |
+          mkdir -p artifacts/linter
+          # Replace with actual sensor command
+          echo '{"schema":"sensor.report.v1","tool":{"name":"linter","version":"0.1.0"},"run":{"started_at":"2024-01-01T00:00:00Z"},"verdict":{"status":"pass","counts":{"info":0,"warn":0,"error":0}},"findings":[]}' > artifacts/linter/report.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sensor-linter
+          path: artifacts/linter/
+
+  cockpit:
+    needs: [sensor-builddiag, sensor-linter]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sensor-*
+          path: artifacts/
+          merge-multiple: false
+
+      # Restructure: download-artifact creates sensor-<name>/ dirs, move to <name>/
+      - name: Restructure artifacts
+        run: |
+          for dir in artifacts/sensor-*/; do
+            sensor_name=$(basename "$dir" | sed 's/^sensor-//')
+            mv "$dir" "artifacts/$sensor_name" 2>/dev/null || true
+          done
+
+      - name: Run cockpitctl
+        uses: ./
+        with:
+          artifacts-path: artifacts
+          config-path: cockpit.toml
+          post-comment: 'true'
