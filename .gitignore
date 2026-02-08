@@ -9,3 +9,7 @@
 /fuzz/target
 /fuzz/artifacts
 /Cargo.lock
+
+# Prevent accidental Windows null-device file creation
+nul
+NUL
