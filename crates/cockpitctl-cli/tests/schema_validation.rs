@@ -11,6 +11,9 @@ use tempfile::TempDir;
 fn cmd() -> Command {
     let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
+    if let Ok(profile) = std::env::var("LLVM_PROFILE_FILE") {
+        cmd.env("LLVM_PROFILE_FILE", profile);
+    }
     cmd
 }
 

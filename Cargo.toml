@@ -20,6 +20,9 @@ homepage = "https://github.com/EffortlessMetrics/cockpitctl"
 authors = ["Effortless Metrics"]
 readme = "README.md"
 
+[workspace.lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }
+
 [workspace.dependencies]
 anyhow = "1.0.101"
 thiserror = "2.0.18"

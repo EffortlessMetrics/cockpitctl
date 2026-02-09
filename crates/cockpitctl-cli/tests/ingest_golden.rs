@@ -10,6 +10,14 @@ fn workspace_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
+fn cockpitctl_cmd() -> assert_cmd::Command {
+    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
+    if let Ok(profile) = std::env::var("LLVM_PROFILE_FILE") {
+        cmd.env("LLVM_PROFILE_FILE", profile);
+    }
+    cmd
+}
+
 #[test]
 fn ingest_happy_path_fixture_matches_golden() {
     let fixture = workspace_root().join("fixtures/happy_path");
@@ -20,7 +28,7 @@ fn ingest_happy_path_fixture_matches_golden() {
     let out_dir = artifacts.join("cockpit");
     let _ = fs::remove_dir_all(&out_dir);
 
-    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
+    let mut cmd = cockpitctl_cmd();
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",
@@ -52,7 +60,7 @@ fn ingest_missing_receipt_fixture_matches_golden_and_exits_2() {
     let out_dir = artifacts.join("cockpit");
     let _ = fs::remove_dir_all(&out_dir);
 
-    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
+    let mut cmd = cockpitctl_cmd();
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",
@@ -83,7 +91,7 @@ fn ingest_skip_receipt_fixture_matches_golden() {
     let out_dir = artifacts.join("cockpit");
     let _ = fs::remove_dir_all(&out_dir);
 
-    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
+    let mut cmd = cockpitctl_cmd();
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",
@@ -114,7 +122,7 @@ fn ingest_tool_error_fixture_matches_golden_and_exits_2() {
     let out_dir = artifacts.join("cockpit");
     let _ = fs::remove_dir_all(&out_dir);
 
-    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
+    let mut cmd = cockpitctl_cmd();
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",
@@ -145,7 +153,7 @@ fn ingest_mixed_verdicts_fixture_matches_golden_and_exits_2() {
     let out_dir = artifacts.join("cockpit");
     let _ = fs::remove_dir_all(&out_dir);
 
-    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
+    let mut cmd = cockpitctl_cmd();
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",

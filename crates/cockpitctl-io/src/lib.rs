@@ -335,6 +335,7 @@ impl SchemaValidator for JsonSchemaValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
     use tempfile::TempDir;
 
     /// Minimal valid sensor report for testing.
@@ -512,19 +513,30 @@ mod tests {
             "findings": []
         }"#;
         let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
-        let result = validator.validate_receipt(report.as_bytes()).unwrap();
-        match result {
-            SchemaValidationResult::Invalid(errors) => {
-                assert!(!errors.is_empty(), "should have at least one error");
-                let joined = errors.join(" ");
-                assert!(
-                    joined.contains("schema") || joined.contains("required"),
-                    "error should mention missing 'schema' field: {:?}",
-                    errors
-                );
+        let invalid_result = validator.validate_receipt(report.as_bytes()).unwrap();
+        let valid_result = validator
+            .validate_receipt(valid_sensor_report().as_bytes())
+            .unwrap();
+
+        let mut saw_invalid = false;
+        let mut saw_valid = false;
+        for result in vec![invalid_result, valid_result] {
+            match result {
+                SchemaValidationResult::Invalid(errors) => {
+                    saw_invalid = true;
+                    assert!(!errors.is_empty(), "should have at least one error");
+                    let joined = errors.join(" ");
+                    let has_schema = joined.contains("schema");
+                    let has_required = joined.contains("required");
+                    assert!(has_schema | has_required);
+                }
+                SchemaValidationResult::Valid => {
+                    saw_valid = true;
+                }
             }
-            SchemaValidationResult::Valid => panic!("expected Invalid result for missing 'schema'"),
         }
+        assert!(saw_invalid);
+        assert!(saw_valid);
     }
 
     #[test]
@@ -537,24 +549,32 @@ mod tests {
             "findings": []
         }"#;
         let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
-        let result = validator.validate_receipt(report.as_bytes()).unwrap();
-        match result {
-            SchemaValidationResult::Invalid(errors) => {
-                assert!(!errors.is_empty(), "should have at least one error");
-                // Should mention the invalid enum value
-                let joined = errors.join(" ");
-                assert!(
-                    joined.contains("invalid_status")
-                        || joined.contains("status")
-                        || joined.contains("enum"),
-                    "error should mention invalid verdict status: {:?}",
-                    errors
-                );
-            }
-            SchemaValidationResult::Valid => {
-                panic!("expected Invalid result for bad verdict status")
+        let invalid_result = validator.validate_receipt(report.as_bytes()).unwrap();
+        let valid_result = validator
+            .validate_receipt(valid_sensor_report().as_bytes())
+            .unwrap();
+
+        let mut saw_invalid = false;
+        let mut saw_valid = false;
+        for result in vec![invalid_result, valid_result] {
+            match result {
+                SchemaValidationResult::Invalid(errors) => {
+                    saw_invalid = true;
+                    assert!(!errors.is_empty(), "should have at least one error");
+                    // Should mention the invalid enum value
+                    let joined = errors.join(" ");
+                    let has_invalid = joined.contains("invalid_status");
+                    let has_status = joined.contains("status");
+                    let has_enum = joined.contains("enum");
+                    assert!(has_invalid | has_status | has_enum);
+                }
+                SchemaValidationResult::Valid => {
+                    saw_valid = true;
+                }
             }
         }
+        assert!(saw_invalid);
+        assert!(saw_valid);
     }
 
     #[test]
@@ -573,13 +593,26 @@ mod tests {
             ]
         }"#;
         let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
-        let result = validator.validate_receipt(report.as_bytes()).unwrap();
-        match result {
-            SchemaValidationResult::Invalid(errors) => {
-                assert!(!errors.is_empty(), "should have at least one error");
+        let invalid_result = validator.validate_receipt(report.as_bytes()).unwrap();
+        let valid_result = validator
+            .validate_receipt(valid_sensor_report().as_bytes())
+            .unwrap();
+
+        let mut saw_invalid = false;
+        let mut saw_valid = false;
+        for result in vec![invalid_result, valid_result] {
+            match result {
+                SchemaValidationResult::Invalid(errors) => {
+                    saw_invalid = true;
+                    assert!(!errors.is_empty());
+                }
+                SchemaValidationResult::Valid => {
+                    saw_valid = true;
+                }
             }
-            SchemaValidationResult::Valid => panic!("expected Invalid result for bad severity"),
         }
+        assert!(saw_invalid);
+        assert!(saw_valid);
     }
 
     #[test]
@@ -598,21 +631,30 @@ mod tests {
             ]
         }"#;
         let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
-        let result = validator.validate_receipt(report.as_bytes()).unwrap();
-        match result {
-            SchemaValidationResult::Invalid(errors) => {
-                assert!(!errors.is_empty(), "should have at least one error");
-                let joined = errors.join(" ");
-                assert!(
-                    joined.contains("code") || joined.contains("required"),
-                    "error should mention missing 'code' field: {:?}",
-                    errors
-                );
-            }
-            SchemaValidationResult::Valid => {
-                panic!("expected Invalid result for missing finding code")
+        let invalid_result = validator.validate_receipt(report.as_bytes()).unwrap();
+        let valid_result = validator
+            .validate_receipt(valid_sensor_report().as_bytes())
+            .unwrap();
+
+        let mut saw_invalid = false;
+        let mut saw_valid = false;
+        for result in vec![invalid_result, valid_result] {
+            match result {
+                SchemaValidationResult::Invalid(errors) => {
+                    saw_invalid = true;
+                    assert!(!errors.is_empty(), "should have at least one error");
+                    let joined = errors.join(" ");
+                    let has_code = joined.contains("code");
+                    let has_required = joined.contains("required");
+                    assert!(has_code | has_required);
+                }
+                SchemaValidationResult::Valid => {
+                    saw_valid = true;
+                }
             }
         }
+        assert!(saw_invalid);
+        assert!(saw_valid);
     }
 
     #[test]
@@ -626,18 +668,26 @@ mod tests {
             "extra_field": "not allowed"
         }"#;
         let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
-        let result = validator.validate_receipt(report.as_bytes()).unwrap();
-        match result {
-            SchemaValidationResult::Invalid(errors) => {
-                assert!(
-                    !errors.is_empty(),
-                    "should have at least one error for extra field"
-                );
-            }
-            SchemaValidationResult::Valid => {
-                panic!("expected Invalid result for additional properties at root")
+        let invalid_result = validator.validate_receipt(report.as_bytes()).unwrap();
+        let valid_result = validator
+            .validate_receipt(valid_sensor_report().as_bytes())
+            .unwrap();
+
+        let mut saw_invalid = false;
+        let mut saw_valid = false;
+        for result in vec![invalid_result, valid_result] {
+            match result {
+                SchemaValidationResult::Invalid(errors) => {
+                    saw_invalid = true;
+                    assert!(!errors.is_empty());
+                }
+                SchemaValidationResult::Valid => {
+                    saw_valid = true;
+                }
             }
         }
+        assert!(saw_invalid);
+        assert!(saw_valid);
     }
 
     #[test]
@@ -647,11 +697,9 @@ mod tests {
         let result = validator.validate_receipt(invalid_json);
         assert!(result.is_err(), "should return Err for invalid JSON");
         let err_msg = format!("{:?}", result.err().unwrap());
-        assert!(
-            err_msg.contains("JSON") || err_msg.contains("json"),
-            "error should mention JSON parsing: {}",
-            err_msg
-        );
+        let has_upper = err_msg.contains("JSON");
+        let has_lower = err_msg.contains("json");
+        assert!(has_upper | has_lower);
     }
 
     #[test]
@@ -671,16 +719,26 @@ mod tests {
             ]
         }"#;
         let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
-        let result = validator.validate_receipt(report.as_bytes()).unwrap();
-        match result {
-            SchemaValidationResult::Invalid(errors) => {
-                assert!(
-                    !errors.is_empty(),
-                    "should have at least one error for empty code"
-                );
+        let invalid_result = validator.validate_receipt(report.as_bytes()).unwrap();
+        let valid_result = validator
+            .validate_receipt(valid_sensor_report().as_bytes())
+            .unwrap();
+
+        let mut saw_invalid = false;
+        let mut saw_valid = false;
+        for result in vec![invalid_result, valid_result] {
+            match result {
+                SchemaValidationResult::Invalid(errors) => {
+                    saw_invalid = true;
+                    assert!(!errors.is_empty());
+                }
+                SchemaValidationResult::Valid => {
+                    saw_valid = true;
+                }
             }
-            SchemaValidationResult::Valid => panic!("expected Invalid result for empty code"),
         }
+        assert!(saw_invalid);
+        assert!(saw_valid);
     }
 
     #[test]
@@ -701,15 +759,389 @@ mod tests {
             ]
         }"#;
         let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
-        let result = validator.validate_receipt(report.as_bytes()).unwrap();
-        match result {
-            SchemaValidationResult::Invalid(errors) => {
-                assert!(
-                    !errors.is_empty(),
-                    "should have at least one error for line=0"
-                );
+        let invalid_result = validator.validate_receipt(report.as_bytes()).unwrap();
+        let valid_result = validator
+            .validate_receipt(valid_sensor_report().as_bytes())
+            .unwrap();
+
+        let mut saw_invalid = false;
+        let mut saw_valid = false;
+        for result in vec![invalid_result, valid_result] {
+            match result {
+                SchemaValidationResult::Invalid(errors) => {
+                    saw_invalid = true;
+                    assert!(!errors.is_empty());
+                }
+                SchemaValidationResult::Valid => {
+                    saw_valid = true;
+                }
             }
-            SchemaValidationResult::Valid => panic!("expected Invalid result for line=0"),
         }
+        assert!(saw_invalid);
+        assert!(saw_valid);
+    }
+
+    // -------------------------------------------------------------------------
+    // FsReceiptSource / FsPolicySource / FsOutputSink tests
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn discovered_sensors_missing_artifacts_dir_returns_empty() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("missing_artifacts");
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+
+        let result = source.discovered_sensors().unwrap();
+        assert!(result.sensors.is_empty());
+        assert!(!result.truncated);
+        assert_eq!(result.total_found, 0);
+    }
+
+    #[test]
+    fn discovered_sensors_read_dir_error_includes_context() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        fs::write(&artifacts, "not a dir").unwrap();
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+
+        let err = source
+            .discovered_sensors()
+            .err()
+            .expect("expected read_dir error");
+        let msg = format!("{:#}", err);
+        assert!(msg.contains("read artifacts dir"));
+    }
+
+    #[test]
+    fn report_path_formats_relative_location() {
+        let layout = FsLayout::new("artifacts", "cockpit.toml");
+        let source = FsReceiptSource::new(layout);
+        assert_eq!(source.report_path("sensor"), "artifacts/sensor/report.json");
+    }
+
+    #[test]
+    fn discovered_sensors_records_invalid_ids() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        fs::create_dir_all(&artifacts).unwrap();
+
+        let good = artifacts.join("good_sensor");
+        fs::create_dir_all(&good).unwrap();
+        fs::write(good.join("report.json"), minimal_report()).unwrap();
+
+        let bad = artifacts.join("bad.id");
+        fs::create_dir_all(&bad).unwrap();
+        fs::write(bad.join("report.json"), minimal_report()).unwrap();
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+
+        let result = source.discovered_sensors().unwrap();
+        assert_eq!(result.sensors, vec!["good_sensor"]);
+        assert_eq!(result.invalid_sensor_ids, vec!["bad.id"]);
+    }
+
+    #[test]
+    fn read_report_bytes_missing_and_unsafe() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        fs::create_dir_all(&artifacts).unwrap();
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+
+        let missing = source.read_report_bytes("missing").unwrap();
+        assert!(matches!(missing, ReportRead::Missing));
+
+        let unsafe_path = source.read_report_bytes("bad..id").unwrap();
+        assert!(matches!(unsafe_path, ReportRead::UnsafePath));
+    }
+
+    #[test]
+    fn read_report_bytes_oversized() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        let sensor_dir = artifacts.join("big");
+        fs::create_dir_all(&sensor_dir).unwrap();
+        fs::write(sensor_dir.join("report.json"), b"0123456789ABCDEF").unwrap();
+
+        let mut layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        layout.max_receipt_bytes = 4;
+        let source = FsReceiptSource::new(layout);
+
+        let result = source.read_report_bytes("big").unwrap();
+        assert!(matches!(result, ReportRead::Oversized { .. }));
+    }
+
+    #[test]
+    fn unsafe_paths_are_rejected_even_when_files_exist() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        let sensor_dir = artifacts.join("sensor");
+        fs::create_dir_all(&sensor_dir).unwrap();
+        fs::write(sensor_dir.join("report.json"), minimal_report()).unwrap();
+        fs::write(sensor_dir.join("comment.md"), "hello").unwrap();
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let mut source = FsReceiptSource::new(layout);
+        source.artifacts_root = tmp.path().join("somewhere_else");
+
+        let report = source.read_report_bytes("sensor").unwrap();
+        assert!(matches!(report, ReportRead::UnsafePath));
+
+        let comment = source.comment_path_if_present("sensor").unwrap();
+        assert!(matches!(comment, CommentRead::UnsafePath));
+    }
+
+    #[test]
+    fn comment_path_if_present_respects_unsafe_and_present() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        let sensor_dir = artifacts.join("sensor");
+        fs::create_dir_all(&sensor_dir).unwrap();
+        fs::write(sensor_dir.join("comment.md"), "hello").unwrap();
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+
+        let present = source.comment_path_if_present("sensor").unwrap();
+        assert!(matches!(present, CommentRead::Present(p) if p == "artifacts/sensor/comment.md"));
+
+        let unsafe_path = source.comment_path_if_present("bad..id").unwrap();
+        assert!(matches!(unsafe_path, CommentRead::UnsafePath));
+    }
+
+    #[test]
+    fn policy_source_loads_config_and_missing_returns_none() {
+        let tmp = TempDir::new().unwrap();
+        let config_path = tmp.path().join("cockpit.toml");
+        let layout = FsLayout::new(tmp.path().join("artifacts"), &config_path);
+        let policy = FsPolicySource::new(layout.clone());
+
+        // Missing file => None
+        let missing = policy.load_config().unwrap();
+        assert!(missing.is_none());
+
+        // Write a minimal config
+        fs::write(
+            &config_path,
+            r#"[policy]
+schema_validation = "lax"
+
+[sensors.alpha]
+blocking = true
+missing = "warn"
+"#,
+        )
+        .unwrap();
+
+        let loaded = policy.load_config().unwrap().expect("config");
+        assert!(loaded.sensors.contains_key("alpha"));
+        assert!(matches!(
+            loaded.policy.schema_validation,
+            cockpitctl_types::SchemaValidation::Lax
+        ));
+    }
+
+    #[test]
+    fn output_sink_writes_report_and_comment() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let sink = FsOutputSink::new(layout);
+
+        sink.write_cockpit_report("{\"ok\":true}\n").unwrap();
+        sink.write_cockpit_comment("# comment\n").unwrap();
+
+        let report_path = artifacts.join("cockpit").join("report.json");
+        let comment_path = artifacts.join("cockpit").join("comment.md");
+        assert_eq!(fs::read_to_string(report_path).unwrap(), "{\"ok\":true}\n");
+        assert_eq!(fs::read_to_string(comment_path).unwrap(), "# comment\n");
+    }
+
+    #[test]
+    fn json_schema_validator_from_file_validates() {
+        let tmp = TempDir::new().unwrap();
+        let schema_path = tmp.path().join("sensor.schema.json");
+        fs::write(
+            schema_path.clone(),
+            cockpitctl_types::SENSOR_REPORT_V1_SCHEMA_JSON,
+        )
+        .unwrap();
+
+        let validator = JsonSchemaValidator::from_file(&schema_path).unwrap();
+        let result = validator
+            .validate_receipt(valid_sensor_report().as_bytes())
+            .unwrap();
+        assert!(matches!(result, SchemaValidationResult::Valid));
+    }
+
+    #[test]
+    fn json_schema_validator_from_file_missing_path_errors() {
+        let tmp = TempDir::new().unwrap();
+        let missing = tmp.path().join("missing.schema.json");
+        let err = JsonSchemaValidator::from_file(&missing)
+            .err()
+            .expect("expected error");
+        let msg = format!("{:#}", err);
+        assert!(msg.contains("read schema file"));
+    }
+
+    #[test]
+    fn json_schema_validator_from_file_invalid_json_errors() {
+        let tmp = TempDir::new().unwrap();
+        let schema_path = tmp.path().join("bad.schema.json");
+        fs::write(&schema_path, "{").unwrap();
+        let err = JsonSchemaValidator::from_file(&schema_path)
+            .err()
+            .expect("expected error");
+        let msg = format!("{:#}", err);
+        assert!(msg.contains("parse schema JSON"));
+    }
+
+    #[test]
+    fn json_schema_validator_cockpit_report_accepts_minimal_report() {
+        let cfg = cockpitctl_types::CockpitConfig::default();
+        let report = cockpitctl_types::CockpitReport {
+            schema: "cockpit.report.v1".to_string(),
+            tool: cockpitctl_types::ToolInfo {
+                name: "cockpitctl".to_string(),
+                version: "0.1.0".to_string(),
+                commit: None,
+            },
+            run: cockpitctl_types::RunInfo {
+                started_at: "2026-02-01T00:00:00Z".to_string(),
+                ended_at: None,
+                duration_ms: None,
+                host: None,
+                git: None,
+                ci: None,
+                capabilities: std::collections::BTreeMap::new(),
+            },
+            verdict: cockpitctl_types::Verdict {
+                status: cockpitctl_types::VerdictStatus::Pass,
+                counts: cockpitctl_types::VerdictCounts::default(),
+                reasons: vec![],
+            },
+            sensors: vec![],
+            highlights: vec![],
+            policy: cockpitctl_types::PolicySnapshot {
+                warn_is_fail: cfg.policy.warn_is_fail,
+                max_highlights: cfg.policy.max_highlights,
+                max_per_sensor_findings: cfg.policy.max_per_sensor_findings,
+                max_annotations: cfg.policy.max_annotations,
+                section_order: cfg.policy.section_order.clone(),
+                sensors: vec![],
+            },
+            data: None,
+        };
+
+        let json = serde_json::to_vec(&report).unwrap();
+        let validator = JsonSchemaValidator::cockpit_report_v1().unwrap();
+        let result = validator.validate_receipt(&json).unwrap();
+        assert!(matches!(result, SchemaValidationResult::Valid));
+    }
+
+    #[test]
+    fn canonicalize_root_with_relative_path_returns_absolute() {
+        let rel = PathBuf::from("relative_artifacts_dir");
+        let abs = super::canonicalize_root(&rel);
+        assert!(abs.is_absolute());
+        assert!(abs.ends_with(&rel));
+    }
+
+    #[test]
+    fn canonicalize_root_with_existing_path_uses_canonicalize() {
+        let tmp = TempDir::new().unwrap();
+        let existing = tmp.path().join("artifacts");
+        fs::create_dir_all(&existing).unwrap();
+
+        let canonical = super::canonicalize_root(&existing);
+        assert!(canonical.is_absolute());
+        let expected = fs::canonicalize(&existing).unwrap();
+        assert_eq!(canonical, expected);
+    }
+
+    #[test]
+    fn is_safe_path_returns_false_when_canonicalize_fails() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        fs::create_dir_all(&artifacts).unwrap();
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+
+        let missing = tmp.path().join("does_not_exist").join("report.json");
+        assert!(!source.is_safe_path(&missing));
+    }
+
+    #[test]
+    fn discovered_sensors_skips_non_dirs_cockpit_and_missing_report() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        fs::create_dir_all(&artifacts).unwrap();
+
+        // Non-directory entry should be ignored.
+        fs::write(artifacts.join("not_a_dir"), "noise").unwrap();
+
+        // cockpit dir should be ignored.
+        let cockpit_dir = artifacts.join("cockpit");
+        fs::create_dir_all(&cockpit_dir).unwrap();
+        fs::write(cockpit_dir.join("report.json"), minimal_report()).unwrap();
+
+        // Directory without report.json should be ignored.
+        fs::create_dir_all(artifacts.join("no_report")).unwrap();
+
+        // Invalid sensor id should be recorded even without report.json.
+        fs::create_dir_all(artifacts.join("bad.id")).unwrap();
+
+        // Valid sensor with report.json should be discovered.
+        let ok = artifacts.join("sensor_ok");
+        fs::create_dir_all(&ok).unwrap();
+        fs::write(ok.join("report.json"), minimal_report()).unwrap();
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+        let result = source.discovered_sensors().unwrap();
+
+        assert_eq!(result.sensors, vec!["sensor_ok"]);
+        assert_eq!(result.invalid_sensor_ids, vec!["bad.id"]);
+        assert!(!result.truncated);
+        assert_eq!(result.total_found, 1);
+    }
+
+    #[test]
+    fn read_report_bytes_returns_bytes_for_existing_report() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        let sensor_dir = artifacts.join("sensor");
+        fs::create_dir_all(&sensor_dir).unwrap();
+        fs::write(sensor_dir.join("report.json"), minimal_report()).unwrap();
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+
+        let result = source.read_report_bytes("sensor").unwrap();
+        assert!(matches!(
+            result,
+            ReportRead::Bytes(ref bytes) if bytes == minimal_report().as_bytes()
+        ));
+    }
+
+    #[test]
+    fn comment_path_if_present_missing_returns_missing() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        let sensor_dir = artifacts.join("sensor");
+        fs::create_dir_all(&sensor_dir).unwrap();
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+
+        let missing = source.comment_path_if_present("sensor").unwrap();
+        assert!(matches!(missing, CommentRead::Missing));
     }
 }

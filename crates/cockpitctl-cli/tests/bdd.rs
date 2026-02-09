@@ -8,6 +8,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
+fn cockpitctl_cmd() -> assert_cmd::Command {
+    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
+    if let Ok(profile) = std::env::var("LLVM_PROFILE_FILE") {
+        cmd.env("LLVM_PROFILE_FILE", profile);
+    }
+    cmd
+}
+
 /// World state shared across steps within a scenario.
 #[derive(Debug, World)]
 #[world(init = Self::new)]
@@ -154,7 +162,7 @@ fn run_ingest_impl(world: &mut IngestWorld) {
     let artifacts = fixture_path.join("artifacts");
     let config = fixture_path.join("cockpit.toml");
 
-    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
+    let mut cmd = cockpitctl_cmd();
     cmd.env("COCKPITCTL_STARTED_AT", "2026-02-02T12:00:00Z");
     cmd.args([
         "ingest",
@@ -490,7 +498,7 @@ fn run_cli_command(world: &mut IngestWorld, command: String) {
     let subcommand = parts[1];
     let dir = world.fixture_path.as_ref().expect("directory not set");
 
-    let mut cmd = assert_cmd::cargo_bin_cmd!("cockpitctl");
+    let mut cmd = cockpitctl_cmd();
     cmd.current_dir(dir);
     cmd.arg(subcommand);
 

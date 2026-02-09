@@ -517,4 +517,58 @@ mod tests {
         assert_eq!(result.rendered_count, 2);
         assert!(!result.content.contains("capped"));
     }
+
+    #[test]
+    fn test_annotation_without_location_omits_loc_string() {
+        let cfg = CockpitConfig::default();
+        let highlights = vec![Highlight {
+            sensor_id: "sensor_a".to_string(),
+            finding: Finding {
+                severity: Severity::Warn,
+                check_id: None,
+                code: "code1".to_string(),
+                message: "message".to_string(),
+                location: None,
+                help: None,
+                url: None,
+                fingerprint: None,
+                data: None,
+            },
+        }];
+
+        let blocking = std::collections::BTreeMap::new();
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        assert!(result.content.contains("`code1`"));
+        assert!(!result.content.contains(" at `"));
+    }
+
+    #[test]
+    fn test_annotation_with_empty_location_omits_loc_string() {
+        let cfg = CockpitConfig::default();
+        let highlights = vec![Highlight {
+            sensor_id: "sensor_a".to_string(),
+            finding: Finding {
+                severity: Severity::Info,
+                check_id: None,
+                code: "code2".to_string(),
+                message: "message".to_string(),
+                location: Some(Location {
+                    path: None,
+                    line: None,
+                    col: None,
+                }),
+                help: None,
+                url: None,
+                fingerprint: None,
+                data: None,
+            },
+        }];
+
+        let blocking = std::collections::BTreeMap::new();
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        assert!(result.content.contains("`code2`"));
+        assert!(!result.content.contains(" at `"));
+    }
 }

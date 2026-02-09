@@ -17,3 +17,9 @@ cockpitctl-types = { path = "../crates/cockpitctl-types" }
 jsonschema.workspace = true
 serde_json.workspace = true
 walkdir.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }
