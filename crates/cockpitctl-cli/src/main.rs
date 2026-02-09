@@ -196,7 +196,7 @@ fn cmd_init(path: &str) -> Result<i32> {
     }
 
     // Keep init output simple: copy from repository example if present.
-    let example = include_str!("../../../cockpit.toml.example");
+    let example = include_str!("../cockpit.toml.example");
     fs::write(p, example).with_context(|| format!("write {}", p.display()))?;
     eprintln!("wrote {}", p.display());
     Ok(0)

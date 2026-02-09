@@ -40,6 +40,12 @@ enum Commands {
     /// Copy contracts/schemas/*.json → crates/cockpitctl-types/schemas/.
     SchemaSyncFix,
 
+    /// Check that crate-local cockpit.toml.example matches workspace root copy.
+    ExampleSyncCheck,
+
+    /// Copy cockpit.toml.example → crates/cockpitctl-cli/cockpit.toml.example.
+    ExampleSyncFix,
+
     /// Conformance harness: validate sensor receipts against the protocol.
     Conform {
         /// Path to the sensor report to validate.
@@ -170,6 +176,8 @@ fn run(cli: Cli) -> Result<()> {
         Commands::FixturesHelp => fixtures_help(),
         Commands::SchemaSyncCheck => schema_sync_check(),
         Commands::SchemaSyncFix => schema_sync_fix(),
+        Commands::ExampleSyncCheck => example_sync_check(),
+        Commands::ExampleSyncFix => example_sync_fix(),
         Commands::Conform {
             report,
             golden,
@@ -275,6 +283,36 @@ fn schema_sync_fix() -> Result<()> {
     }
 
     eprintln!("schema-sync-fix: {} files synced", SCHEMA_FILES.len());
+    Ok(())
+}
+
+fn example_sync_check() -> Result<()> {
+    let src = PathBuf::from("cockpit.toml.example");
+    let dst = PathBuf::from("crates/cockpitctl-cli/cockpit.toml.example");
+
+    let src_bytes = fs::read(&src).with_context(|| format!("read {}", src.display()))?;
+    let dst_bytes = fs::read(&dst).with_context(|| format!("read {}", dst.display()))?;
+
+    if src_bytes != dst_bytes {
+        anyhow::bail!(
+            "example-sync-check: cockpit.toml.example out of sync — run `cargo run -p xtask -- example-sync-fix`"
+        );
+    }
+
+    eprintln!("example-sync-check: cockpit.toml.example in sync");
+    Ok(())
+}
+
+fn example_sync_fix() -> Result<()> {
+    let src = PathBuf::from("cockpit.toml.example");
+    let dst = PathBuf::from("crates/cockpitctl-cli/cockpit.toml.example");
+
+    if let Some(parent) = dst.parent() {
+        fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
+    }
+
+    fs::copy(&src, &dst).with_context(|| format!("copy {} → {}", src.display(), dst.display()))?;
+    eprintln!("example-sync-fix: copied cockpit.toml.example");
     Ok(())
 }
 
@@ -864,6 +902,35 @@ mod tests {
     }
 
     #[test]
+    fn example_sync_check_and_fix() {
+        let _guard = FS_LOCK.lock().unwrap();
+        let temp = TempDir::new().expect("tempdir");
+        let _cwd = set_cwd(temp.path());
+
+        let content = "# example toml\n[policy]\nwarn_is_fail = false\n";
+        write_file(&temp.path().join("cockpit.toml.example"), content);
+        write_file(
+            &temp
+                .path()
+                .join("crates/cockpitctl-cli/cockpit.toml.example"),
+            content,
+        );
+        example_sync_check().expect("example_sync_check ok");
+
+        write_file(
+            &temp
+                .path()
+                .join("crates/cockpitctl-cli/cockpit.toml.example"),
+            "mismatch",
+        );
+        let err = example_sync_check().expect_err("example_sync_check mismatch");
+        assert!(format!("{:#}", err).contains("out of sync"));
+
+        example_sync_fix().expect("example_sync_fix");
+        example_sync_check().expect("example_sync_check after fix");
+    }
+
+    #[test]
     fn fixtures_help_runs() {
         fixtures_help().expect("fixtures_help");
     }
@@ -1106,6 +1173,13 @@ mod tests {
             write_file(&types.join(name), &minimal_schema_json(name, "Schema"));
         }
 
+        // Add example sync files for testing
+        write_file(&root.join("cockpit.toml.example"), "example");
+        write_file(
+            &root.join("crates/cockpitctl-cli/cockpit.toml.example"),
+            "example",
+        );
+
         let report_path = root.join("report.json");
         write_file(&report_path, &minimal_sensor_report_json());
 
@@ -1149,6 +1223,18 @@ mod tests {
         assert_eq!(
             main_entry(Cli {
                 command: Commands::SchemaSyncFix
+            }),
+            0
+        );
+        assert_eq!(
+            main_entry(Cli {
+                command: Commands::ExampleSyncCheck
+            }),
+            0
+        );
+        assert_eq!(
+            main_entry(Cli {
+                command: Commands::ExampleSyncFix
             }),
             0
         );

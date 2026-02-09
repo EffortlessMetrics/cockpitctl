@@ -9,6 +9,8 @@ homepage.workspace = true
 authors.workspace = true
 description = "cockpitctl compiler library — portable, no CLI dependencies"
 readme.workspace = true
+keywords = ["ci", "cd", "compiler", "aggregation", "sensors"]
+categories = ["development-tools"]
 
 [dependencies]
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.1.0" }

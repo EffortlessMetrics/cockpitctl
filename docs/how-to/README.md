@@ -38,6 +38,10 @@ Build a sensor that emits valid `sensor.report.v1` receipts.
 
 Verify your sensor produces correct, deterministic output.
 
+### [Sensor Authoring Checklist](sensor-authoring-checklist.md)
+
+P0 / P1 / P2 prioritized checklist for building conformant sensors.
+
 ## Related
 
 - [Tutorials](../tutorials/README.md) - If you're just getting started
