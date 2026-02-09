@@ -520,7 +520,7 @@ mod tests {
 
         let mut saw_invalid = false;
         let mut saw_valid = false;
-        for result in vec![invalid_result, valid_result] {
+        for result in [invalid_result, valid_result] {
             match result {
                 SchemaValidationResult::Invalid(errors) => {
                     saw_invalid = true;
@@ -556,7 +556,7 @@ mod tests {
 
         let mut saw_invalid = false;
         let mut saw_valid = false;
-        for result in vec![invalid_result, valid_result] {
+        for result in [invalid_result, valid_result] {
             match result {
                 SchemaValidationResult::Invalid(errors) => {
                     saw_invalid = true;
@@ -600,7 +600,7 @@ mod tests {
 
         let mut saw_invalid = false;
         let mut saw_valid = false;
-        for result in vec![invalid_result, valid_result] {
+        for result in [invalid_result, valid_result] {
             match result {
                 SchemaValidationResult::Invalid(errors) => {
                     saw_invalid = true;
@@ -638,7 +638,7 @@ mod tests {
 
         let mut saw_invalid = false;
         let mut saw_valid = false;
-        for result in vec![invalid_result, valid_result] {
+        for result in [invalid_result, valid_result] {
             match result {
                 SchemaValidationResult::Invalid(errors) => {
                     saw_invalid = true;
@@ -675,7 +675,7 @@ mod tests {
 
         let mut saw_invalid = false;
         let mut saw_valid = false;
-        for result in vec![invalid_result, valid_result] {
+        for result in [invalid_result, valid_result] {
             match result {
                 SchemaValidationResult::Invalid(errors) => {
                     saw_invalid = true;
@@ -726,7 +726,7 @@ mod tests {
 
         let mut saw_invalid = false;
         let mut saw_valid = false;
-        for result in vec![invalid_result, valid_result] {
+        for result in [invalid_result, valid_result] {
             match result {
                 SchemaValidationResult::Invalid(errors) => {
                     saw_invalid = true;
@@ -766,7 +766,7 @@ mod tests {
 
         let mut saw_invalid = false;
         let mut saw_valid = false;
-        for result in vec![invalid_result, valid_result] {
+        for result in [invalid_result, valid_result] {
             match result {
                 SchemaValidationResult::Invalid(errors) => {
                     saw_invalid = true;

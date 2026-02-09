@@ -41,13 +41,15 @@ cargo mutants --workspace
 Hexagonal/Clean architecture with microcrates. Dependencies point inward; domain crates must not depend on clap, filesystem, or network.
 
 ```
-cockpitctl-types   → DTOs, stable IDs, ordering helpers (no external deps except serde/time)
-cockpitctl-domain  → Policy evaluation, highlight selection, normalization (uses sha2/hex)
-cockpitctl-ingest  → Use case boundary with ports (traits): ReceiptSource, PolicySource, OutputSink
-cockpitctl-render  → PR comment renderer with stable markers and truncation
-cockpitctl-io      → Filesystem adapters implementing the ports
-cockpitctl-cli     → Binary entry point (clap), wires adapters to use case
-xtask              → Schema checks, fixture tooling
+cockpitctl-types    → DTOs, stable IDs, ordering helpers (no external deps except serde/time)
+cockpitctl-conform  → Conformance checking library (schema validation, path hygiene, ordering, etc.)
+cockpitctl-domain   → Policy evaluation, highlight selection, normalization (uses sha2/hex)
+cockpitctl-ingest   → Use case boundary with ports (traits): ReceiptSource, PolicySource, OutputSink
+cockpitctl-render   → PR comment renderer with stable markers and truncation
+cockpitctl-io       → Filesystem adapters implementing the ports
+cockpitctl-cli      → Binary entry point (clap), wires adapters to use case
+conformctl          → Standalone conformance checker binary (depends only on types + conform)
+xtask               → Schema checks, fixture tooling (delegates conformance to cockpitctl-conform)
 ```
 
 ## Key Contracts
@@ -81,6 +83,10 @@ Receipts are untrusted:
 cockpitctl ingest --artifacts artifacts --config cockpit.toml
 cockpitctl init --path cockpit.toml          # Write starter config
 cockpitctl validate --input report.json       # Validate receipt/report
+
+# Standalone conformance checker (no cockpitctl workspace needed)
+conformctl check --report report.json --all --sensor-id builddiag
+conformctl check-dir --dir artifacts --all --validate-cockpit
 ```
 
 ## Fixture Regeneration

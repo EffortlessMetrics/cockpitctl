@@ -44,6 +44,9 @@ jobs:
       - name: Wait for crates.io index update
         run: sleep 30
 
+      - name: Publish cockpitctl-conform
+        run: cargo publish -p cockpitctl-conform --token ${{ secrets.CRATES_IO_TOKEN }}
+
       - name: Publish cockpitctl-domain
         run: cargo publish -p cockpitctl-domain --token ${{ secrets.CRATES_IO_TOKEN }}
 
@@ -74,33 +77,66 @@ jobs:
       - name: Publish cockpitctl
         run: cargo publish -p cockpitctl --token ${{ secrets.CRATES_IO_TOKEN }}
 
+      - name: Publish conformctl
+        run: cargo publish -p conformctl --token ${{ secrets.CRATES_IO_TOKEN }}
+
   build-binaries:
-    name: Build ${{ matrix.name }}
+    name: Build ${{ matrix.package }} ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
+          # cockpitctl binaries
           - name: linux-x64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            package: cockpitctl
             binary_name: cockpitctl
             asset_name: cockpitctl-linux-x64
           - name: darwin-x64
             os: macos-latest
             target: x86_64-apple-darwin
+            package: cockpitctl
             binary_name: cockpitctl
             asset_name: cockpitctl-darwin-x64
           - name: darwin-arm64
             os: macos-latest
             target: aarch64-apple-darwin
+            package: cockpitctl
             binary_name: cockpitctl
             asset_name: cockpitctl-darwin-arm64
           - name: windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
+            package: cockpitctl
             binary_name: cockpitctl.exe
             asset_name: cockpitctl-windows-x64.exe
+          # conformctl binaries
+          - name: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            package: conformctl
+            binary_name: conformctl
+            asset_name: conformctl-linux-x64
+          - name: darwin-x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            package: conformctl
+            binary_name: conformctl
+            asset_name: conformctl-darwin-x64
+          - name: darwin-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            package: conformctl
+            binary_name: conformctl
+            asset_name: conformctl-darwin-arm64
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            package: conformctl
+            binary_name: conformctl.exe
+            asset_name: conformctl-windows-x64.exe
     steps:
       - uses: actions/checkout@v4
 
@@ -119,7 +155,7 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }} -p cockpitctl
+        run: cargo build --release --target ${{ matrix.target }} -p ${{ matrix.package }}
 
       - name: Rename binary (Unix)
         if: matrix.os != 'windows-latest'

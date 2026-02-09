@@ -39,6 +39,12 @@ jobs:
       - name: Package List (cockpitctl-core)
         run: cargo package --list -p cockpitctl-core
 
+      - name: Package List (cockpitctl-conform)
+        run: cargo package --list -p cockpitctl-conform
+
+      - name: Package List (conformctl)
+        run: cargo package --list -p conformctl
+
       - name: Ensure cockpitctl-core has no CLI dependencies
         run: |
           if cargo tree -p cockpitctl-core -e normal --prefix none | grep -Eq '^[[:space:]]*(clap|clap_derive|clap_builder)([[:space:]]|$)'; then
@@ -46,6 +52,16 @@ jobs:
             cargo tree -p cockpitctl-core -e normal
             exit 1
           fi
+
+      - name: Ensure conformctl has no cockpitctl-core/domain/ingest/render/io dependencies
+        run: |
+          for crate in cockpitctl-core cockpitctl-domain cockpitctl-ingest cockpitctl-render cockpitctl-io; do
+            if cargo tree -p conformctl -e normal --prefix none | grep -Eq "^[[:space:]]*${crate}([[:space:]]|$)"; then
+              echo "FAIL: ${crate} leaked into conformctl normal dependencies"
+              cargo tree -p conformctl -e normal
+              exit 1
+            fi
+          done
 
       - name: Conformance (happy_path)
         run: |

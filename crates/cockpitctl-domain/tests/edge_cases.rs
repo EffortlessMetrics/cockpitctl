@@ -112,14 +112,16 @@ fn select_highlights_dedupes_and_derives_fingerprint() {
 
 #[test]
 fn sort_sensor_summaries_respects_section_order_and_other() {
-    let mut cfg = CockpitConfig::default();
-    cfg.policy = Policy {
-        warn_is_fail: false,
-        max_highlights: 7,
-        max_per_sensor_findings: 20,
-        max_annotations: 25,
-        section_order: vec!["Tests".to_string()],
-        schema_validation: Default::default(),
+    let mut cfg = CockpitConfig {
+        policy: Policy {
+            warn_is_fail: false,
+            max_highlights: 7,
+            max_per_sensor_findings: 20,
+            max_annotations: 25,
+            section_order: vec!["Tests".to_string()],
+            schema_validation: Default::default(),
+        },
+        ..Default::default()
     };
     cfg.sensors.insert(
         "alpha".to_string(),

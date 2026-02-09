@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
+use cockpitctl_conform::ConformChecks;
 use std::fs;
 use std::path::PathBuf;
 
@@ -317,380 +318,56 @@ fn fixtures_help() -> Result<()> {
     Ok(())
 }
 
-fn is_valid_reason_token(s: &str) -> bool {
-    !s.is_empty()
-        && s.bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
-}
-
-fn check_path_hygiene(report: &cockpitctl_types::SensorReport) -> Vec<String> {
-    let mut violations = Vec::new();
-    for (i, f) in report.findings.iter().enumerate() {
-        if let Some(loc) = &f.location
-            && let Some(path) = &loc.path
-        {
-            if path.starts_with('/') || path.starts_with('\\') {
-                violations.push(format!(
-                    "finding[{}]: absolute path (starts with / or \\): {}",
-                    i, path
-                ));
-            } else if path.len() >= 2
-                && path.as_bytes()[0].is_ascii_alphabetic()
-                && path.as_bytes()[1] == b':'
-            {
-                violations.push(format!(
-                    "finding[{}]: absolute path (drive letter): {}",
-                    i, path
-                ));
-            }
-            if path.contains("..") {
-                violations.push(format!(
-                    "finding[{}]: path traversal (contains ..): {}",
-                    i, path
-                ));
-            }
-            if path.contains('\\') {
-                violations.push(format!("finding[{}]: backslash in path: {}", i, path));
-            }
-        }
-    }
-    violations
-}
-
-fn check_ordering(report: &cockpitctl_types::SensorReport, sensor_id: &str) -> Vec<String> {
-    use cockpitctl_types::{FindingSortKey, severity_rank};
-
-    let keys: Vec<FindingSortKey> = report
-        .findings
-        .iter()
-        .map(|f| FindingSortKey {
-            severity_rank: severity_rank(&f.severity),
-            sensor_id: sensor_id.to_string(),
-            path: f
-                .location
-                .as_ref()
-                .and_then(|l| l.path.as_deref())
-                .unwrap_or("")
-                .to_string(),
-            line: f.location.as_ref().and_then(|l| l.line).unwrap_or(0),
-            code: f.code.clone(),
-            message: f.message.clone(),
-        })
-        .collect();
-
-    let mut violations = Vec::new();
-    for i in 1..keys.len() {
-        if keys[i] < keys[i - 1] {
-            violations.push(format!(
-                "finding[{}] is out of order (severity_rank={}, code={}) < finding[{}] (severity_rank={}, code={})",
-                i, keys[i].severity_rank, keys[i].code,
-                i - 1, keys[i - 1].severity_rank, keys[i - 1].code,
-            ));
-        }
-    }
-    violations
-}
-
-fn check_tool_error_identity(report: &cockpitctl_types::SensorReport) -> Vec<String> {
-    let mut violations = Vec::new();
-
-    if !report.verdict.reasons.iter().any(|r| r == "tool_error") {
-        return violations;
-    }
-
-    let has_canonical = report
-        .findings
-        .iter()
-        .any(|f| f.check_id.as_deref() == Some("tool.runtime") && f.code == "runtime_error");
-
-    if !has_canonical {
-        violations.push(
-            "verdict.reasons contains \"tool_error\" but no finding has check_id=\"tool.runtime\" + code=\"runtime_error\""
-                .to_string(),
-        );
-    }
-
-    violations
-}
-
-fn check_cockpit_reason_tokens(report: &cockpitctl_types::CockpitReport) -> Vec<String> {
-    let mut violations = Vec::new();
-
-    for (i, reason) in report.verdict.reasons.iter().enumerate() {
-        if !is_valid_reason_token(reason) {
-            violations.push(format!(
-                "verdict.reasons[{}]: invalid token {:?}",
-                i, reason
-            ));
-        }
-    }
-
-    for (si, sensor) in report.sensors.iter().enumerate() {
-        for (ri, reason) in sensor.verdict.reasons.iter().enumerate() {
-            if !is_valid_reason_token(reason) {
-                violations.push(format!(
-                    "sensors[{}].verdict.reasons[{}]: invalid token {:?}",
-                    si, ri, reason
-                ));
-            }
-        }
-    }
-
-    for (name, cap) in &report.run.capabilities {
-        if let Some(reason) = &cap.reason
-            && !is_valid_reason_token(reason)
-        {
-            violations.push(format!(
-                "run.capabilities.{}.reason: invalid token {:?}",
-                name, reason
-            ));
-        }
-    }
-
-    violations
-}
-
-fn check_reason_tokens(report: &cockpitctl_types::SensorReport) -> Vec<String> {
-    let mut violations = Vec::new();
-
-    for (i, reason) in report.verdict.reasons.iter().enumerate() {
-        if !is_valid_reason_token(reason) {
-            violations.push(format!(
-                "verdict.reasons[{}]: invalid token {:?}",
-                i, reason
-            ));
-        }
-    }
-
-    for (name, cap) in &report.run.capabilities {
-        if let Some(reason) = &cap.reason
-            && !is_valid_reason_token(reason)
-        {
-            violations.push(format!(
-                "capabilities.{}.reason: invalid token {:?}",
-                name, reason
-            ));
-        }
-    }
-
-    violations
-}
-
-fn check_sensor_id_format(sensor_id: &str) -> Vec<String> {
-    let mut violations = Vec::new();
-    let valid = !sensor_id.is_empty()
-        && sensor_id
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-');
-    if !valid {
-        violations.push(format!(
-            "sensor_id {:?} does not match [a-zA-Z0-9_-]+",
-            sensor_id
-        ));
-    }
-    violations
-}
-
-fn check_artifact_pointers(report: &cockpitctl_types::SensorReport) -> Vec<String> {
-    let mut violations = Vec::new();
-    for (i, artifact) in report.artifacts.iter().enumerate() {
-        if artifact.id.is_empty() {
-            violations.push(format!("artifacts[{}]: id is empty", i));
-        }
-        if artifact.path.is_empty() {
-            violations.push(format!("artifacts[{}]: path is empty", i));
-        } else {
-            if artifact.path.contains("..") {
-                violations.push(format!(
-                    "artifacts[{}]: path contains \"..\": {}",
-                    i, artifact.path
-                ));
-            }
-            if artifact.path.starts_with('/') || artifact.path.starts_with('\\') {
-                violations.push(format!(
-                    "artifacts[{}]: path is absolute (starts with / or \\): {}",
-                    i, artifact.path
-                ));
-            }
-            if artifact.path.len() >= 2
-                && artifact.path.as_bytes()[0].is_ascii_alphabetic()
-                && artifact.path.as_bytes()[1] == b':'
-            {
-                violations.push(format!(
-                    "artifacts[{}]: path is absolute (drive letter): {}",
-                    i, artifact.path
-                ));
-            }
-        }
-        if artifact.mime.is_empty() {
-            violations.push(format!("artifacts[{}]: mime is empty", i));
-        }
-    }
-    violations
-}
-
-fn check_presence_semantics(report: &cockpitctl_types::CockpitReport) -> Vec<String> {
-    use cockpitctl_types::Presence;
-
-    let mut violations = Vec::new();
-    for (i, sensor) in report.sensors.iter().enumerate() {
-        if sensor.missing_policy_applied.is_some() && sensor.presence != Presence::Missing {
-            violations.push(format!(
-                "sensors[{}] ({}): missing_policy_applied is set but presence is {:?}, expected \"missing\"",
-                i, sensor.id, sensor.presence
-            ));
-        }
-    }
-    violations
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Conformance: reusable single-report check
+// Conformance: thin wrappers delegating to cockpitctl-conform
 // ─────────────────────────────────────────────────────────────────────────────
 
-struct ConformChecks {
-    path_hygiene: bool,
-    ordering: bool,
-    reason_lint: bool,
-    survivability: bool,
-    tool_error_identity: bool,
-    sensor_id_format: bool,
-    artifact_pointers: bool,
-}
-
-/// Validate a single sensor report from its already-read content.
-/// Returns Ok(()) on success, Err on any check failure.
-fn conform_single(content: &str, sensor_id: &str, checks: &ConformChecks) -> Result<()> {
-    use cockpitctl_types::{SENSOR_REPORT_V1_SCHEMA_JSON, SensorReport, VerdictStatus};
-
-    // Parse as JSON
-    let value: serde_json::Value = serde_json::from_str(content).context("parse JSON")?;
-
-    // Schema validation
-    let schema: serde_json::Value = serde_json::from_str(SENSOR_REPORT_V1_SCHEMA_JSON)
-        .context("parse embedded sensor.report.v1 schema")?;
-
-    let validator =
-        jsonschema::validator_for(&schema).context("compile sensor.report.v1 schema")?;
-
-    let errors: Vec<_> = validator.iter_errors(&value).collect();
-    if !errors.is_empty() {
+/// Print violations for a single conform result, matching the original output format.
+fn print_conform_result(result: &cockpitctl_conform::ConformResult, checks: &ConformChecks) {
+    if result.violations.iter().any(|v| v.check == "schema") {
         eprintln!("  FAIL: schema validation errors:");
-        for e in &errors {
-            eprintln!("    - {}", e);
+        for v in result.violations.iter().filter(|v| v.check == "schema") {
+            eprintln!("    - {}", v.message);
         }
-        anyhow::bail!("schema validation failed with {} error(s)", errors.len());
+        return;
     }
     eprintln!("  ok: schema validation passed");
 
-    // Parse for extended checks
-    let parsed: SensorReport = serde_json::from_value(value).context("parse as SensorReport")?;
+    let check_names = [
+        ("survivability", checks.survivability),
+        ("path_hygiene", checks.path_hygiene),
+        ("ordering", checks.ordering),
+        ("reason_lint", checks.reason_lint),
+        ("tool_error_identity", checks.tool_error_identity),
+        ("sensor_id_format", checks.sensor_id_format),
+        ("artifact_pointers", checks.artifact_pointers),
+    ];
 
-    // Survivability check
-    if checks.survivability {
-        if parsed.verdict.status == VerdictStatus::Fail {
-            let has_explanatory = !parsed.findings.is_empty() || !parsed.verdict.reasons.is_empty();
+    for (check_name, enabled) in &check_names {
+        if !enabled {
+            continue;
+        }
 
-            if !has_explanatory {
-                eprintln!("  FAIL: status=fail but no findings or reasons");
-                anyhow::bail!(
-                    "survivability check failed: status=fail requires explanatory findings or reasons"
-                );
+        let check_violations: Vec<_> = result
+            .violations
+            .iter()
+            .filter(|v| v.check == *check_name)
+            .collect();
+
+        let display_name = check_name.replace('_', "-");
+
+        if check_violations.is_empty() {
+            if *check_name == "survivability" {
+                eprintln!("  ok: survivability check passed");
+            } else {
+                eprintln!("  ok: {} passed", display_name);
             }
-            eprintln!("  ok: survivability check passed (fail has explanations)");
         } else {
-            eprintln!("  ok: survivability check skipped (status != fail)");
+            for v in &check_violations {
+                eprintln!("  FAIL: {}: {}", display_name, v.message);
+            }
         }
     }
-
-    let mut all_violations = Vec::new();
-
-    // Path hygiene check
-    if checks.path_hygiene {
-        let violations = check_path_hygiene(&parsed);
-        if violations.is_empty() {
-            eprintln!("  ok: path hygiene passed");
-        } else {
-            for v in &violations {
-                eprintln!("  FAIL: path-hygiene: {}", v);
-            }
-            all_violations.extend(violations);
-        }
-    }
-
-    // Ordering check
-    if checks.ordering {
-        let violations = check_ordering(&parsed, sensor_id);
-        if violations.is_empty() {
-            eprintln!("  ok: ordering passed");
-        } else {
-            for v in &violations {
-                eprintln!("  FAIL: ordering: {}", v);
-            }
-            all_violations.extend(violations);
-        }
-    }
-
-    // Reason token lint
-    if checks.reason_lint {
-        let violations = check_reason_tokens(&parsed);
-        if violations.is_empty() {
-            eprintln!("  ok: reason-lint passed");
-        } else {
-            for v in &violations {
-                eprintln!("  FAIL: reason-lint: {}", v);
-            }
-            all_violations.extend(violations);
-        }
-    }
-
-    // Tool error identity check
-    if checks.tool_error_identity {
-        let violations = check_tool_error_identity(&parsed);
-        if violations.is_empty() {
-            eprintln!("  ok: tool-error-identity passed");
-        } else {
-            for v in &violations {
-                eprintln!("  FAIL: tool-error-identity: {}", v);
-            }
-            all_violations.extend(violations);
-        }
-    }
-
-    // Sensor ID format check
-    if checks.sensor_id_format {
-        let violations = check_sensor_id_format(sensor_id);
-        if violations.is_empty() {
-            eprintln!("  ok: sensor-id-format passed");
-        } else {
-            for v in &violations {
-                eprintln!("  FAIL: sensor-id-format: {}", v);
-            }
-            all_violations.extend(violations);
-        }
-    }
-
-    // Artifact pointers check
-    if checks.artifact_pointers {
-        let violations = check_artifact_pointers(&parsed);
-        if violations.is_empty() {
-            eprintln!("  ok: artifact-pointers passed");
-        } else {
-            for v in &violations {
-                eprintln!("  FAIL: artifact-pointers: {}", v);
-            }
-            all_violations.extend(violations);
-        }
-    }
-
-    if !all_violations.is_empty() {
-        anyhow::bail!(
-            "conformance failed with {} violation(s)",
-            all_violations.len()
-        );
-    }
-
-    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -716,13 +393,13 @@ fn conform(
     let content =
         fs::read_to_string(&report).with_context(|| format!("read {}", report.display()))?;
 
-    // Determinism check (if golden provided) — before delegating to conform_single.
+    // Determinism check (if golden provided)
     if let Some(golden_path) = golden {
         let golden_content = fs::read_to_string(&golden_path)
             .with_context(|| format!("read golden {}", golden_path.display()))?;
 
-        if content != golden_content {
-            eprintln!("  FAIL: report does not match golden file");
+        if let Some(msg) = cockpitctl_conform::check_determinism(&content, &golden_content) {
+            eprintln!("  FAIL: {}", msg);
             eprintln!("    golden: {}", golden_path.display());
             eprintln!("    actual: {}", report.display());
             anyhow::bail!("determinism check failed: report differs from golden");
@@ -741,15 +418,19 @@ fn conform(
         artifact_pointers: artifact_pointers || all,
     };
 
-    conform_single(&content, sid, &checks)?;
+    let result = cockpitctl_conform::conform_single(&content, sid, &checks)?;
+    print_conform_result(&result, &checks);
+
+    if !result.is_pass() {
+        anyhow::bail!(
+            "conformance failed with {} violation(s)",
+            result.violations.len()
+        );
+    }
 
     eprintln!("conformance: PASS");
     Ok(())
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// conform-dir: validate all sensor receipts in an artifacts/ directory
-// ─────────────────────────────────────────────────────────────────────────────
 
 fn conform_dir(
     dir: PathBuf,
@@ -758,8 +439,6 @@ fn conform_dir(
     allow_missing_report: bool,
     presence_semantics: bool,
 ) -> Result<()> {
-    use cockpitctl_types::COCKPIT_REPORT_V1_SCHEMA_JSON;
-
     if !dir.exists() {
         anyhow::bail!("artifacts directory does not exist: {}", dir.display());
     }
@@ -811,9 +490,15 @@ fn conform_dir(
             }
         };
 
-        match conform_single(&content, &name, checks) {
-            Ok(()) => {
-                results.push((name, "PASS"));
+        match cockpitctl_conform::conform_single(&content, &name, checks) {
+            Ok(result) => {
+                print_conform_result(&result, checks);
+                if result.is_pass() {
+                    results.push((name, "PASS"));
+                } else {
+                    results.push((name, "FAIL"));
+                    had_failure = true;
+                }
             }
             Err(e) => {
                 eprintln!("  FAIL: {:#}", e);
@@ -823,7 +508,7 @@ fn conform_dir(
         }
     }
 
-    // Optionally validate cockpit/report.json against cockpit.report.v1 schema.
+    // Optionally validate cockpit/report.json
     if validate_cockpit {
         let cockpit_report = dir.join("cockpit").join("report.json");
         eprintln!();
@@ -833,20 +518,11 @@ fn conform_dir(
             let content = fs::read_to_string(&cockpit_report)
                 .with_context(|| format!("read {}", cockpit_report.display()))?;
 
-            let value: serde_json::Value = serde_json::from_str(&content)
-                .with_context(|| format!("parse json {}", cockpit_report.display()))?;
-
-            let schema: serde_json::Value = serde_json::from_str(COCKPIT_REPORT_V1_SCHEMA_JSON)
-                .context("parse embedded cockpit.report.v1 schema")?;
-
-            let validator =
-                jsonschema::validator_for(&schema).context("compile cockpit.report.v1 schema")?;
-
-            let errors: Vec<_> = validator.iter_errors(&value).collect();
-            if !errors.is_empty() {
+            let schema_violations = cockpitctl_conform::validate_cockpit_schema(&content)?;
+            if !schema_violations.is_empty() {
                 eprintln!("  FAIL: cockpit report schema validation errors:");
-                for e in &errors {
-                    eprintln!("    - {}", e);
+                for v in &schema_violations {
+                    eprintln!("    - {}", v.message);
                 }
                 results.push(("cockpit".to_string(), "FAIL"));
                 had_failure = true;
@@ -854,37 +530,28 @@ fn conform_dir(
                 eprintln!("  ok: cockpit report schema validation passed");
 
                 let mut cockpit_failed = false;
-                let needs_parse = checks.reason_lint || presence_semantics;
+                let needs_extended = checks.reason_lint || presence_semantics;
 
-                if needs_parse {
-                    let parsed: cockpitctl_types::CockpitReport = serde_json::from_value(value)
-                        .context("parse cockpit report for extended checks")?;
+                if needs_extended {
+                    let violations = cockpitctl_conform::check_cockpit_extended(
+                        &content,
+                        checks.reason_lint,
+                        presence_semantics,
+                    )?;
 
-                    // Reason-lint on cockpit report
-                    if checks.reason_lint {
-                        let violations = check_cockpit_reason_tokens(&parsed);
-                        if violations.is_empty() {
-                            eprintln!("  ok: cockpit reason-lint passed");
-                        } else {
-                            for v in &violations {
-                                eprintln!("  FAIL: cockpit reason-lint: {}", v);
-                            }
-                            cockpit_failed = true;
-                            had_failure = true;
-                        }
+                    for v in &violations {
+                        let display_check = v.check.replace('_', "-");
+                        eprintln!("  FAIL: cockpit {}: {}", display_check, v.message);
+                        cockpit_failed = true;
+                        had_failure = true;
                     }
 
-                    // Presence semantics on cockpit report
-                    if presence_semantics {
-                        let violations = check_presence_semantics(&parsed);
-                        if violations.is_empty() {
+                    if !cockpit_failed {
+                        if checks.reason_lint {
+                            eprintln!("  ok: cockpit reason-lint passed");
+                        }
+                        if presence_semantics {
                             eprintln!("  ok: cockpit presence-semantics passed");
-                        } else {
-                            for v in &violations {
-                                eprintln!("  FAIL: cockpit presence-semantics: {}", v);
-                            }
-                            cockpit_failed = true;
-                            had_failure = true;
                         }
                     }
                 }
@@ -1237,292 +904,6 @@ mod tests {
     }
 
     #[test]
-    fn reason_token_and_sensor_id_checks() {
-        assert!(is_valid_reason_token("ok_token"));
-        assert!(!is_valid_reason_token("Bad-Token"));
-
-        assert!(check_sensor_id_format("good_id").is_empty());
-        assert!(!check_sensor_id_format("bad.id").is_empty());
-    }
-
-    #[test]
-    fn path_hygiene_and_ordering_checks() {
-        let mut report = minimal_sensor_report();
-        report.findings = vec![
-            cockpitctl_types::Finding {
-                severity: cockpitctl_types::Severity::Info,
-                check_id: None,
-                code: "I1".to_string(),
-                message: "info".to_string(),
-                location: Some(cockpitctl_types::Location {
-                    path: Some("/abs/path".to_string()),
-                    line: Some(1),
-                    col: None,
-                }),
-                help: None,
-                url: None,
-                fingerprint: None,
-                data: None,
-            },
-            cockpitctl_types::Finding {
-                severity: cockpitctl_types::Severity::Warn,
-                check_id: None,
-                code: "W1".to_string(),
-                message: "warn".to_string(),
-                location: Some(cockpitctl_types::Location {
-                    path: Some("C:\\temp\\file.rs".to_string()),
-                    line: Some(2),
-                    col: None,
-                }),
-                help: None,
-                url: None,
-                fingerprint: None,
-                data: None,
-            },
-            cockpitctl_types::Finding {
-                severity: cockpitctl_types::Severity::Error,
-                check_id: None,
-                code: "E1".to_string(),
-                message: "err".to_string(),
-                location: Some(cockpitctl_types::Location {
-                    path: Some("src/../file.rs".to_string()),
-                    line: Some(3),
-                    col: None,
-                }),
-                help: None,
-                url: None,
-                fingerprint: None,
-                data: None,
-            },
-            cockpitctl_types::Finding {
-                severity: cockpitctl_types::Severity::Info,
-                check_id: None,
-                code: "I2".to_string(),
-                message: "no path".to_string(),
-                location: Some(cockpitctl_types::Location {
-                    path: None,
-                    line: None,
-                    col: None,
-                }),
-                help: None,
-                url: None,
-                fingerprint: None,
-                data: None,
-            },
-        ];
-
-        let violations = check_path_hygiene(&report);
-        assert!(violations.iter().any(|v| v.contains("absolute path")));
-        assert!(violations.iter().any(|v| v.contains("drive letter")));
-        assert!(violations.iter().any(|v| v.contains("path traversal")));
-        assert!(violations.iter().any(|v| v.contains("backslash")));
-
-        let mut ordering_report = minimal_sensor_report();
-        ordering_report.findings = vec![
-            cockpitctl_types::Finding {
-                severity: cockpitctl_types::Severity::Info,
-                check_id: None,
-                code: "I1".to_string(),
-                message: "info".to_string(),
-                location: None,
-                help: None,
-                url: None,
-                fingerprint: None,
-                data: None,
-            },
-            cockpitctl_types::Finding {
-                severity: cockpitctl_types::Severity::Error,
-                check_id: None,
-                code: "E1".to_string(),
-                message: "err".to_string(),
-                location: None,
-                help: None,
-                url: None,
-                fingerprint: None,
-                data: None,
-            },
-        ];
-        let ordering = check_ordering(&ordering_report, "sensor");
-        assert_eq!(ordering.len(), 1);
-    }
-
-    #[test]
-    fn tool_error_identity_and_reason_lint_checks() {
-        let mut report = minimal_sensor_report();
-        assert!(check_tool_error_identity(&report).is_empty());
-
-        report.verdict.reasons = vec!["tool_error".to_string()];
-        let violations = check_tool_error_identity(&report);
-        assert!(!violations.is_empty());
-
-        report.findings.push(cockpitctl_types::Finding {
-            severity: cockpitctl_types::Severity::Error,
-            check_id: Some("tool.runtime".to_string()),
-            code: "runtime_error".to_string(),
-            message: "boom".to_string(),
-            location: None,
-            help: None,
-            url: None,
-            fingerprint: None,
-            data: None,
-        });
-        assert!(check_tool_error_identity(&report).is_empty());
-
-        report.verdict.reasons = vec!["Bad-Token".to_string()];
-        report.run.capabilities.insert(
-            "git".to_string(),
-            cockpitctl_types::Capability {
-                status: cockpitctl_types::CapabilityStatus::Available,
-                reason: Some("Bad-Token".to_string()),
-            },
-        );
-        let reasons = check_reason_tokens(&report);
-        assert!(reasons.len() >= 2);
-    }
-
-    #[test]
-    fn cockpit_reason_tokens_and_presence_semantics_checks() {
-        let mut report = minimal_cockpit_report();
-        report.verdict.reasons = vec!["Bad-Token".to_string()];
-        report.run.capabilities.insert(
-            "git".to_string(),
-            cockpitctl_types::Capability {
-                status: cockpitctl_types::CapabilityStatus::Available,
-                reason: Some("Bad-Token".to_string()),
-            },
-        );
-        report.sensors.push(cockpitctl_types::SensorSummary {
-            id: "sensor".to_string(),
-            blocking: true,
-            missing: cockpitctl_types::MissingPolicy::Fail,
-            presence: cockpitctl_types::Presence::Present,
-            report_path: "artifacts/sensor/report.json".to_string(),
-            comment_path: None,
-            verdict: cockpitctl_types::Verdict {
-                status: cockpitctl_types::VerdictStatus::Pass,
-                counts: cockpitctl_types::VerdictCounts::default(),
-                reasons: vec!["Bad-Token".to_string()],
-            },
-            truncated: false,
-            errors: vec![],
-            missing_policy_applied: Some(cockpitctl_types::MissingPolicy::Skip),
-            policy_outcome: None,
-        });
-
-        let reason_violations = check_cockpit_reason_tokens(&report);
-        assert!(reason_violations.len() >= 3);
-
-        let presence_violations = check_presence_semantics(&report);
-        assert_eq!(presence_violations.len(), 1);
-    }
-
-    #[test]
-    fn artifact_pointer_checks() {
-        let mut report = minimal_sensor_report();
-        report.artifacts = vec![
-            cockpitctl_types::ArtifactPointer {
-                id: "".to_string(),
-                path: "".to_string(),
-                mime: "".to_string(),
-                schema: None,
-            },
-            cockpitctl_types::ArtifactPointer {
-                id: "ok".to_string(),
-                path: "../bad".to_string(),
-                mime: "text/plain".to_string(),
-                schema: None,
-            },
-            cockpitctl_types::ArtifactPointer {
-                id: "abs".to_string(),
-                path: "/abs/path.txt".to_string(),
-                mime: "text/plain".to_string(),
-                schema: None,
-            },
-            cockpitctl_types::ArtifactPointer {
-                id: "drive".to_string(),
-                path: "C:\\abs\\path.txt".to_string(),
-                mime: "text/plain".to_string(),
-                schema: None,
-            },
-        ];
-        let violations = check_artifact_pointers(&report);
-        assert!(violations.len() >= 4);
-    }
-
-    #[test]
-    fn conform_single_success_and_failure_paths() {
-        let checks = ConformChecks {
-            path_hygiene: false,
-            ordering: false,
-            reason_lint: false,
-            survivability: false,
-            tool_error_identity: false,
-            sensor_id_format: false,
-            artifact_pointers: false,
-        };
-        let ok = conform_single(&minimal_sensor_report_json(), "sensor", &checks);
-        assert!(ok.is_ok());
-
-        let err = conform_single("{}", "sensor", &checks).expect_err("schema error");
-        assert!(format!("{:#}", err).contains("schema validation failed"));
-
-        let mut fail_report = minimal_sensor_report();
-        fail_report.verdict.status = cockpitctl_types::VerdictStatus::Fail;
-        let fail_json = serde_json::to_string(&fail_report).expect("serialize");
-        let checks_survivability = ConformChecks {
-            path_hygiene: false,
-            ordering: false,
-            reason_lint: false,
-            survivability: true,
-            tool_error_identity: false,
-            sensor_id_format: false,
-            artifact_pointers: false,
-        };
-        let err = conform_single(&fail_json, "sensor", &checks_survivability)
-            .expect_err("survivability error");
-        assert!(format!("{:#}", err).contains("survivability"));
-
-        let mut ordering_report = minimal_sensor_report();
-        ordering_report.findings = vec![
-            cockpitctl_types::Finding {
-                severity: cockpitctl_types::Severity::Info,
-                check_id: None,
-                code: "I1".to_string(),
-                message: "info".to_string(),
-                location: None,
-                help: None,
-                url: None,
-                fingerprint: None,
-                data: None,
-            },
-            cockpitctl_types::Finding {
-                severity: cockpitctl_types::Severity::Error,
-                check_id: None,
-                code: "E1".to_string(),
-                message: "err".to_string(),
-                location: None,
-                help: None,
-                url: None,
-                fingerprint: None,
-                data: None,
-            },
-        ];
-        let ordering_json = serde_json::to_string(&ordering_report).expect("serialize");
-        let checks_ordering = ConformChecks {
-            path_hygiene: false,
-            ordering: true,
-            reason_lint: false,
-            survivability: false,
-            tool_error_identity: false,
-            sensor_id_format: false,
-            artifact_pointers: false,
-        };
-        let err =
-            conform_single(&ordering_json, "sensor", &checks_ordering).expect_err("ordering error");
-        assert!(format!("{:#}", err).contains("violation"));
-    }
-
-    #[test]
     fn conform_requires_sensor_id_for_ordering_and_handles_golden() {
         let temp = TempDir::new().expect("tempdir");
         let report_path = temp.path().join("report.json");
@@ -1821,172 +1202,67 @@ mod tests {
     }
 
     #[test]
-    fn conform_single_survivability_branches() {
-        let checks = ConformChecks {
+    fn conform_dir_cockpit_checks_pass() {
+        let temp = TempDir::new().expect("tempdir");
+        let artifacts = temp.path();
+        write_file(
+            &artifacts.join("ok").join("report.json"),
+            &minimal_sensor_report_json(),
+        );
+
+        let cockpit = minimal_cockpit_report();
+        let cockpit_json = serde_json::to_string(&cockpit).expect("serialize cockpit");
+        write_file(
+            &artifacts.join("cockpit").join("report.json"),
+            &cockpit_json,
+        );
+
+        let checks_reason_on = ConformChecks {
             path_hygiene: false,
-            ordering: false,
-            reason_lint: false,
-            survivability: true,
-            tool_error_identity: false,
-            sensor_id_format: false,
-            artifact_pointers: false,
-        };
-
-        let mut fail_report = minimal_sensor_report();
-        fail_report.verdict.status = cockpitctl_types::VerdictStatus::Fail;
-        fail_report.findings.push(cockpitctl_types::Finding {
-            severity: cockpitctl_types::Severity::Error,
-            check_id: None,
-            code: "E1".to_string(),
-            message: "fail".to_string(),
-            location: None,
-            help: None,
-            url: None,
-            fingerprint: None,
-            data: None,
-        });
-        let fail_json = serde_json::to_string(&fail_report).expect("serialize");
-        conform_single(&fail_json, "sensor", &checks).expect("survivability ok");
-
-        let pass_report = minimal_sensor_report_json();
-        conform_single(&pass_report, "sensor", &checks).expect("survivability skipped");
-    }
-
-    #[test]
-    fn conform_single_ordering_passes_with_no_findings() {
-        let checks = ConformChecks {
-            path_hygiene: false,
-            ordering: true,
-            reason_lint: false,
-            survivability: false,
-            tool_error_identity: false,
-            sensor_id_format: false,
-            artifact_pointers: false,
-        };
-        conform_single(&minimal_sensor_report_json(), "sensor", &checks)
-            .expect("ordering should pass with empty findings");
-    }
-
-    #[test]
-    fn conform_single_reports_multiple_violations() {
-        let mut report = minimal_sensor_report();
-        report.findings = vec![cockpitctl_types::Finding {
-            severity: cockpitctl_types::Severity::Warn,
-            check_id: None,
-            code: "W1".to_string(),
-            message: "warn".to_string(),
-            location: Some(cockpitctl_types::Location {
-                path: Some("../bad/path.rs".to_string()),
-                line: Some(1),
-                col: None,
-            }),
-            help: None,
-            url: None,
-            fingerprint: None,
-            data: None,
-        }];
-        report.verdict.reasons = vec!["Bad-Token".to_string(), "tool_error".to_string()];
-        report.artifacts = vec![cockpitctl_types::ArtifactPointer {
-            id: "abs".to_string(),
-            path: "/abs/path.txt".to_string(),
-            mime: "text/plain".to_string(),
-            schema: None,
-        }];
-
-        let checks = ConformChecks {
-            path_hygiene: true,
             ordering: false,
             reason_lint: true,
             survivability: false,
-            tool_error_identity: true,
-            sensor_id_format: true,
-            artifact_pointers: true,
+            tool_error_identity: false,
+            sensor_id_format: false,
+            artifact_pointers: false,
         };
 
-        let json = serde_json::to_string(&report).expect("serialize");
-        let err = conform_single(&json, "bad.id", &checks).expect_err("violations expected");
-        assert!(format!("{:#}", err).contains("conformance failed"));
-    }
+        conform_dir(artifacts.to_path_buf(), true, &checks_reason_on, true, true)
+            .expect("cockpit checks pass");
+        conform_dir(
+            artifacts.to_path_buf(),
+            true,
+            &checks_reason_on,
+            true,
+            false,
+        )
+        .expect("cockpit checks pass without presence semantics");
 
-    #[test]
-    fn conform_single_ok_branches_for_checks() {
-        let mut report = minimal_sensor_report();
-        report.findings = vec![cockpitctl_types::Finding {
-            severity: cockpitctl_types::Severity::Info,
-            check_id: None,
-            code: "I1".to_string(),
-            message: "info".to_string(),
-            location: Some(cockpitctl_types::Location {
-                path: Some("src/main.rs".to_string()),
-                line: Some(1),
-                col: None,
-            }),
-            help: None,
-            url: None,
-            fingerprint: None,
-            data: None,
-        }];
-        report.artifacts = vec![cockpitctl_types::ArtifactPointer {
-            id: "log".to_string(),
-            path: "artifacts/log.txt".to_string(),
-            mime: "text/plain".to_string(),
-            schema: None,
-        }];
-
-        let checks = ConformChecks {
-            path_hygiene: true,
+        let checks_reason_off = ConformChecks {
+            path_hygiene: false,
             ordering: false,
             reason_lint: false,
             survivability: false,
-            tool_error_identity: true,
-            sensor_id_format: true,
-            artifact_pointers: true,
+            tool_error_identity: false,
+            sensor_id_format: false,
+            artifact_pointers: false,
         };
-
-        let json = serde_json::to_string(&report).expect("serialize");
-        conform_single(&json, "good_id", &checks).expect("checks should pass");
-    }
-
-    #[test]
-    fn conform_golden_matches_and_mismatch() {
-        let temp = TempDir::new().expect("tempdir");
-        let report_path = temp.path().join("report.json");
-        let golden_path = temp.path().join("golden.json");
-        let content = minimal_sensor_report_json();
-        write_file(&report_path, &content);
-        write_file(&golden_path, &content);
-
-        conform(
-            report_path.clone(),
-            Some(golden_path.clone()),
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            None,
+        conform_dir(
+            artifacts.to_path_buf(),
+            true,
+            &checks_reason_off,
+            true,
+            true,
         )
-        .expect("golden match");
-
-        write_file(&golden_path, r#"{"schema":"sensor.report.v1"}"#);
-        let err = conform(
-            report_path,
-            Some(golden_path),
+        .expect("cockpit checks pass without reason lint");
+        conform_dir(
+            artifacts.to_path_buf(),
+            true,
+            &checks_reason_off,
+            true,
             false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            None,
         )
-        .expect_err("golden mismatch");
-        assert!(format!("{:#}", err).contains("determinism check failed"));
+        .expect("cockpit checks pass with no extended checks");
     }
 
     #[test]
@@ -2016,52 +1292,6 @@ mod tests {
         let err = conform_dir(artifacts2.to_path_buf(), false, &checks, true, false)
             .expect_err("conform_single error");
         assert!(format!("{:#}", err).contains("conform-dir"));
-    }
-
-    #[test]
-    fn conform_dir_cockpit_checks_pass() {
-        let temp = TempDir::new().expect("tempdir");
-        let artifacts = temp.path();
-        write_file(
-            &artifacts.join("ok").join("report.json"),
-            &minimal_sensor_report_json(),
-        );
-
-        let cockpit = minimal_cockpit_report();
-        let cockpit_json = serde_json::to_string(&cockpit).expect("serialize cockpit");
-        write_file(
-            &artifacts.join("cockpit").join("report.json"),
-            &cockpit_json,
-        );
-
-        let checks_reason_on = ConformChecks {
-            path_hygiene: false,
-            ordering: false,
-            reason_lint: true,
-            survivability: false,
-            tool_error_identity: false,
-            sensor_id_format: false,
-            artifact_pointers: false,
-        };
-
-        conform_dir(artifacts.to_path_buf(), true, &checks_reason_on, true, true)
-            .expect("cockpit checks pass");
-        conform_dir(artifacts.to_path_buf(), true, &checks_reason_on, true, false)
-            .expect("cockpit checks pass without presence semantics");
-
-        let checks_reason_off = ConformChecks {
-            path_hygiene: false,
-            ordering: false,
-            reason_lint: false,
-            survivability: false,
-            tool_error_identity: false,
-            sensor_id_format: false,
-            artifact_pointers: false,
-        };
-        conform_dir(artifacts.to_path_buf(), true, &checks_reason_off, true, true)
-            .expect("cockpit checks pass without reason lint");
-        conform_dir(artifacts.to_path_buf(), true, &checks_reason_off, true, false)
-            .expect("cockpit checks pass with no extended checks");
     }
 
     #[test]
@@ -2108,6 +1338,48 @@ mod tests {
 
         let err = validate_schemas(dir.to_path_buf(), false).expect_err("validation errors");
         assert!(format!("{:#}", err).contains("schema validation failed"));
+    }
+
+    #[test]
+    fn conform_golden_matches_and_mismatch() {
+        let temp = TempDir::new().expect("tempdir");
+        let report_path = temp.path().join("report.json");
+        let golden_path = temp.path().join("golden.json");
+        let content = minimal_sensor_report_json();
+        write_file(&report_path, &content);
+        write_file(&golden_path, &content);
+
+        conform(
+            report_path.clone(),
+            Some(golden_path.clone()),
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            None,
+        )
+        .expect("golden match");
+
+        write_file(&golden_path, r#"{"schema":"sensor.report.v1"}"#);
+        let err = conform(
+            report_path,
+            Some(golden_path),
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            None,
+        )
+        .expect_err("golden mismatch");
+        assert!(format!("{:#}", err).contains("determinism check failed"));
     }
 
     #[cfg(coverage)]

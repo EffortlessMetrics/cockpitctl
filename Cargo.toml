@@ -8,6 +8,8 @@ members = [
   "crates/cockpitctl-io",
   "crates/cockpitctl-core",
   "crates/cockpitctl-cli",
+  "crates/cockpitctl-conform",
+  "crates/conformctl",
   "xtask",
 ]
 
