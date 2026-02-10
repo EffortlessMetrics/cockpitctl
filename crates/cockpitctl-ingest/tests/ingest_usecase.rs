@@ -904,9 +904,13 @@ fn ingest_propagates_discovery_error() {
 fn ingest_propagates_policy_load_error() {
     let receipts = ErroringReceipts::with_sensors(vec!["sensor".to_string()]);
     let output = CaptureOutput::default();
-    let uc = IngestUseCase::new(receipts, ErroringPolicy, output, ExplodingValidator, |_r, _cfg| {
-        "comment".to_string()
-    });
+    let uc = IngestUseCase::new(
+        receipts,
+        ErroringPolicy,
+        output,
+        ExplodingValidator,
+        |_r, _cfg| "comment".to_string(),
+    );
 
     let err = uc.execute(default_request()).err().expect("expected error");
     assert!(format!("{:#}", err).contains("load cockpit.toml"));

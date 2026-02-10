@@ -1,6 +1,6 @@
 use cockpitctl_domain::{
-    derive_fingerprint, overall_verdict, select_highlights, sort_sensor_summaries,
-    snapshot_policy, summarize_sensor_report, synthesize_path_traversal_highlight,
+    derive_fingerprint, overall_verdict, select_highlights, snapshot_policy, sort_sensor_summaries,
+    summarize_sensor_report, synthesize_path_traversal_highlight,
     synthesize_schema_violation_sensor,
 };
 use cockpitctl_types::{

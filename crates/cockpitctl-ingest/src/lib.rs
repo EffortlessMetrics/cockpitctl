@@ -283,9 +283,8 @@ where
                             errors,
                         );
                         sensor_summaries.push(summary);
-                        highlight_candidates.push(
-                            h.expect("schema violation always yields a highlight"),
-                        );
+                        highlight_candidates
+                            .push(h.expect("schema violation always yields a highlight"));
                         continue;
                     }
                 }
