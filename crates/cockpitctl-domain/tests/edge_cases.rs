@@ -1,6 +1,6 @@
 use cockpitctl_domain::{
     derive_fingerprint, overall_verdict, select_highlights, sort_sensor_summaries,
-    summarize_sensor_report, synthesize_path_traversal_highlight,
+    snapshot_policy, summarize_sensor_report, synthesize_path_traversal_highlight,
     synthesize_schema_violation_sensor,
 };
 use cockpitctl_types::{
@@ -291,4 +291,62 @@ fn synthesize_path_traversal_highlight_without_context_is_plain() {
     let highlight =
         synthesize_path_traversal_highlight("sensor", "artifacts/sensor/report.json", None);
     assert!(!highlight.finding.message.contains("(unsafe"));
+}
+
+#[test]
+fn snapshot_policy_includes_sensor_entries() {
+    let mut cfg = CockpitConfig::default();
+    cfg.sensors.insert(
+        "alpha".to_string(),
+        SensorPolicy {
+            blocking: true,
+            missing: MissingPolicy::Warn,
+            section: Some("Diagnostics".to_string()),
+            require_label: Some("needs-diag".to_string()),
+            repro: Some("cargo test".to_string()),
+        },
+    );
+
+    let snapshot = snapshot_policy(&cfg);
+    assert_eq!(snapshot.sensors.len(), 1);
+    let sensor = &snapshot.sensors[0];
+    assert_eq!(sensor.id, "alpha");
+    assert!(sensor.blocking);
+    assert_eq!(sensor.missing, MissingPolicy::Warn);
+    assert_eq!(sensor.section.as_deref(), Some("Diagnostics"));
+    assert_eq!(sensor.require_label.as_deref(), Some("needs-diag"));
+    assert_eq!(sensor.repro.as_deref(), Some("cargo test"));
+}
+
+#[test]
+fn select_highlights_exercises_blocking_branch_ordering() {
+    let mut cfg = CockpitConfig::default();
+    cfg.policy.max_highlights = 10;
+
+    let highlight_blocking = Highlight {
+        sensor_id: "blocker".to_string(),
+        finding: finding("E_BLOCK", Severity::Error),
+    };
+    let highlight_nonblocking = Highlight {
+        sensor_id: "nonblock".to_string(),
+        finding: finding("E_NON", Severity::Error),
+    };
+
+    let mut sensor_blocking = std::collections::BTreeMap::new();
+    sensor_blocking.insert("blocker".to_string(), true);
+    sensor_blocking.insert("nonblock".to_string(), false);
+
+    let selected = select_highlights(
+        vec![highlight_blocking.clone(), highlight_nonblocking.clone()],
+        &cfg,
+        &sensor_blocking,
+    );
+    assert_eq!(selected.len(), 2);
+
+    let selected_reversed = select_highlights(
+        vec![highlight_nonblocking, highlight_blocking],
+        &cfg,
+        &sensor_blocking,
+    );
+    assert_eq!(selected_reversed.len(), 2);
 }

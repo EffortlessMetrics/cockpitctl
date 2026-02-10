@@ -451,6 +451,14 @@ mod tests {
     }
 
     #[test]
+    fn cmd_init_returns_error_on_write_failure() {
+        let temp = TempDir::new().expect("tempdir");
+        let bad_path = temp.path().join("missing_dir").join("cockpit.toml");
+        let err = cmd_init(bad_path.to_string_lossy().as_ref()).expect_err("expected error");
+        assert!(format!("{:#}", err).contains("write"));
+    }
+
+    #[test]
     fn cmd_validate_lax_accepts_sensor_report() {
         let temp = TempDir::new().expect("tempdir");
         let path = write_temp_json(&temp, "sensor.json", &minimal_sensor_report_json());
@@ -578,6 +586,58 @@ mod tests {
         let out_dir = artifacts.join("cockpit");
         assert!(out_dir.join("report.json").exists());
         assert!(out_dir.join("comment.md").exists());
+
+        unsafe {
+            std::env::remove_var("COCKPITCTL_STARTED_AT");
+        }
+    }
+
+    #[test]
+    fn cmd_ingest_lax_propagates_ingest_error() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe {
+            std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
+        }
+
+        let temp = TempDir::new().expect("tempdir");
+        let artifacts_file = temp.path().join("artifacts");
+        std::fs::write(&artifacts_file, "not a dir").expect("write artifacts file");
+        let config_path = temp.path().join("cockpit.toml");
+
+        let err = cmd_ingest(
+            artifacts_file.to_string_lossy().as_ref(),
+            config_path.to_string_lossy().as_ref(),
+            vec![],
+            Some(SchemaValidationMode::Lax),
+        )
+        .expect_err("expected ingest error");
+        assert!(format!("{:#}", err).contains("ingest"));
+
+        unsafe {
+            std::env::remove_var("COCKPITCTL_STARTED_AT");
+        }
+    }
+
+    #[test]
+    fn cmd_ingest_strict_propagates_ingest_error() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe {
+            std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
+        }
+
+        let temp = TempDir::new().expect("tempdir");
+        let artifacts_file = temp.path().join("artifacts");
+        std::fs::write(&artifacts_file, "not a dir").expect("write artifacts file");
+        let config_path = temp.path().join("cockpit.toml");
+
+        let err = cmd_ingest(
+            artifacts_file.to_string_lossy().as_ref(),
+            config_path.to_string_lossy().as_ref(),
+            vec![],
+            None,
+        )
+        .expect_err("expected ingest error");
+        assert!(format!("{:#}", err).contains("ingest"));
 
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");

@@ -222,3 +222,123 @@ fn render_comment_handles_missing_locations_and_comment_paths() {
     assert!(md.contains("`W1`"));
     assert!(!md.contains(" at `"));
 }
+
+#[test]
+fn render_comment_covers_warn_skip_and_nonblocking() {
+    let mut cfg = CockpitConfig::default();
+    cfg.sensors.insert(
+        "warn_sensor".to_string(),
+        SensorPolicy {
+            blocking: true,
+            missing: cockpitctl_types::MissingPolicy::Fail,
+            section: None,
+            require_label: None,
+            repro: None,
+        },
+    );
+    cfg.sensors.insert(
+        "skip_sensor".to_string(),
+        SensorPolicy {
+            blocking: false,
+            missing: cockpitctl_types::MissingPolicy::Skip,
+            section: None,
+            require_label: None,
+            repro: None,
+        },
+    );
+
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Warn,
+            counts: VerdictCounts::default(),
+            reasons: vec![],
+        },
+        sensors: vec![
+            SensorSummary {
+                id: "warn_sensor".to_string(),
+                blocking: true,
+                missing: cockpitctl_types::MissingPolicy::Fail,
+                presence: Presence::Present,
+                report_path: "artifacts/warn_sensor/report.json".to_string(),
+                comment_path: None,
+                verdict: Verdict {
+                    status: VerdictStatus::Warn,
+                    counts: VerdictCounts::default(),
+                    reasons: vec![],
+                },
+                truncated: false,
+                errors: vec![],
+                missing_policy_applied: None,
+                policy_outcome: None,
+            },
+            SensorSummary {
+                id: "skip_sensor".to_string(),
+                blocking: false,
+                missing: cockpitctl_types::MissingPolicy::Skip,
+                presence: Presence::Present,
+                report_path: "artifacts/skip_sensor/report.json".to_string(),
+                comment_path: None,
+                verdict: Verdict {
+                    status: VerdictStatus::Skip,
+                    counts: VerdictCounts::default(),
+                    reasons: vec![],
+                },
+                truncated: false,
+                errors: vec![],
+                missing_policy_applied: None,
+                policy_outcome: None,
+            },
+        ],
+        highlights: vec![],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: None,
+    };
+
+    let md = render_comment(&report, &cfg);
+    assert!(md.contains("⚠️ warn"));
+    assert!(md.contains("⏭ skip"));
+    assert!(md.contains("| `skip_sensor` | ⏭ skip | no |"));
+}
+
+#[test]
+fn render_comment_highlight_with_empty_location_omits_loc() {
+    let cfg = CockpitConfig::default();
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Pass,
+            counts: VerdictCounts::default(),
+            reasons: vec![],
+        },
+        sensors: vec![sensor_summary("alpha", VerdictStatus::Pass, false)],
+        highlights: vec![Highlight {
+            sensor_id: "alpha".to_string(),
+            finding: Finding {
+                severity: Severity::Info,
+                check_id: None,
+                code: "I1".to_string(),
+                message: "message".to_string(),
+                location: Some(Location {
+                    path: None,
+                    line: None,
+                    col: None,
+                }),
+                help: None,
+                url: None,
+                fingerprint: None,
+                data: None,
+            },
+        }],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: None,
+    };
+
+    let md = render_comment(&report, &cfg);
+    assert!(md.contains("`I1`"));
+    assert!(!md.contains(" at `"));
+}

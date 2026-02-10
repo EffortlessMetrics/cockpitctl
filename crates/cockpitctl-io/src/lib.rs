@@ -1144,4 +1144,126 @@ missing = "warn"
         let missing = source.comment_path_if_present("sensor").unwrap();
         assert!(matches!(missing, CommentRead::Missing));
     }
+
+    #[test]
+    fn policy_source_invalid_toml_errors() {
+        let tmp = TempDir::new().unwrap();
+        let config_path = tmp.path().join("cockpit.toml");
+        fs::write(&config_path, "not = toml =").unwrap();
+
+        let layout = FsLayout::new(tmp.path().join("artifacts"), &config_path);
+        let policy = FsPolicySource::new(layout);
+
+        let err = policy.load_config().expect_err("expected TOML parse error");
+        assert!(format!("{:#}", err).contains("parse TOML"));
+    }
+
+    #[test]
+    fn policy_source_read_error_is_reported() {
+        let tmp = TempDir::new().unwrap();
+        let config_path = tmp.path().join("cockpit.toml");
+        fs::write(&config_path, "[policy]\n").unwrap();
+
+        #[cfg(windows)]
+        let _lock = {
+            use std::fs::OpenOptions;
+            use std::os::windows::fs::OpenOptionsExt;
+            OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(&config_path)
+                .expect("lock file")
+        };
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&config_path).unwrap().permissions();
+            perms.set_mode(0o000);
+            fs::set_permissions(&config_path, perms).unwrap();
+        }
+
+        let layout = FsLayout::new(tmp.path().join("artifacts"), &config_path);
+        let policy = FsPolicySource::new(layout);
+
+        let err = policy.load_config().expect_err("expected read error");
+        assert!(format!("{:#}", err).contains("read config"));
+    }
+
+    #[test]
+    fn output_sink_errors_when_out_dir_uncreatable() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        fs::write(&artifacts, "not a dir").unwrap();
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let sink = FsOutputSink::new(layout);
+
+        let err = sink
+            .write_cockpit_report("{\"ok\":true}\n")
+            .expect_err("expected report write error");
+        assert!(format!("{:#}", err).contains("create out dir"));
+
+        let err = sink
+            .write_cockpit_comment("# comment\n")
+            .expect_err("expected comment write error");
+        assert!(format!("{:#}", err).contains("create out dir"));
+    }
+
+    #[test]
+    fn json_schema_validator_from_schema_invalid_schema_errors() {
+        let bad_schema = serde_json::json!({ "type": 123 });
+        let err = JsonSchemaValidator::from_schema(&bad_schema)
+            .err()
+            .expect("expected schema error");
+        assert!(format!("{:#}", err).contains("invalid JSON schema"));
+    }
+
+    #[test]
+    fn json_schema_validator_from_file_invalid_schema_errors() {
+        let tmp = TempDir::new().unwrap();
+        let schema_path = tmp.path().join("bad.schema.json");
+        fs::write(&schema_path, r#"{ "type": 123 }"#).unwrap();
+
+        let err = JsonSchemaValidator::from_file(&schema_path)
+            .err()
+            .expect("expected schema error");
+        assert!(format!("{:#}", err).contains("invalid JSON schema"));
+    }
+
+    #[test]
+    fn read_report_bytes_read_error_when_locked() {
+        let tmp = TempDir::new().unwrap();
+        let artifacts = tmp.path().join("artifacts");
+        let sensor_dir = artifacts.join("sensor");
+        fs::create_dir_all(&sensor_dir).unwrap();
+        let report_path = sensor_dir.join("report.json");
+        fs::write(&report_path, minimal_report()).unwrap();
+
+        #[cfg(windows)]
+        let _lock = {
+            use std::fs::OpenOptions;
+            use std::os::windows::fs::OpenOptionsExt;
+            OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(&report_path)
+                .expect("lock report file")
+        };
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = fs::metadata(&report_path).unwrap().permissions();
+            perms.set_mode(0o000);
+            fs::set_permissions(&report_path, perms).unwrap();
+        }
+
+        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"));
+        let source = FsReceiptSource::new(layout);
+
+        let err = source
+            .read_report_bytes("sensor")
+            .err()
+            .expect("expected read error");
+        assert!(format!("{:#}", err).contains("read receipt"));
+    }
 }

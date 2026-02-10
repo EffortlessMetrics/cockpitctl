@@ -474,6 +474,39 @@ mod tests {
     }
 
     #[test]
+    fn test_annotation_ordering_blocking_branch_reverse_input() {
+        let mut cfg = CockpitConfig::default();
+        cfg.policy.max_annotations = 25;
+
+        let highlights = vec![
+            make_highlight(
+                "blocking_sensor",
+                "code_block",
+                Some("src/b.rs"),
+                Some(10),
+                Severity::Error,
+            ),
+            make_highlight(
+                "non_blocking",
+                "code_non",
+                Some("src/a.rs"),
+                Some(10),
+                Severity::Error,
+            ),
+        ];
+
+        let mut blocking = std::collections::BTreeMap::new();
+        blocking.insert("blocking_sensor".to_string(), true);
+        blocking.insert("non_blocking".to_string(), false);
+
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        let lines: Vec<&str> = result.content.lines().collect();
+        assert!(lines[0].contains("blocking_sensor"));
+        assert!(lines[1].contains("non_blocking"));
+    }
+
+    #[test]
     fn test_empty_annotations() {
         let cfg = CockpitConfig::default();
         let highlights: Vec<Highlight> = vec![];

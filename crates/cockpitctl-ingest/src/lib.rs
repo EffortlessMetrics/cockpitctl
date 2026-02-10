@@ -283,9 +283,9 @@ where
                             errors,
                         );
                         sensor_summaries.push(summary);
-                        if let Some(h) = h {
-                            highlight_candidates.push(h);
-                        }
+                        highlight_candidates.push(
+                            h.expect("schema violation always yields a highlight"),
+                        );
                         continue;
                     }
                 }
@@ -314,9 +314,8 @@ where
                         e.to_string(),
                     );
                     sensor_summaries.push(summary);
-                    if let Some(h) = h {
-                        highlight_candidates.push(h);
-                    }
+                    highlight_candidates
+                        .push(h.expect("invalid receipt always yields a highlight"));
                 }
             }
         }

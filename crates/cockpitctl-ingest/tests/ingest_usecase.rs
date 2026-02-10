@@ -145,6 +145,97 @@ impl SchemaValidator for ExplodingValidator {
     }
 }
 
+struct ErroringReceipts {
+    sensors: Vec<String>,
+    err_on_discover: bool,
+    err_on_comment: bool,
+    err_on_read: bool,
+}
+
+impl ErroringReceipts {
+    fn with_sensors(sensors: Vec<String>) -> Self {
+        Self {
+            sensors,
+            err_on_discover: false,
+            err_on_comment: false,
+            err_on_read: false,
+        }
+    }
+}
+
+impl ReceiptSource for ErroringReceipts {
+    fn discovered_sensors(&self) -> anyhow::Result<DiscoveredSensors> {
+        if self.err_on_discover {
+            anyhow::bail!("discovery failed");
+        }
+        Ok(DiscoveredSensors {
+            sensors: self.sensors.clone(),
+            truncated: false,
+            total_found: self.sensors.len(),
+            invalid_sensor_ids: vec![],
+        })
+    }
+
+    fn read_report_bytes(&self, sensor_id: &str) -> anyhow::Result<ReportRead> {
+        if self.err_on_read {
+            anyhow::bail!("read failed for {}", sensor_id);
+        }
+        Ok(ReportRead::Bytes(report_bytes(
+            VerdictStatus::Pass,
+            VerdictCounts::default(),
+            vec![],
+        )))
+    }
+
+    fn report_path(&self, sensor_id: &str) -> String {
+        format!("artifacts/{}/report.json", sensor_id)
+    }
+
+    fn comment_path_if_present(&self, _sensor_id: &str) -> anyhow::Result<CommentRead> {
+        if self.err_on_comment {
+            anyhow::bail!("comment read failed");
+        }
+        Ok(CommentRead::Missing)
+    }
+}
+
+struct ErroringPolicy;
+
+impl PolicySource for ErroringPolicy {
+    fn load_config(&self) -> anyhow::Result<Option<CockpitConfig>> {
+        anyhow::bail!("policy load failed");
+    }
+}
+
+struct ErroringValidator;
+
+impl SchemaValidator for ErroringValidator {
+    fn validate_receipt(&self, _bytes: &[u8]) -> anyhow::Result<SchemaValidationResult> {
+        anyhow::bail!("schema validator failed");
+    }
+}
+
+struct ErroringOutput {
+    fail_report: bool,
+    fail_comment: bool,
+}
+
+impl OutputSink for ErroringOutput {
+    fn write_cockpit_report(&self, _json: &str) -> anyhow::Result<()> {
+        if self.fail_report {
+            anyhow::bail!("report write failed");
+        }
+        Ok(())
+    }
+
+    fn write_cockpit_comment(&self, _md: &str) -> anyhow::Result<()> {
+        if self.fail_comment {
+            anyhow::bail!("comment write failed");
+        }
+        Ok(())
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------------
@@ -788,4 +879,131 @@ fn ingest_report_unsafe_path_emits_highlight() {
             .any(|c| c == "cockpit.path_traversal"),
         "expected path traversal highlight"
     );
+}
+
+#[test]
+fn ingest_propagates_discovery_error() {
+    let receipts = ErroringReceipts {
+        sensors: vec![],
+        err_on_discover: true,
+        err_on_comment: false,
+        err_on_read: false,
+    };
+    let policy = StubPolicy { cfg: None };
+    let output = CaptureOutput::default();
+
+    let uc = IngestUseCase::new(receipts, policy, output, ExplodingValidator, |_r, _cfg| {
+        "comment".to_string()
+    });
+
+    let err = uc.execute(default_request()).err().expect("expected error");
+    assert!(format!("{:#}", err).contains("discover sensors"));
+}
+
+#[test]
+fn ingest_propagates_policy_load_error() {
+    let receipts = ErroringReceipts::with_sensors(vec!["sensor".to_string()]);
+    let output = CaptureOutput::default();
+    let uc = IngestUseCase::new(receipts, ErroringPolicy, output, ExplodingValidator, |_r, _cfg| {
+        "comment".to_string()
+    });
+
+    let err = uc.execute(default_request()).err().expect("expected error");
+    assert!(format!("{:#}", err).contains("load cockpit.toml"));
+}
+
+#[test]
+fn ingest_propagates_comment_read_error() {
+    let receipts = ErroringReceipts {
+        sensors: vec!["sensor".to_string()],
+        err_on_discover: false,
+        err_on_comment: true,
+        err_on_read: false,
+    };
+    let policy = StubPolicy { cfg: None };
+    let output = CaptureOutput::default();
+    let uc = IngestUseCase::new(receipts, policy, output, ExplodingValidator, |_r, _cfg| {
+        "comment".to_string()
+    });
+
+    let err = uc.execute(default_request()).err().expect("expected error");
+    assert!(format!("{:#}", err).contains("comment read failed"));
+}
+
+#[test]
+fn ingest_propagates_report_read_error() {
+    let receipts = ErroringReceipts {
+        sensors: vec!["sensor".to_string()],
+        err_on_discover: false,
+        err_on_comment: false,
+        err_on_read: true,
+    };
+    let policy = StubPolicy { cfg: None };
+    let output = CaptureOutput::default();
+    let uc = IngestUseCase::new(receipts, policy, output, ExplodingValidator, |_r, _cfg| {
+        "comment".to_string()
+    });
+
+    let err = uc.execute(default_request()).err().expect("expected error");
+    assert!(format!("{:#}", err).contains("read failed"));
+}
+
+#[test]
+fn ingest_propagates_schema_validator_error() {
+    let receipts = ErroringReceipts::with_sensors(vec!["sensor".to_string()]);
+    let mut cfg = CockpitConfig::default();
+    cfg.policy.schema_validation = SchemaValidation::Strict;
+    cfg.sensors.insert(
+        "sensor".to_string(),
+        SensorPolicy {
+            blocking: true,
+            missing: MissingPolicy::Fail,
+            section: None,
+            require_label: None,
+            repro: None,
+        },
+    );
+    let policy = StubPolicy { cfg: Some(cfg) };
+    let output = CaptureOutput::default();
+
+    let uc = IngestUseCase::new(receipts, policy, output, ErroringValidator, |_r, _cfg| {
+        "comment".to_string()
+    });
+
+    let err = uc.execute(default_request()).err().expect("expected error");
+    assert!(format!("{:#}", err).contains("schema validator failed"));
+}
+
+#[test]
+fn ingest_propagates_report_write_error() {
+    let receipts = ErroringReceipts::with_sensors(vec!["sensor".to_string()]);
+    let policy = StubPolicy { cfg: None };
+    let output = ErroringOutput {
+        fail_report: true,
+        fail_comment: false,
+    };
+
+    let uc = IngestUseCase::new(receipts, policy, output, ExplodingValidator, |_r, _cfg| {
+        "comment".to_string()
+    });
+
+    let err = uc.execute(default_request()).err().expect("expected error");
+    assert!(format!("{:#}", err).contains("report write failed"));
+}
+
+#[test]
+fn ingest_propagates_comment_write_error() {
+    let receipts = ErroringReceipts::with_sensors(vec!["sensor".to_string()]);
+    let policy = StubPolicy { cfg: None };
+    let output = ErroringOutput {
+        fail_report: false,
+        fail_comment: true,
+    };
+
+    let uc = IngestUseCase::new(receipts, policy, output, ExplodingValidator, |_r, _cfg| {
+        "comment".to_string()
+    });
+
+    let err = uc.execute(default_request()).err().expect("expected error");
+    assert!(format!("{:#}", err).contains("comment write failed"));
 }
