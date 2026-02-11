@@ -10,6 +10,13 @@
 /fuzz/artifacts
 /Cargo.lock
 
+# Test and tooling artifacts
+/mutants.out
+*.snap.new
+
+# Local configuration
+/cockpit.toml
+
 # Prevent accidental Windows null-device file creation
 nul
 NUL

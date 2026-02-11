@@ -1,6 +1,6 @@
 [package]
 name = "cockpitctl-io"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -18,8 +18,8 @@ toml.workspace = true
 walkdir.workspace = true
 serde_json.workspace = true
 jsonschema.workspace = true
-cockpitctl-types = { path = "../cockpitctl-types", version = "0.1.0" }
-cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.1.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.0" }
+cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.2.0" }
 
 [dev-dependencies]
 tempfile.workspace = true

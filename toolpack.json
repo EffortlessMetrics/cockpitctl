@@ -1,9 +1,9 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "train": "nightly",
   "tools": {
     "cockpitctl": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "assets": {
         "linux-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/latest/download/cockpitctl-linux-x64", "sha256": "" },
         "darwin-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/latest/download/cockpitctl-darwin-x64", "sha256": "" },
@@ -12,7 +12,7 @@
       }
     },
     "conformctl": {
-      "version": "0.1.0",
+      "version": "0.2.0",
       "assets": {
         "linux-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/latest/download/conformctl-linux-x64", "sha256": "" },
         "darwin-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/latest/download/conformctl-darwin-x64", "sha256": "" },

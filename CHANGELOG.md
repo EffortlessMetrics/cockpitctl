@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-10
+
 ### Added
 
 - **cockpitctl-core facade crate** — single dependency for downstream consumers

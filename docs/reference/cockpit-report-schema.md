@@ -42,7 +42,7 @@ cockpitctl version information.
 ```json
 "tool": {
   "name": "cockpitctl",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "commit": "abc1234"
 }
 ```
@@ -194,7 +194,7 @@ Director-specific payload for dashboards or downstream tools.
   "schema": "cockpit.report.v1",
   "tool": {
     "name": "cockpitctl",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "run": {
     "started_at": "2024-01-15T10:35:00Z"

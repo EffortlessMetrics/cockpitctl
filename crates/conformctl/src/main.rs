@@ -514,7 +514,7 @@ mod tests {
             schema: "cockpit.report.v1".to_string(),
             tool: cockpitctl_types::ToolInfo {
                 name: "cockpitctl".to_string(),
-                version: "0.1.0".to_string(),
+                version: "0.2.0".to_string(),
                 commit: None,
             },
             run: cockpitctl_types::RunInfo {

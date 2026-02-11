@@ -1,0 +1,102 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.2.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T12:00:00Z"
+  },
+  "verdict": {
+    "status": "warn",
+    "counts": {
+      "info": 1,
+      "warn": 2,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "unicodescan",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/unicodescan/report.json",
+      "verdict": {
+        "status": "warn",
+        "counts": {
+          "info": 1,
+          "warn": 2,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "allowed"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "unicodescan",
+      "finding": {
+        "severity": "warn",
+        "code": "unicodescan.encoding",
+        "message": "Non-ASCII characters in source file",
+        "location": {
+          "path": "src/日本語/file.rs",
+          "line": 10
+        },
+        "fingerprint": "2bd37da939f6c48c3626145957c6c21276b636b0b3af4d138447643f36536105"
+      }
+    },
+    {
+      "sensor_id": "unicodescan",
+      "finding": {
+        "severity": "warn",
+        "code": "unicodescan.emoji",
+        "message": "Emoji detected in path component",
+        "location": {
+          "path": "src/🚀_rocket/launch.rs",
+          "line": 1
+        },
+        "fingerprint": "d988c478435b2a7150b81d7c9019e8a8bbcd120d96ae5900072a6e05dade643a"
+      }
+    },
+    {
+      "sensor_id": "unicodescan",
+      "finding": {
+        "severity": "info",
+        "code": "unicodescan.cyrillics",
+        "message": "Cyrillic characters in filename: привет.rs",
+        "location": {
+          "path": "src/русский/привет.rs",
+          "line": 42
+        },
+        "fingerprint": "bd3d3bdc75c6d957912ea62521f47cd5da363f904240f3cab1635be7b2a0e036"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Policy",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "unicodescan",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Policy",
+        "repro": "unicodescan check"
+      }
+    ]
+  }
+}

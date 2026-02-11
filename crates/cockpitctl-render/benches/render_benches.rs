@@ -115,7 +115,7 @@ fn generate_sensor_summary(rng: &mut impl Rng, sensor_id: &str, _section: &str) 
 fn generate_tool_info() -> ToolInfo {
     ToolInfo {
         name: "cockpitctl".to_string(),
-        version: "0.1.0".to_string(),
+        version: "0.2.0".to_string(),
         commit: Some("abc1234".to_string()),
     }
 }
