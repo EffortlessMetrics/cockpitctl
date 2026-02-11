@@ -22,6 +22,10 @@ inputs:
     description: 'Version of cockpitctl to install (e.g., "v1.0.0" or "latest")'
     required: false
     default: 'latest'
+  repository:
+    description: 'Repository to download cockpitctl from (e.g., "EffortlessMetrics/cockpitctl"). Defaults to the action repository.'
+    required: false
+    default: ''
   post-comment:
     description: 'Whether to post/update the PR comment (requires GITHUB_TOKEN with PR write access)'
     required: false
@@ -87,7 +91,16 @@ runs:
       id: url
       shell: bash
       run: |
-        REPO="${{ github.action_repository || 'your-org/cockpitctl' }}"
+        REPO="${{ inputs.repository }}"
+        if [[ -z "$REPO" ]]; then
+          REPO="${{ github.action_repository }}"
+        fi
+        
+        if [[ -z "$REPO" ]]; then
+          echo "::error::Unable to determine repository for downloads. Set inputs.repository (e.g. EffortlessMetrics/cockpitctl)."
+          exit 1
+        fi
+
         VERSION="${{ inputs.version }}"
         ASSET="${{ steps.platform.outputs.asset }}"
 
@@ -120,35 +133,6 @@ runs:
         Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing
         "$env:RUNNER_TEMP" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: Verify checksum (Unix)
-      if: runner.os != 'Windows'
-      shell: bash
-      run: |
-        if [[ -f /tmp/.cockpitctl-sha256 ]]; then
-          echo "Verifying checksum..."
-          sha256sum --check /tmp/.cockpitctl-sha256
-        else
-          echo "No checksum file found, skipping verification"
-        fi
-
-    - name: Verify checksum (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        $checksumFile = "$env:RUNNER_TEMP\.cockpitctl-sha256"
-        if (Test-Path $checksumFile) {
-          Write-Host "Verifying checksum..."
-          $expected = (Get-Content $checksumFile).Split(" ")[0]
-          $actual = (Get-FileHash "$env:RUNNER_TEMP\cockpitctl.exe" -Algorithm SHA256).Hash.ToLower()
-          if ($actual -ne $expected) {
-            Write-Error "Checksum mismatch: expected $expected, got $actual"
-            exit 1
-          }
-          Write-Host "Checksum verified: $actual"
-        } else {
-          Write-Host "No checksum file found, skipping verification"
-        }
-
     - name: Verify installation
       shell: bash
       run: |
@@ -160,16 +144,26 @@ runs:
       run: |
         set +e
 
-        # Build the command
-        CMD="cockpitctl ingest --artifacts '${{ inputs.artifacts-path }}' --config '${{ inputs.config-path }}'"
+        # Build argv as an array (no eval; avoids injection and quoting bugs)
+        CMD=(cockpitctl ingest
+          --artifacts "${{ inputs.artifacts-path }}"
+          --config "${{ inputs.config-path }}"
+        )
 
-        # Add labels if provided
+        # Add labels if provided (inputs.labels is comma-separated)
         if [[ -n "${{ inputs.labels }}" ]]; then
-          CMD="$CMD --labels '${{ inputs.labels }}'"
+          IFS=',' read -r -a LABELS <<< "${{ inputs.labels }}"
+          for label in "${LABELS[@]}"; do
+            # trim whitespace
+            label="${label#"${label%%[![:space:]]*}"}"
+            label="${label%"${label##*[![:space:]]}"}"
+            [[ -n "$label" ]] || continue
+            CMD+=(--label "$label")
+          done
         fi
 
-        echo "Running: $CMD"
-        eval $CMD
+        echo "Running: ${CMD[*]}"
+        "${CMD[@]}"
         EXIT_CODE=$?
 
         echo "exit-code=${EXIT_CODE}" >> $GITHUB_OUTPUT
