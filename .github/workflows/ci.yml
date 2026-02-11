@@ -39,10 +39,18 @@ jobs:
 
       - name: Package (all publishable crates, no-verify)
         run: |
-          for crate in cockpitctl-types cockpitctl-domain cockpitctl-ingest cockpitctl-render cockpitctl-io cockpitctl-core cockpitctl-conform conformctl cockpitctl; do
-            echo "--- $crate ---"
-            cargo package --no-verify -p "$crate"
-          done
+          echo "Packaging crates as a set"
+          cargo package \
+            -p cockpitctl-types \
+            -p cockpitctl-domain \
+            -p cockpitctl-ingest \
+            -p cockpitctl-render \
+            -p cockpitctl-io \
+            -p cockpitctl-core \
+            -p cockpitctl-conform \
+            -p conformctl \
+            -p cockpitctl \
+            --no-verify --registry crates-io
 
       - name: Publish dry-run (cockpitctl-types)
         run: cargo publish --dry-run -p cockpitctl-types
