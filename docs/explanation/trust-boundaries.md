@@ -130,7 +130,7 @@ Example: Invalid receipt
   "sensors": [
     {
       "id": "bad-sensor",
-      "present": true,
+      "presence": "invalid",
       "errors": ["parse error at line 1: expected object"],
       "verdict": { "status": "fail", ... }
     }

@@ -32,7 +32,7 @@ cockpitctl ingest [OPTIONS]
 **Schema Validation Modes:**
 
 - **`lax` (config default):** Skip JSON Schema validation. Receipts only need to parse as valid JSON matching the serde structure. Faster, but schema errors surface as `cockpit.invalid_receipt` with less detail.
-- **`strict`:** Validate receipts against `schemas/sensor.report.v1.json` before parsing. Schema violations surface as `cockpit.schema_violation` with detailed field-level errors. Useful during sensor development or strict CI pipelines.
+- **`strict`:** Validate receipts against `contracts/schemas/sensor.report.v1.json` before parsing. Schema violations surface as `cockpit.schema_violation` with detailed field-level errors. Useful during sensor development or strict CI pipelines.
 
 > **Note:** The CLI flag only overrides config when explicitly provided. If unset, `cockpit.toml` controls the mode.
 

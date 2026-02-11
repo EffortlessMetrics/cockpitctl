@@ -185,7 +185,7 @@ npm install -g ajv-cli
 
 # Validate against schema
 ajv validate \
-  -s node_modules/cockpitctl/schemas/sensor.report.v1.json \
+  -s node_modules/cockpitctl/contracts/schemas/sensor.report.v1.json \
   -d artifacts/my-sensor/report.json
 ```
 

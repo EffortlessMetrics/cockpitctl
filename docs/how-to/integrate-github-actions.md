@@ -137,7 +137,7 @@ Or download a pre-built binary:
 ```yaml
 - name: Install cockpitctl
   run: |
-    curl -L https://github.com/your-org/cockpitctl/releases/latest/download/cockpitctl-linux-x64 -o cockpitctl
+    curl -L https://github.com/your-org/cockpitctl/releases/download/v0.2.0/cockpitctl-linux-x64 -o cockpitctl
     chmod +x cockpitctl
     sudo mv cockpitctl /usr/local/bin/
 ```

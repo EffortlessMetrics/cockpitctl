@@ -32,10 +32,17 @@ jobs:
 
       - name: Package list (all publishable crates)
         run: |
-          for crate in cockpitctl-types cockpitctl-domain cockpitctl-ingest cockpitctl-render cockpitctl-io cockpitctl-core cockpitctl-conform conformctl cockpitctl; do
-            echo "--- $crate ---"
-            cargo package --list -p "$crate"
-          done
+          cargo package --list \
+            -p cockpitctl-types \
+            -p cockpitctl-domain \
+            -p cockpitctl-ingest \
+            -p cockpitctl-render \
+            -p cockpitctl-io \
+            -p cockpitctl-core \
+            -p cockpitctl-conform \
+            -p conformctl \
+            -p cockpitctl \
+            --registry crates-io
 
       - name: Package (all publishable crates, no-verify)
         run: |

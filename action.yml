@@ -133,6 +133,71 @@ runs:
         Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing
         "$env:RUNNER_TEMP" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+    - name: Extract expected checksum from toolpack
+      id: checksum
+      shell: bash
+      run: |
+        TOOLPACK="${{ inputs.toolpack }}"
+        ASSET="${{ steps.platform.outputs.asset }}"
+        EXPECTED_HASH=""
+
+        if [[ -n "$TOOLPACK" && -f "$TOOLPACK" ]]; then
+          # Extract SHA256 for the current asset from toolpack.json
+          EXPECTED_HASH=$(jq -r --arg asset "$ASSET" '.assets[$asset].sha256 // empty' "$TOOLPACK" 2>/dev/null || echo "")
+
+          if [[ -n "$EXPECTED_HASH" ]]; then
+            echo "expected-hash=$EXPECTED_HASH" >> $GITHUB_OUTPUT
+            echo "checksum-available=true" >> $GITHUB_OUTPUT
+            echo "::notice::Expected SHA256 checksum from toolpack.json: $EXPECTED_HASH"
+          else
+            echo "checksum-available=false" >> $GITHUB_OUTPUT
+            echo "::warning::No SHA256 checksum found in toolpack.json for asset '$ASSET'"
+          fi
+        else
+          echo "checksum-available=false" >> $GITHUB_OUTPUT
+          if [[ -n "$TOOLPACK" ]]; then
+            echo "::warning::Toolpack file not found: $TOOLPACK - checksum verification unavailable"
+          else
+            echo "::warning::No toolpack provided - checksum verification unavailable"
+          fi
+        fi
+
+    - name: Compute checksum (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        ACTUAL_HASH=$(sha256sum /tmp/cockpitctl | awk '{print $1}')
+        echo "ACTUAL_HASH=$ACTUAL_HASH" >> $GITHUB_ENV
+        echo "::notice::Computed SHA256 checksum: $ACTUAL_HASH"
+
+    - name: Compute checksum (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $hash = (Get-FileHash -Path "$env:RUNNER_TEMP\cockpitctl.exe" -Algorithm SHA256).Hash.ToLower()
+        echo "ACTUAL_HASH=$hash" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        Write-Host "::notice::Computed SHA256 checksum: $hash"
+
+    - name: Verify checksum
+      shell: bash
+      run: |
+        if [[ "${{ steps.checksum.outputs.checksum-available }}" == "true" ]]; then
+          EXPECTED="${{ steps.checksum.outputs.expected-hash }}"
+          ACTUAL="$ACTUAL_HASH"
+
+          if [[ "$ACTUAL" == "$EXPECTED" ]]; then
+            echo "::notice::Checksum verification passed"
+          else
+            echo "::error::Checksum verification failed!"
+            echo "::error::Expected: $EXPECTED"
+            echo "::error::Actual:   $ACTUAL"
+            exit 1
+          fi
+        else
+          echo "::warning::Checksum verification skipped - no expected hash available"
+          echo "::warning::The downloaded binary has not been cryptographically verified"
+        fi
+
     - name: Verify installation
       shell: bash
       run: |

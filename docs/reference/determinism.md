@@ -100,7 +100,7 @@ This derived fingerprint is used for:
 - Sections in `section_order` order
 - Sensors within sections in lexical order
 - Highlights in highlight sort order
-- Tables have consistent column widths per run (may vary between runs)
+- Tables have consistent column widths for identical inputs (byte-stable output)
 
 ## Testing Determinism
 

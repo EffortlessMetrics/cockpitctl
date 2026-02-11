@@ -14,6 +14,10 @@ Complete reference for all cockpitctl commands and flags.
 
 Full specification of the configuration file format.
 
+### [Toolpack Manifest](toolpack.md)
+
+The `toolpack.json` manifest for declaring tools and binary assets with versioned URLs and SHA256 checksums.
+
 ## Schemas
 
 ### [Sensor Report Schema](sensor-report-schema.md)

@@ -28,6 +28,10 @@ Troubleshoot common issues with receipt parsing and policy evaluation.
 
 Use the `validate` command to check receipt and report structure.
 
+### [Smoke Test a Release](smoke-test-release.md)
+
+Validate a release using only published artifacts (no vendoring required).
+
 ## Sensor Development
 
 ### [Write a Conformant Sensor](write-conformant-sensor.md)

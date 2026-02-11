@@ -63,7 +63,7 @@ schema_validation = "strict"  # Enable JSON Schema validation
 ```
 
 - **`"lax"` (default):** Skip JSON Schema validation; only parse receipts as JSON
-- **`"strict"`:** Validate receipts against `schemas/sensor.report.v1.json` before parsing; violations are surfaced as `cockpit.schema_violation` findings
+- **`"strict"`:** Validate receipts against `contracts/schemas/sensor.report.v1.json` before parsing; violations are surfaced as `cockpit.schema_violation` findings
 
 > **Note:** The CLI `--schema-validation` flag overrides the config only when explicitly provided. If unset, the config mode applies.
 

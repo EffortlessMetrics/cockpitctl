@@ -4,7 +4,7 @@ The `sensor.report.v1` schema defines the envelope that sensors emit.
 
 ## Schema Location
 
-`schemas/sensor.report.v1.json`
+`contracts/schemas/sensor.report.v1.json`
 
 ## Overview
 

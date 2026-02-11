@@ -71,4 +71,18 @@ fuzz/                  # cargo-fuzz harness (optional)
 - Fuzz: `cargo fuzz run parse_receipt` (optional)
 - Mutation: `cargo mutants` (optional)
 
+## Release validation
+
+Before announcing a release, validate it using only published artifacts:
+
+```bash
+# Unix/macOS
+./scripts/smoke-test-release.sh v0.2.0
+
+# Windows PowerShell
+.\scripts\smoke-test-release.ps1 -Tag v0.2.0
+```
+
+See [`docs/how-to/smoke-test-release.md`](docs/how-to/smoke-test-release.md) for details.
+
 See `CHANGELOG.md` for recent changes, `ROADMAP.md` for planned work, and `docs/` for full documentation.

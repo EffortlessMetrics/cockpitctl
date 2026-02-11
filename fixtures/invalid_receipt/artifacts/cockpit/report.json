@@ -5,7 +5,7 @@
     "version": "0.2.0"
   },
   "run": {
-    "started_at": "2026-02-02T12:00:00Z"
+    "started_at": "2026-02-11T21:37:48.2274113Z"
   },
   "verdict": {
     "status": "fail",
@@ -50,12 +50,12 @@
           "error": 1
         },
         "reasons": [
-          "invalid_receipt"
+          "schema_violation"
         ]
       },
       "truncated": false,
       "errors": [
-        "key must be a string at line 1 column 3"
+        "malformed JSON: key must be a string at line 1 column 3"
       ],
       "policy_outcome": "blocked"
     }
@@ -65,11 +65,11 @@
       "sensor_id": "malformed",
       "finding": {
         "severity": "error",
-        "check_id": "cockpit.invalid_receipt",
-        "code": "cockpit.invalid_receipt",
-        "message": "Invalid receipt for sensor `malformed` at `artifacts/malformed/report.json`: key must be a string at line 1 column 3",
-        "help": "Validate that the sensor wrote JSON matching sensor.report.v1.",
-        "fingerprint": "6d54d6a5185296790948190c600f2c499156aefb5c00d17d6ee1edc7cb717e0c"
+        "check_id": "cockpit.schema_violation",
+        "code": "cockpit.schema_violation",
+        "message": "Receipt for sensor `malformed` at `artifacts/malformed/report.json` does not conform to sensor.report.v1 schema: malformed JSON: key must be a string at line 1 column 3",
+        "help": "Ensure the sensor output matches the JSON schema at schemas/sensor.report.v1.json.",
+        "fingerprint": "987e7ea09dc234fe792230cf7bd7765747d2cbb455558ef96bea81103996fa48"
       }
     }
   ],

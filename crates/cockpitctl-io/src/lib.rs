@@ -305,9 +305,18 @@ impl JsonSchemaValidator {
 
 impl SchemaValidator for JsonSchemaValidator {
     fn validate_receipt(&self, bytes: &[u8]) -> Result<SchemaValidationResult> {
-        // First, parse the JSON.
-        let value: serde_json::Value =
-            serde_json::from_slice(bytes).context("receipt is not valid JSON")?;
+        // First, parse the JSON. If parsing fails, return Invalid with the parse error.
+        // This ensures ingest survivability: malformed JSON produces a finding, not a runtime abort.
+        let value: serde_json::Value = match serde_json::from_slice(bytes) {
+            Ok(v) => v,
+            Err(e) => {
+                // Malformed JSON: return Invalid with the parse error message
+                return Ok(SchemaValidationResult::Invalid(vec![format!(
+                    "malformed JSON: {}",
+                    e
+                )]));
+            }
+        };
 
         // Validate against the schema.
         let result = self.validator.validate(&value);
@@ -691,15 +700,24 @@ mod tests {
     }
 
     #[test]
-    fn json_schema_validator_returns_error_for_invalid_json() {
+    fn json_schema_validator_returns_invalid_for_malformed_json() {
         let invalid_json = b"{ not valid json }";
         let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
-        let result = validator.validate_receipt(invalid_json);
-        assert!(result.is_err(), "should return Err for invalid JSON");
-        let err_msg = format!("{:?}", result.err().unwrap());
-        let has_upper = err_msg.contains("JSON");
-        let has_lower = err_msg.contains("json");
-        assert!(has_upper | has_lower);
+        let result = validator.validate_receipt(invalid_json).unwrap();
+        match result {
+            SchemaValidationResult::Invalid(errors) => {
+                assert!(!errors.is_empty(), "should have validation errors");
+                let error_msg = errors.join(" ");
+                assert!(
+                    error_msg.contains("malformed JSON") || error_msg.contains("JSON"),
+                    "error should mention malformed JSON or JSON, got: {}",
+                    error_msg
+                );
+            }
+            SchemaValidationResult::Valid => {
+                panic!("should return Invalid for malformed JSON");
+            }
+        }
     }
 
     #[test]
