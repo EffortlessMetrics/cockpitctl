@@ -1,6 +1,6 @@
 [package]
 name = "xtask"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -13,4 +13,14 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+cockpitctl-conform = { path = "../crates/cockpitctl-conform" }
+cockpitctl-types = { path = "../crates/cockpitctl-types" }
+jsonschema.workspace = true
 serde_json.workspace = true
+walkdir.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }

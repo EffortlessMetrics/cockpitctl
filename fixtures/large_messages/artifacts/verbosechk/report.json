@@ -1,0 +1,39 @@
+{
+  "schema": "verbosechk.report.v1",
+  "tool": {
+    "name": "verbosechk",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T11:59:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 1,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "verbosechk.complexity",
+      "message": "Function complexity exceeds threshold. This is a very long error message that contains extensive details about the problem found in the code. The cyclomatic complexity of this function is extremely high at 147 which far exceeds the recommended maximum of 10. This typically indicates that the function is doing too many things and should be refactored into smaller, more focused functions. Consider extracting the validation logic into a separate validate() function, the transformation logic into a transform() function, and the persistence logic into a save() function. Additionally, the deeply nested conditionals make the code difficult to test and maintain. Each level of nesting adds cognitive load for developers trying to understand the code flow. The function also has multiple return points which further complicates understanding. Suggested refactoring steps: 1) Identify the distinct responsibilities within this function. 2) Create helper functions for each responsibility. 3) Use early returns to reduce nesting depth. 4) Consider using a state machine pattern if the logic involves complex state transitions. 5) Add comprehensive unit tests before refactoring to ensure behavior is preserved. 6) Document the expected behavior of each extracted function. 7) Review the refactored code with the team to ensure clarity. This message intentionally exceeds 1000 characters to test truncation behavior in the PR comment rendering.",
+      "location": {
+        "path": "src/processor.rs",
+        "line": 100
+      }
+    },
+    {
+      "severity": "warn",
+      "code": "verbosechk.documentation",
+      "message": "Missing documentation for public API. This warning indicates that a public function, struct, or module lacks adequate documentation. Good documentation is essential for maintainability and helps new team members understand the codebase. The Rust documentation guidelines recommend that all public items have: 1) A brief one-line summary describing what the item does. 2) An extended description with more details if needed. 3) Examples showing typical usage. 4) Panics section if the function can panic. 5) Errors section if it returns Result. 6) Safety section for unsafe functions. Consider adding documentation comments using /// for item documentation or //! for module-level documentation. Tools like rustdoc can then generate HTML documentation automatically. Well-documented code is easier to use correctly and harder to misuse. This lengthy message is designed to verify that the system handles large text payloads gracefully without crashing or corrupting the output format in the generated PR comment.",
+      "location": {
+        "path": "src/lib.rs",
+        "line": 1
+      }
+    }
+  ]
+}

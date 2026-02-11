@@ -1,0 +1,284 @@
+{
+  "$id": "urn:effortless:sensor.report.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "mime"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "mime": { "type": "string", "minLength": 1 },
+          "schema": { "type": "string" }
+        }
+      }
+    },
+    "data": {
+      "description": "Tool-specific payload; treated as opaque by cockpit.",
+      "type": [
+        "object",
+        "array",
+        "string",
+        "number",
+        "boolean",
+        "null"
+      ]
+    },
+    "findings": {
+      "default": [],
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "check_id": {
+            "type": "string"
+          },
+          "code": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "data": {
+            "description": "Tool-specific structured payload; treated as opaque by cockpit.",
+            "type": [
+              "object",
+              "array",
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "help": {
+            "type": "string"
+          },
+          "location": {
+            "additionalProperties": false,
+            "properties": {
+              "col": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "line": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "message": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warn",
+              "error"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "severity",
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "run": {
+      "additionalProperties": false,
+      "properties": {
+        "ci": {
+          "additionalProperties": false,
+          "properties": {
+            "job": {
+              "type": "string"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            },
+            "run_url": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ended_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "git": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ref": {
+              "type": "string"
+            },
+            "base_sha": {
+              "type": "string"
+            },
+            "head_ref": {
+              "type": "string"
+            },
+            "head_sha": {
+              "type": "string"
+            },
+            "merge_base": {
+              "type": "string"
+            },
+            "repo": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "host": {
+          "additionalProperties": false,
+          "properties": {
+            "arch": {
+              "type": "string"
+            },
+            "hostname": {
+              "type": "string"
+            },
+            "os": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "capabilities": {
+          "description": "Declared capabilities.",
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status"],
+            "properties": {
+              "status": { "enum": ["available", "unavailable", "skipped"] },
+              "reason": { "type": "string", "pattern": "^[a-z0-9_]+$" }
+            }
+          }
+        }
+      },
+      "required": [
+        "started_at"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "tool": {
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "verdict": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "info": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "warn": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "suppressed": {
+              "minimum": 0,
+              "type": "integer",
+              "default": 0
+            }
+          },
+          "required": [
+            "info",
+            "warn",
+            "error"
+          ],
+          "type": "object"
+        },
+        "reasons": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "warn",
+            "fail",
+            "skip"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "counts"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema",
+    "tool",
+    "run",
+    "verdict",
+    "findings"
+  ],
+  "title": "sensor.report.v1",
+  "type": "object"
+}

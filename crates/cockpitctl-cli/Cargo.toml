@@ -1,10 +1,20 @@
 [package]
 name = "cockpitctl"
-version = "0.1.0"
+version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-publish = false
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Director CLI for aggregating CI sensor receipts into merge decisions"
+readme.workspace = true
+keywords = ["ci", "cd", "cli", "sensors", "merge-decisions"]
+categories = ["command-line-utilities", "development-tools"]
+
+[lib]
+name = "cockpitctl"
+path = "src/lib.rs"
 
 [[bin]]
 name = "cockpitctl"
@@ -13,11 +23,14 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+serde_json.workspace = true
 time.workspace = true
-cockpitctl-types = { path = "../cockpitctl-types" }
-cockpitctl-ingest = { path = "../cockpitctl-ingest" }
-cockpitctl-render = { path = "../cockpitctl-render" }
-cockpitctl-io = { path = "../cockpitctl-io" }
+cockpitctl-core = { path = "../cockpitctl-core", version = "0.2.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.0" }
+cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.2.0" }
+cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.2.0" }
+cockpitctl-render = { path = "../cockpitctl-render", version = "0.2.0" }
+cockpitctl-io = { path = "../cockpitctl-io", version = "0.2.0" }
 
 [dev-dependencies]
 assert_cmd.workspace = true
@@ -25,3 +38,10 @@ predicates.workspace = true
 pretty_assertions.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+cucumber.workspace = true
+futures.workspace = true
+toml.workspace = true
+
+[[test]]
+name = "bdd"
+harness = false

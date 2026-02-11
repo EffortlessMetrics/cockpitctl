@@ -7,8 +7,22 @@
 //!
 //! It must not depend on filesystem, clap, or network.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+/// Embedded JSON Schema for sensor.report.v1.
+pub const SENSOR_REPORT_V1_SCHEMA_JSON: &str = include_str!("../schemas/sensor.report.v1.json");
+
+/// Embedded JSON Schema for cockpit.report.v1.
+pub const COCKPIT_REPORT_V1_SCHEMA_JSON: &str = include_str!("../schemas/cockpit.report.v1.json");
+
+/// Embedded JSON Schema for buildfix.plan.v1.
+pub const BUILDFIX_PLAN_V1_SCHEMA_JSON: &str = include_str!("../schemas/buildfix.plan.v1.json");
+
+/// Embedded JSON Schema for cockpit.promote.v1.
+pub const COCKPIT_PROMOTE_V1_SCHEMA_JSON: &str = include_str!("../schemas/cockpit.promote.v1.json");
 
 /// A schema identifier string, e.g. `builddiag.report.v1`.
 pub type SchemaId = String;
@@ -22,11 +36,17 @@ pub enum VerdictStatus {
     Skip,
 }
 
+fn is_zero(v: &u64) -> bool {
+    *v == 0
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct VerdictCounts {
     pub info: u64,
     pub warn: u64,
     pub error: u64,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub suppressed: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -83,6 +103,21 @@ pub struct CiInfo {
     pub job: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum CapabilityStatus {
+    Available,
+    Unavailable,
+    Skipped,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Capability {
+    pub status: CapabilityStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunInfo {
     pub started_at: String, // RFC3339
@@ -96,6 +131,9 @@ pub struct RunInfo {
     pub git: Option<GitInfo>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ci: Option<CiInfo>,
+    /// Declared capabilities (e.g., "git", "baseline", "lcov").
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub capabilities: BTreeMap<String, Capability>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -147,17 +185,94 @@ pub struct SensorReport {
     pub verdict: Verdict,
     #[serde(default)]
     pub findings: Vec<Finding>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub artifacts: Vec<ArtifactPointer>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }
 
 /// Missing receipt behavior (policy).
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum MissingPolicy {
+    #[default]
     Skip,
     Warn,
     Fail,
+}
+
+/// Presence state for a sensor in the cockpit report.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum Presence {
+    Present,
+    Missing,
+    Invalid,
+}
+
+/// Policy outcome for a sensor after evaluation.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PolicyOutcome {
+    Blocked,
+    Allowed,
+    Informational,
+}
+
+/// Pointer to an artifact produced by a sensor.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ArtifactPointer {
+    pub id: String,
+    pub path: String,
+    pub mime: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+}
+
+/// Promotion hints for cockpit (`data._cockpit`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CockpitPromoteHints {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub schema: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cards: Vec<PromoteCard>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub suggested_highlights: Vec<SuggestedHighlight>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub suggested_artifacts: Vec<SuggestedArtifact>,
+}
+
+/// A card promoted to the cockpit summary from a sensor.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PromoteCard {
+    pub id: String,
+    pub label: String,
+    pub value: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub severity: Option<Severity>,
+}
+
+/// A suggested highlight from a sensor via promotion.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SuggestedHighlight {
+    pub finding_fingerprint: String,
+}
+
+/// A suggested artifact from a sensor via promotion.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SuggestedArtifact {
+    pub artifact_id: String,
+}
+
+/// Schema validation mode for sensor receipts.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum SchemaValidation {
+    /// Skip schema validation; only parse as JSON (default).
+    #[default]
+    Lax,
+    /// Validate receipts against the JSON schema.
+    Strict,
 }
 
 /// A per-sensor policy in cockpit.toml.
@@ -187,11 +302,21 @@ pub struct Policy {
     pub max_annotations: usize,
     #[serde(default = "default_section_order")]
     pub section_order: Vec<String>,
+    /// Schema validation mode: "lax" (default) skips schema validation; "strict"
+    /// validates receipts against the embedded sensor.report.v1 schema.
+    #[serde(default)]
+    pub schema_validation: SchemaValidation,
 }
 
-fn default_max_highlights() -> usize { 7 }
-fn default_max_per_sensor_findings() -> usize { 20 }
-fn default_max_annotations() -> usize { 25 }
+fn default_max_highlights() -> usize {
+    7
+}
+fn default_max_per_sensor_findings() -> usize {
+    20
+}
+fn default_max_annotations() -> usize {
+    25
+}
 fn default_section_order() -> Vec<String> {
     vec![
         "Highlights".into(),
@@ -206,10 +331,6 @@ fn default_section_order() -> Vec<String> {
     ]
 }
 
-impl Default for MissingPolicy {
-    fn default() -> Self { MissingPolicy::Skip }
-}
-
 impl Default for Policy {
     fn default() -> Self {
         Self {
@@ -218,6 +339,7 @@ impl Default for Policy {
             max_per_sensor_findings: default_max_per_sensor_findings(),
             max_annotations: default_max_annotations(),
             section_order: default_section_order(),
+            schema_validation: SchemaValidation::default(),
         }
     }
 }
@@ -236,7 +358,7 @@ pub struct SensorSummary {
     pub id: String,
     pub blocking: bool,
     pub missing: MissingPolicy,
-    pub present: bool,
+    pub presence: Presence,
     pub report_path: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment_path: Option<String>,
@@ -245,6 +367,10 @@ pub struct SensorSummary {
     pub truncated: bool,
     #[serde(default)]
     pub errors: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub missing_policy_applied: Option<MissingPolicy>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub policy_outcome: Option<PolicyOutcome>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -316,4 +442,75 @@ pub fn verdict_status_rank(s: &VerdictStatus) -> u8 {
         VerdictStatus::Pass => 2,
         VerdictStatus::Skip => 3,
     }
+}
+
+/// Validate a sensor ID for safe path usage.
+pub fn is_valid_sensor_id(id: &str) -> bool {
+    !id.is_empty()
+        && !id.contains("..")
+        && !id.contains('/')
+        && !id.contains('\\')
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+}
+
+// ============================================================================
+// Buildfix types (actuator protocol)
+// ============================================================================
+
+/// Safety level for a fix.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SafetyLevel {
+    /// No side effects; safe to apply automatically.
+    Safe,
+    /// Requires confirmation before applying.
+    Guarded,
+    /// May break things; use with caution.
+    Unsafe,
+}
+
+/// Reference to a finding that a fix addresses.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct FindingRef {
+    pub sensor_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fingerprint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub check_id: Option<String>,
+}
+
+/// Preconditions that must hold before applying a fix.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Preconditions {
+    pub repo_head: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub receipt_digests: Vec<String>,
+}
+
+/// A single fix in a buildfix plan.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Fix {
+    pub id: String,
+    pub safety: SafetyLevel,
+    pub description: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub finding_refs: Vec<FindingRef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preconditions: Option<Preconditions>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<Value>,
+}
+
+/// A buildfix plan: a set of fixes to apply.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BuildfixPlan {
+    pub schema: SchemaId,
+    pub tool: ToolInfo,
+    pub fixes: Vec<Fix>,
 }

@@ -1,0 +1,91 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.2.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T12:00:00Z"
+  },
+  "verdict": {
+    "status": "warn",
+    "counts": {
+      "info": 1,
+      "warn": 1,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "refsensor",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/refsensor/report.json",
+      "verdict": {
+        "status": "warn",
+        "counts": {
+          "info": 1,
+          "warn": 1,
+          "error": 0
+        },
+        "reasons": [
+          "complexity_threshold"
+        ]
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "allowed"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "refsensor",
+      "finding": {
+        "severity": "warn",
+        "check_id": "refsensor.complexity",
+        "code": "refsensor.complexity",
+        "message": "Function complexity exceeds threshold",
+        "location": {
+          "path": "src/lib.rs",
+          "line": 42
+        },
+        "fingerprint": "fp_ref_001"
+      }
+    },
+    {
+      "sensor_id": "refsensor",
+      "finding": {
+        "severity": "info",
+        "check_id": "refsensor.note",
+        "code": "refsensor.note",
+        "message": "New file detected",
+        "location": {
+          "path": "src/new.rs",
+          "line": 1
+        },
+        "fingerprint": "fp_ref_002"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "refsensor",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Repo contract"
+      }
+    ]
+  }
+}

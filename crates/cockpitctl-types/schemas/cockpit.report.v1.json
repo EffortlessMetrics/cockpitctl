@@ -1,0 +1,480 @@
+{
+  "$id": "urn:effortless:cockpit.report.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "data": {
+      "description": "Director-specific payload; dashboards may treat as opaque.",
+      "type": [
+        "object",
+        "array",
+        "string",
+        "number",
+        "boolean",
+        "null"
+      ]
+    },
+    "highlights": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "finding": {
+            "additionalProperties": false,
+            "properties": {
+              "check_id": {
+                "type": "string"
+              },
+              "code": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "data": {
+                "description": "Tool-specific structured payload; treated as opaque by cockpit.",
+                "type": [
+                  "object",
+                  "array",
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              },
+              "fingerprint": {
+                "type": "string"
+              },
+              "help": {
+                "type": "string"
+              },
+              "location": {
+                "additionalProperties": false,
+                "properties": {
+                  "col": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "line": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              },
+              "message": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "severity": {
+                "enum": [
+                  "info",
+                  "warn",
+                  "error"
+                ],
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "severity",
+              "code",
+              "message"
+            ],
+            "type": "object"
+          },
+          "sensor_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "sensor_id",
+          "finding"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "policy": {
+      "additionalProperties": false,
+      "properties": {
+        "max_annotations": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_highlights": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_per_sensor_findings": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "section_order": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sensors": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "blocking": {
+                "type": "boolean"
+              },
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "missing": {
+                "enum": [
+                  "skip",
+                  "warn",
+                  "fail"
+                ],
+                "type": "string"
+              },
+              "repro": {
+                "type": "string"
+              },
+              "require_label": {
+                "type": "string"
+              },
+              "section": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "blocking",
+              "missing"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "warn_is_fail": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "warn_is_fail",
+        "max_highlights",
+        "max_per_sensor_findings",
+        "section_order",
+        "sensors"
+      ],
+      "type": "object"
+    },
+    "run": {
+      "additionalProperties": false,
+      "properties": {
+        "ci": {
+          "additionalProperties": false,
+          "properties": {
+            "job": {
+              "type": "string"
+            },
+            "provider": {
+              "type": "string"
+            },
+            "run_id": {
+              "type": "string"
+            },
+            "run_url": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ended_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "git": {
+          "additionalProperties": false,
+          "properties": {
+            "base_ref": {
+              "type": "string"
+            },
+            "base_sha": {
+              "type": "string"
+            },
+            "head_ref": {
+              "type": "string"
+            },
+            "head_sha": {
+              "type": "string"
+            },
+            "merge_base": {
+              "type": "string"
+            },
+            "repo": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "host": {
+          "additionalProperties": false,
+          "properties": {
+            "arch": {
+              "type": "string"
+            },
+            "hostname": {
+              "type": "string"
+            },
+            "os": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "capabilities": {
+          "description": "Declared capabilities.",
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status"],
+            "properties": {
+              "status": { "enum": ["available", "unavailable", "skipped"] },
+              "reason": { "type": "string", "pattern": "^[a-z0-9_]+$" }
+            }
+          }
+        }
+      },
+      "required": [
+        "started_at"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "cockpit.report.v1"
+    },
+    "sensors": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "blocking": {
+            "type": "boolean"
+          },
+          "comment_path": {
+            "type": "string"
+          },
+          "errors": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "missing": {
+            "enum": [
+              "skip",
+              "warn",
+              "fail"
+            ],
+            "type": "string"
+          },
+          "missing_policy_applied": {
+            "enum": [
+              "skip",
+              "warn",
+              "fail"
+            ]
+          },
+          "policy_outcome": {
+            "enum": [
+              "blocked",
+              "allowed",
+              "informational"
+            ]
+          },
+          "presence": {
+            "enum": [
+              "present",
+              "missing",
+              "invalid"
+            ]
+          },
+          "report_path": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "truncated": {
+            "default": false,
+            "type": "boolean"
+          },
+          "verdict": {
+            "additionalProperties": false,
+            "properties": {
+              "counts": {
+                "additionalProperties": false,
+                "properties": {
+                  "error": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "info": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "warn": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "suppressed": {
+                    "minimum": 0,
+                    "type": "integer",
+                    "default": 0
+                  }
+                },
+                "required": [
+                  "info",
+                  "warn",
+                  "error"
+                ],
+                "type": "object"
+              },
+              "reasons": {
+                "default": [],
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "status": {
+                "enum": [
+                  "pass",
+                  "warn",
+                  "fail",
+                  "skip"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "counts"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "blocking",
+          "missing",
+          "presence",
+          "verdict",
+          "report_path"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "tool": {
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "type": "object"
+    },
+    "verdict": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "info": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "warn": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "suppressed": {
+              "minimum": 0,
+              "type": "integer",
+              "default": 0
+            }
+          },
+          "required": [
+            "info",
+            "warn",
+            "error"
+          ],
+          "type": "object"
+        },
+        "reasons": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "warn",
+            "fail",
+            "skip"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "counts"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema",
+    "tool",
+    "run",
+    "verdict",
+    "sensors",
+    "highlights",
+    "policy"
+  ],
+  "title": "cockpit.report.v1",
+  "type": "object"
+}

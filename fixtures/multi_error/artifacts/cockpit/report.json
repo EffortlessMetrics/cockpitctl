@@ -1,0 +1,100 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.2.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T12:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 1,
+      "warn": 1,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "multierr",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/multierr/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 1,
+          "warn": 1,
+          "error": 1
+        },
+        "reasons": [
+          "Bad Reason!"
+        ]
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "multierr",
+      "finding": {
+        "severity": "error",
+        "code": "multierr.error",
+        "message": "An error",
+        "location": {
+          "path": "/absolute/path.rs",
+          "line": 10
+        },
+        "fingerprint": "7f97883c043dd93824f2084b9f76416dac17c2d1f8c85844dc5913062aceffea"
+      }
+    },
+    {
+      "sensor_id": "multierr",
+      "finding": {
+        "severity": "warn",
+        "code": "multierr.warn",
+        "message": "A warning",
+        "location": {
+          "path": "src\\backslash.rs",
+          "line": 5
+        },
+        "fingerprint": "ef55d679ea5a3e2249244237f10a5c40a47eee71756ef749d7cc79f54a143a3c"
+      }
+    },
+    {
+      "sensor_id": "multierr",
+      "finding": {
+        "severity": "info",
+        "code": "multierr.note",
+        "message": "A note",
+        "location": {
+          "path": "src/ok.rs",
+          "line": 1
+        },
+        "fingerprint": "03405404826353438ddab0eb9c39e733b9d2865453ef59bf64091de41b8fec58"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "multierr",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Other"
+      }
+    ]
+  }
+}

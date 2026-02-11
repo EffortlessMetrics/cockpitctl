@@ -7,7 +7,21 @@
 //!
 //! It should not parse sensor-specific markdown. Link only.
 
-use cockpitctl_types::{CockpitConfig, CockpitReport, VerdictStatus, Severity};
+use cockpitctl_types::{
+    CockpitConfig, CockpitReport, Highlight, Severity, VerdictStatus, severity_rank,
+};
+
+/// Result of annotation rendering, tracking whether truncation occurred.
+pub struct AnnotationRenderResult {
+    /// The rendered markdown content for annotations.
+    pub content: String,
+    /// Whether the annotations were truncated due to max_annotations cap.
+    pub truncated: bool,
+    /// Total number of annotations before truncation.
+    pub total_count: usize,
+    /// Number of annotations actually rendered.
+    pub rendered_count: usize,
+}
 
 fn status_badge(s: &VerdictStatus) -> &'static str {
     match s {
@@ -46,10 +60,16 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
         if s.truncated {
             notes.push_str(" · _truncated_");
         }
-        out.push_str(&format!("| `{}` | {} | {} | {} |\n", s.id, status_badge(&s.verdict.status), blocking, notes));
+        out.push_str(&format!(
+            "| `{}` | {} | {} | {} |\n",
+            s.id,
+            status_badge(&s.verdict.status),
+            blocking,
+            notes
+        ));
     }
 
-    out.push_str("\n");
+    out.push('\n');
 
     // Highlights
     out.push_str("### Highlights\n\n");
@@ -64,8 +84,12 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
             let loc = match &f.location {
                 Some(l) => {
                     let mut s = String::new();
-                    if let Some(p) = &l.path { s.push_str(p); }
-                    if let Some(line) = l.line { s.push_str(&format!(":{}", line)); }
+                    if let Some(p) = &l.path {
+                        s.push_str(p);
+                    }
+                    if let Some(line) = l.line {
+                        s.push_str(&format!(":{}", line));
+                    }
                     if s.is_empty() { None } else { Some(s) }
                 }
                 None => None,
@@ -82,8 +106,20 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
                 f.message.replace('\n', " ")
             ));
         }
-        out.push_str("\n");
+        out.push('\n');
     }
+
+    // Annotations section
+    let sensor_blocking: std::collections::BTreeMap<String, bool> = report
+        .sensors
+        .iter()
+        .map(|s| (s.id.clone(), s.blocking))
+        .collect();
+    out.push_str(&render_annotations_section(
+        &report.highlights,
+        cfg,
+        &sensor_blocking,
+    ));
 
     // Sections: group sensors by section label, render in cfg.policy.section_order order.
     let mut by_section: std::collections::BTreeMap<String, Vec<&cockpitctl_types::SensorSummary>> =
@@ -99,7 +135,9 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
     }
 
     for section in &cfg.policy.section_order {
-        let Some(sensors) = by_section.get(section) else { continue; };
+        let Some(sensors) = by_section.get(section) else {
+            continue;
+        };
         out.push_str(&format!("### {}\n\n", section));
         for s in sensors {
             // Minimal, link-first line.
@@ -108,16 +146,462 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
             if let Some(c) = &s.comment_path {
                 line.push_str(&format!(" · comment `{}`", c));
             }
-            if let Some(p) = cfg.sensors.get(&s.id) {
-                if let Some(repro) = &p.repro {
-                    line.push_str(&format!("\n  - repro: `{}`", repro));
-                }
+            if let Some(p) = cfg.sensors.get(&s.id)
+                && let Some(repro) = &p.repro
+            {
+                line.push_str(&format!("\n  - repro: `{}`", repro));
             }
             out.push_str(&format!("{}\n", line));
         }
-        out.push_str("\n");
+        out.push('\n');
     }
 
     out.push_str("<!-- cockpit:end -->\n");
     out
+}
+
+/// Render annotations (file-level or inline findings) with capping.
+///
+/// Annotations are rendered as a markdown list of findings with file locations.
+/// The total number of annotations is capped by `max_annotations` from policy.
+/// Deterministic ordering is maintained: severity desc -> blocking-first -> sensor_id -> path -> line -> code.
+pub fn render_annotations(
+    highlights: &[Highlight],
+    cfg: &CockpitConfig,
+    sensor_blocking: &std::collections::BTreeMap<String, bool>,
+) -> AnnotationRenderResult {
+    let max = cfg.policy.max_annotations;
+    let total_count = highlights.len();
+
+    // Sort deterministically: severity desc, blocking sensors first, then sensor_id/path/line/code/message.
+    let mut sorted: Vec<&Highlight> = highlights.iter().collect();
+    sorted.sort_by(|a, b| {
+        let a_block = sensor_blocking.get(&a.sensor_id).cloned().unwrap_or(false);
+        let b_block = sensor_blocking.get(&b.sensor_id).cloned().unwrap_or(false);
+
+        let a_key = (
+            severity_rank(&a.finding.severity),
+            if a_block { 0u8 } else { 1u8 },
+            &a.sensor_id,
+            a.finding.location.as_ref().and_then(|l| l.path.as_ref()),
+            a.finding.location.as_ref().and_then(|l| l.line),
+            &a.finding.code,
+            &a.finding.message,
+        );
+        let b_key = (
+            severity_rank(&b.finding.severity),
+            if b_block { 0u8 } else { 1u8 },
+            &b.sensor_id,
+            b.finding.location.as_ref().and_then(|l| l.path.as_ref()),
+            b.finding.location.as_ref().and_then(|l| l.line),
+            &b.finding.code,
+            &b.finding.message,
+        );
+
+        a_key.cmp(&b_key)
+    });
+
+    let truncated = total_count > max;
+    let rendered_count = total_count.min(max);
+
+    let mut out = String::new();
+
+    if sorted.is_empty() {
+        out.push_str("_No annotations._\n");
+    } else {
+        for (i, h) in sorted.iter().take(max).enumerate() {
+            let f = &h.finding;
+            let loc = match &f.location {
+                Some(l) => {
+                    let mut s = String::new();
+                    if let Some(p) = &l.path {
+                        s.push_str(p);
+                    }
+                    if let Some(line) = l.line {
+                        s.push_str(&format!(":{}", line));
+                    }
+                    if s.is_empty() { None } else { Some(s) }
+                }
+                None => None,
+            };
+
+            let loc_str = loc.map(|x| format!(" at `{}`", x)).unwrap_or_default();
+            out.push_str(&format!(
+                "{}. {} **{}**: `{}`{} — {}\n",
+                i + 1,
+                severity_badge(&f.severity),
+                h.sensor_id,
+                f.code,
+                loc_str,
+                f.message.replace('\n', " ")
+            ));
+        }
+
+        if truncated {
+            out.push_str(&format!(
+                "\n_Showing {} of {} annotations (capped by `max_annotations`)._\n",
+                rendered_count, total_count
+            ));
+        }
+    }
+
+    AnnotationRenderResult {
+        content: out,
+        truncated,
+        total_count,
+        rendered_count,
+    }
+}
+
+/// Render annotations section for the PR comment.
+///
+/// This is a convenience function that wraps `render_annotations` with a section header.
+pub fn render_annotations_section(
+    highlights: &[Highlight],
+    cfg: &CockpitConfig,
+    sensor_blocking: &std::collections::BTreeMap<String, bool>,
+) -> String {
+    let result = render_annotations(highlights, cfg, sensor_blocking);
+    let mut out = String::new();
+    out.push_str("### Annotations\n\n");
+    out.push_str(&result.content);
+    out.push('\n');
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cockpitctl_types::{Finding, Location, Severity};
+
+    fn make_highlight(
+        sensor_id: &str,
+        code: &str,
+        path: Option<&str>,
+        line: Option<u32>,
+        severity: Severity,
+    ) -> Highlight {
+        Highlight {
+            sensor_id: sensor_id.to_string(),
+            finding: Finding {
+                severity,
+                check_id: None,
+                code: code.to_string(),
+                message: format!("Message for {}", code),
+                location: Some(Location {
+                    path: path.map(String::from),
+                    line,
+                    col: None,
+                }),
+                help: None,
+                url: None,
+                fingerprint: None,
+                data: None,
+            },
+        }
+    }
+
+    #[test]
+    fn test_annotation_capping_respects_max() {
+        let mut cfg = CockpitConfig::default();
+        cfg.policy.max_annotations = 3;
+
+        let highlights = vec![
+            make_highlight(
+                "sensor_a",
+                "code1",
+                Some("src/a.rs"),
+                Some(10),
+                Severity::Error,
+            ),
+            make_highlight(
+                "sensor_a",
+                "code2",
+                Some("src/a.rs"),
+                Some(20),
+                Severity::Warn,
+            ),
+            make_highlight(
+                "sensor_b",
+                "code3",
+                Some("src/b.rs"),
+                Some(5),
+                Severity::Info,
+            ),
+            make_highlight(
+                "sensor_b",
+                "code4",
+                Some("src/b.rs"),
+                Some(15),
+                Severity::Error,
+            ),
+            make_highlight(
+                "sensor_c",
+                "code5",
+                Some("src/c.rs"),
+                Some(1),
+                Severity::Warn,
+            ),
+        ];
+
+        let blocking = std::collections::BTreeMap::new();
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        assert!(result.truncated);
+        assert_eq!(result.total_count, 5);
+        assert_eq!(result.rendered_count, 3);
+        assert!(result.content.contains("Showing 3 of 5 annotations"));
+    }
+
+    #[test]
+    fn test_annotation_capping_no_truncation_when_under_limit() {
+        let mut cfg = CockpitConfig::default();
+        cfg.policy.max_annotations = 10;
+
+        let highlights = vec![
+            make_highlight(
+                "sensor_a",
+                "code1",
+                Some("src/a.rs"),
+                Some(10),
+                Severity::Error,
+            ),
+            make_highlight(
+                "sensor_a",
+                "code2",
+                Some("src/a.rs"),
+                Some(20),
+                Severity::Warn,
+            ),
+        ];
+
+        let blocking = std::collections::BTreeMap::new();
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        assert!(!result.truncated);
+        assert_eq!(result.total_count, 2);
+        assert_eq!(result.rendered_count, 2);
+        assert!(!result.content.contains("truncated"));
+        assert!(!result.content.contains("capped"));
+    }
+
+    #[test]
+    fn test_annotation_ordering_is_deterministic() {
+        let mut cfg = CockpitConfig::default();
+        cfg.policy.max_annotations = 25;
+
+        // Create highlights in non-sorted order
+        let highlights = vec![
+            make_highlight(
+                "sensor_z",
+                "code1",
+                Some("src/z.rs"),
+                Some(100),
+                Severity::Info,
+            ),
+            make_highlight(
+                "sensor_a",
+                "code2",
+                Some("src/a.rs"),
+                Some(10),
+                Severity::Error,
+            ),
+            make_highlight(
+                "sensor_m",
+                "code3",
+                Some("src/m.rs"),
+                Some(50),
+                Severity::Warn,
+            ),
+            make_highlight(
+                "sensor_a",
+                "code4",
+                Some("src/a.rs"),
+                Some(5),
+                Severity::Error,
+            ),
+        ];
+
+        let blocking = std::collections::BTreeMap::new();
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        // Errors should come first (sorted by severity desc)
+        // Then within same severity, sorted by sensor_id, path, line
+        let lines: Vec<&str> = result.content.lines().collect();
+
+        // First should be sensor_a error at line 5
+        assert!(lines[0].contains("sensor_a") && lines[0].contains("code4"));
+        // Second should be sensor_a error at line 10
+        assert!(lines[1].contains("sensor_a") && lines[1].contains("code2"));
+        // Third should be sensor_m warning
+        assert!(lines[2].contains("sensor_m") && lines[2].contains("code3"));
+        // Fourth should be sensor_z info
+        assert!(lines[3].contains("sensor_z") && lines[3].contains("code1"));
+    }
+
+    #[test]
+    fn test_annotation_ordering_blocking_sensors_first() {
+        let mut cfg = CockpitConfig::default();
+        cfg.policy.max_annotations = 25;
+
+        let highlights = vec![
+            make_highlight(
+                "non_blocking",
+                "code1",
+                Some("src/a.rs"),
+                Some(10),
+                Severity::Error,
+            ),
+            make_highlight(
+                "blocking_sensor",
+                "code2",
+                Some("src/b.rs"),
+                Some(10),
+                Severity::Error,
+            ),
+        ];
+
+        let mut blocking = std::collections::BTreeMap::new();
+        blocking.insert("blocking_sensor".to_string(), true);
+        blocking.insert("non_blocking".to_string(), false);
+
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        let lines: Vec<&str> = result.content.lines().collect();
+        // Blocking sensor should come first even though both are errors
+        assert!(lines[0].contains("blocking_sensor"));
+        assert!(lines[1].contains("non_blocking"));
+    }
+
+    #[test]
+    fn test_annotation_ordering_blocking_branch_reverse_input() {
+        let mut cfg = CockpitConfig::default();
+        cfg.policy.max_annotations = 25;
+
+        let highlights = vec![
+            make_highlight(
+                "blocking_sensor",
+                "code_block",
+                Some("src/b.rs"),
+                Some(10),
+                Severity::Error,
+            ),
+            make_highlight(
+                "non_blocking",
+                "code_non",
+                Some("src/a.rs"),
+                Some(10),
+                Severity::Error,
+            ),
+        ];
+
+        let mut blocking = std::collections::BTreeMap::new();
+        blocking.insert("blocking_sensor".to_string(), true);
+        blocking.insert("non_blocking".to_string(), false);
+
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        let lines: Vec<&str> = result.content.lines().collect();
+        assert!(lines[0].contains("blocking_sensor"));
+        assert!(lines[1].contains("non_blocking"));
+    }
+
+    #[test]
+    fn test_empty_annotations() {
+        let cfg = CockpitConfig::default();
+        let highlights: Vec<Highlight> = vec![];
+        let blocking = std::collections::BTreeMap::new();
+
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        assert!(!result.truncated);
+        assert_eq!(result.total_count, 0);
+        assert_eq!(result.rendered_count, 0);
+        assert!(result.content.contains("No annotations"));
+    }
+
+    #[test]
+    fn test_annotation_at_exact_limit() {
+        let mut cfg = CockpitConfig::default();
+        cfg.policy.max_annotations = 2;
+
+        let highlights = vec![
+            make_highlight(
+                "sensor_a",
+                "code1",
+                Some("src/a.rs"),
+                Some(10),
+                Severity::Error,
+            ),
+            make_highlight(
+                "sensor_b",
+                "code2",
+                Some("src/b.rs"),
+                Some(20),
+                Severity::Warn,
+            ),
+        ];
+
+        let blocking = std::collections::BTreeMap::new();
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        assert!(!result.truncated);
+        assert_eq!(result.total_count, 2);
+        assert_eq!(result.rendered_count, 2);
+        assert!(!result.content.contains("capped"));
+    }
+
+    #[test]
+    fn test_annotation_without_location_omits_loc_string() {
+        let cfg = CockpitConfig::default();
+        let highlights = vec![Highlight {
+            sensor_id: "sensor_a".to_string(),
+            finding: Finding {
+                severity: Severity::Warn,
+                check_id: None,
+                code: "code1".to_string(),
+                message: "message".to_string(),
+                location: None,
+                help: None,
+                url: None,
+                fingerprint: None,
+                data: None,
+            },
+        }];
+
+        let blocking = std::collections::BTreeMap::new();
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        assert!(result.content.contains("`code1`"));
+        assert!(!result.content.contains(" at `"));
+    }
+
+    #[test]
+    fn test_annotation_with_empty_location_omits_loc_string() {
+        let cfg = CockpitConfig::default();
+        let highlights = vec![Highlight {
+            sensor_id: "sensor_a".to_string(),
+            finding: Finding {
+                severity: Severity::Info,
+                check_id: None,
+                code: "code2".to_string(),
+                message: "message".to_string(),
+                location: Some(Location {
+                    path: None,
+                    line: None,
+                    col: None,
+                }),
+                help: None,
+                url: None,
+                fingerprint: None,
+                data: None,
+            },
+        }];
+
+        let blocking = std::collections::BTreeMap::new();
+        let result = render_annotations(&highlights, &cfg, &blocking);
+
+        assert!(result.content.contains("`code2`"));
+        assert!(!result.content.contains(" at `"));
+    }
 }

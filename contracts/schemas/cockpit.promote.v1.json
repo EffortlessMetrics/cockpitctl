@@ -1,0 +1,51 @@
+{
+  "$id": "urn:cockpit:cockpit.promote.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cockpit.promote.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "cockpit.promote.v1"
+    },
+    "cards": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "value": { "type": "string" },
+          "severity": { "enum": ["info", "warn", "error"] }
+        }
+      }
+    },
+    "suggested_highlights": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["finding_fingerprint"],
+        "additionalProperties": false,
+        "properties": {
+          "finding_fingerprint": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "suggested_artifacts": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["artifact_id"],
+        "additionalProperties": false,
+        "properties": {
+          "artifact_id": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

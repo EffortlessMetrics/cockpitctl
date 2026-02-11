@@ -1,0 +1,48 @@
+{
+  "schema": "unicodescan.report.v1",
+  "tool": {
+    "name": "unicodescan",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T11:59:00Z"
+  },
+  "verdict": {
+    "status": "warn",
+    "counts": {
+      "info": 1,
+      "warn": 2,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "findings": [
+    {
+      "severity": "warn",
+      "code": "unicodescan.encoding",
+      "message": "Non-ASCII characters in source file",
+      "location": {
+        "path": "src/\u65e5\u672c\u8a9e/file.rs",
+        "line": 10
+      }
+    },
+    {
+      "severity": "warn",
+      "code": "unicodescan.emoji",
+      "message": "Emoji detected in path component",
+      "location": {
+        "path": "src/\ud83d\ude80_rocket/launch.rs",
+        "line": 1
+      }
+    },
+    {
+      "severity": "info",
+      "code": "unicodescan.cyrillics",
+      "message": "Cyrillic characters in filename: \u043f\u0440\u0438\u0432\u0435\u0442.rs",
+      "location": {
+        "path": "src/\u0440\u0443\u0441\u0441\u043a\u0438\u0439/\u043f\u0440\u0438\u0432\u0435\u0442.rs",
+        "line": 42
+      }
+    }
+  ]
+}

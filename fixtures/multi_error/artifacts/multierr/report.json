@@ -1,0 +1,35 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "multierr", "version": "0.1.0" },
+  "run": {
+    "started_at": "2026-02-02T12:00:00Z",
+    "capabilities": {
+      "git": { "status": "available", "reason": "INVALID REASON" }
+    }
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": { "info": 1, "warn": 1, "error": 1 },
+    "reasons": ["Bad Reason!"]
+  },
+  "findings": [
+    {
+      "severity": "info",
+      "code": "multierr.note",
+      "message": "A note",
+      "location": { "path": "src/ok.rs", "line": 1 }
+    },
+    {
+      "severity": "error",
+      "code": "multierr.error",
+      "message": "An error",
+      "location": { "path": "/absolute/path.rs", "line": 10 }
+    },
+    {
+      "severity": "warn",
+      "code": "multierr.warn",
+      "message": "A warning",
+      "location": { "path": "src\\backslash.rs", "line": 5 }
+    }
+  ]
+}

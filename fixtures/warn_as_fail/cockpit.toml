@@ -1,0 +1,12 @@
+[policy]
+warn_is_fail = true
+max_highlights = 7
+max_per_sensor_findings = 20
+max_annotations = 25
+section_order = ["Highlights", "Lint", "Other"]
+
+[sensors.linter]
+blocking = true
+missing = "fail"
+section = "Lint"
+repro = "linter check --workspace"

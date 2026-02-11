@@ -6,19 +6,35 @@
 //! No filesystem, no clap, no network.
 
 use cockpitctl_types::{
-    CockpitConfig, CockpitReport, Finding, FindingSortKey, Highlight, MissingPolicy,
-    PolicySnapshot, PolicySensorSnapshot, SensorPolicy, SensorReport, SensorSummary, Severity,
-    ToolInfo, Verdict, VerdictCounts, VerdictStatus, RunInfo, severity_rank, verdict_status_rank,
+    CockpitConfig, CockpitReport, Finding, FindingSortKey, Highlight, MissingPolicy, PolicyOutcome,
+    PolicySensorSnapshot, PolicySnapshot, Presence, RunInfo, SensorPolicy, SensorReport,
+    SensorSummary, Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus, severity_rank,
+    verdict_status_rank,
 };
 use sha2::{Digest, Sha256};
 
 pub const COCKPIT_SCHEMA_ID: &str = "cockpit.report.v1";
 
+/// Derive the policy outcome for a sensor given its blocking flag and verdict status.
+pub fn compute_policy_outcome(blocking: bool, status: &VerdictStatus) -> PolicyOutcome {
+    if !blocking {
+        PolicyOutcome::Informational
+    } else if matches!(status, VerdictStatus::Fail) {
+        PolicyOutcome::Blocked
+    } else {
+        PolicyOutcome::Allowed
+    }
+}
+
 /// A cockpit-level code for synthesized findings.
 pub mod cockpit_codes {
     pub const MISSING_RECEIPT: &str = "cockpit.missing_receipt";
     pub const INVALID_RECEIPT: &str = "cockpit.invalid_receipt";
+    pub const SCHEMA_VIOLATION: &str = "cockpit.schema_violation";
     pub const RECEIPT_INCONSISTENT: &str = "cockpit.receipt_inconsistent";
+    pub const SENSORS_TRUNCATED: &str = "cockpit.sensors_truncated";
+    pub const PATH_TRAVERSAL: &str = "cockpit.path_traversal";
+    pub const RECEIPT_OVERSIZED: &str = "cockpit.receipt_oversized";
 }
 
 /// Normalize and cap a sensor report's findings for cockpit surfacing.
@@ -87,7 +103,7 @@ pub fn finding_sort_key(sensor_id: &str, f: &Finding) -> FindingSortKey {
 }
 
 pub fn sort_findings(sensor_id: &str, findings: &mut [Finding]) {
-    findings.sort_by(|a, b| finding_sort_key(sensor_id, a).cmp(&finding_sort_key(sensor_id, b)));
+    findings.sort_by_key(|f| finding_sort_key(sensor_id, f));
 }
 
 pub fn sort_sensor_summaries(summaries: &mut [SensorSummary], cfg: &CockpitConfig) {
@@ -126,19 +142,19 @@ pub fn select_highlights(
     let mut deduped = Vec::new();
 
     for mut h in candidates.drain(..) {
-            let fp = h
-                .finding
-                .fingerprint
-                .clone()
-                .unwrap_or_else(|| derive_fingerprint(&h.sensor_id, &h.finding));
-            if seen.insert(fp.clone()) {
-                // Normalize by ensuring fingerprint is present for later stages.
-                if h.finding.fingerprint.is_none() {
-                    h.finding.fingerprint = Some(fp);
-                }
-                deduped.push(h);
+        let fp = h
+            .finding
+            .fingerprint
+            .clone()
+            .unwrap_or_else(|| derive_fingerprint(&h.sensor_id, &h.finding));
+        if seen.insert(fp.clone()) {
+            // Normalize by ensuring fingerprint is present for later stages.
+            if h.finding.fingerprint.is_none() {
+                h.finding.fingerprint = Some(fp);
             }
+            deduped.push(h);
         }
+    }
 
     // Sort deterministically: severity desc (error first), blocking sensors first, then sensor_id/path/line/code.
     deduped.sort_by(|a, b| {
@@ -149,8 +165,16 @@ pub fn select_highlights(
             severity_rank(&a.finding.severity),
             if a_block { 0u8 } else { 1u8 },
             a.sensor_id.clone(),
-            a.finding.location.as_ref().and_then(|l| l.path.clone()).unwrap_or_default(),
-            a.finding.location.as_ref().and_then(|l| l.line).unwrap_or(u32::MAX),
+            a.finding
+                .location
+                .as_ref()
+                .and_then(|l| l.path.clone())
+                .unwrap_or_default(),
+            a.finding
+                .location
+                .as_ref()
+                .and_then(|l| l.line)
+                .unwrap_or(u32::MAX),
             a.finding.code.clone(),
             a.finding.message.clone(),
         );
@@ -158,8 +182,16 @@ pub fn select_highlights(
             severity_rank(&b.finding.severity),
             if b_block { 0u8 } else { 1u8 },
             b.sensor_id.clone(),
-            b.finding.location.as_ref().and_then(|l| l.path.clone()).unwrap_or_default(),
-            b.finding.location.as_ref().and_then(|l| l.line).unwrap_or(u32::MAX),
+            b.finding
+                .location
+                .as_ref()
+                .and_then(|l| l.path.clone())
+                .unwrap_or_default(),
+            b.finding
+                .location
+                .as_ref()
+                .and_then(|l| l.line)
+                .unwrap_or(u32::MAX),
             b.finding.code.clone(),
             b.finding.message.clone(),
         );
@@ -193,10 +225,7 @@ pub fn snapshot_policy(cfg: &CockpitConfig) -> PolicySnapshot {
     }
 }
 
-pub fn overall_verdict(
-    sensor_summaries: &[SensorSummary],
-    cfg: &CockpitConfig,
-) -> Verdict {
+pub fn overall_verdict(sensor_summaries: &[SensorSummary], cfg: &CockpitConfig) -> Verdict {
     // Overall verdict is derived from blocking sensors only.
     // Status ordering: fail > warn > pass > skip
     let mut worst = VerdictStatus::Pass;
@@ -216,9 +245,9 @@ pub fn overall_verdict(
         let mut effective_status = s.verdict.status.clone();
         if cfg.policy.warn_is_fail && matches!(effective_status, VerdictStatus::Warn) {
             effective_status = VerdictStatus::Fail;
-            reasons.push(format!("warn_is_fail:{}",
-                s.id
-            ));
+            if !reasons.contains(&"warn_is_fail".to_string()) {
+                reasons.push("warn_is_fail".to_string());
+            }
         }
 
         if verdict_status_rank(&effective_status) < verdict_status_rank(&worst) {
@@ -226,7 +255,11 @@ pub fn overall_verdict(
         }
     }
 
-    Verdict { status: worst, counts, reasons }
+    Verdict {
+        status: worst,
+        counts,
+        reasons,
+    }
 }
 
 pub fn synthesize_missing_sensor(
@@ -235,43 +268,66 @@ pub fn synthesize_missing_sensor(
     report_path: &str,
     comment_path: Option<String>,
 ) -> (SensorSummary, Option<Highlight>) {
-    let (status, severity, code) = match policy.missing {
-        MissingPolicy::Skip => (VerdictStatus::Skip, Severity::Info, cockpit_codes::MISSING_RECEIPT),
-        MissingPolicy::Warn => (VerdictStatus::Warn, Severity::Warn, cockpit_codes::MISSING_RECEIPT),
-        MissingPolicy::Fail => (VerdictStatus::Fail, Severity::Error, cockpit_codes::MISSING_RECEIPT),
+    let (status, severity, emit_finding) = match policy.missing {
+        MissingPolicy::Skip => (VerdictStatus::Skip, Severity::Info, false),
+        MissingPolicy::Warn => (VerdictStatus::Warn, Severity::Warn, true),
+        MissingPolicy::Fail => (VerdictStatus::Fail, Severity::Error, true),
     };
 
-    let finding = Finding {
-        severity,
-        check_id: Some("cockpit.missing_receipt".to_string()),
-        code: code.to_string(),
-        message: format!("Expected receipt for sensor `{}` but it was not found at `{}`.", sensor_id, report_path),
-        location: None,
-        help: Some("Ensure the sensor ran and wrote artifacts/<sensor>/report.json.".to_string()),
-        url: None,
-        fingerprint: None,
-        data: None,
+    let finding = if emit_finding {
+        Some(Finding {
+            severity,
+            check_id: Some("cockpit.missing_receipt".to_string()),
+            code: cockpit_codes::MISSING_RECEIPT.to_string(),
+            message: format!(
+                "Expected receipt for sensor `{}` but it was not found at `{}`.",
+                sensor_id, report_path
+            ),
+            location: None,
+            help: Some(
+                "Ensure the sensor ran and wrote artifacts/<sensor>/report.json.".to_string(),
+            ),
+            url: None,
+            fingerprint: None,
+            data: None,
+        })
+    } else {
+        None
     };
 
     let verdict = Verdict {
         status,
-        counts: compute_counts(&[finding.clone()]),
-        reasons: vec!["missing_receipt".to_string()],
+        counts: finding
+            .as_ref()
+            .map(|f| compute_counts(std::slice::from_ref(f)))
+            .unwrap_or_default(),
+        reasons: if emit_finding {
+            vec!["missing_receipt".to_string()]
+        } else {
+            vec![]
+        },
     };
+
+    let policy_outcome = compute_policy_outcome(policy.blocking, &verdict.status);
 
     let summary = SensorSummary {
         id: sensor_id.to_string(),
         blocking: policy.blocking,
         missing: policy.missing,
-        present: false,
+        presence: Presence::Missing,
         report_path: report_path.to_string(),
         comment_path,
         verdict,
         truncated: false,
         errors: vec![],
+        missing_policy_applied: Some(policy.missing),
+        policy_outcome: Some(policy_outcome),
     };
 
-    let highlight = Some(Highlight { sensor_id: sensor_id.to_string(), finding });
+    let highlight = finding.map(|finding| Highlight {
+        sensor_id: sensor_id.to_string(),
+        finding,
+    });
 
     (summary, highlight)
 }
@@ -287,7 +343,10 @@ pub fn synthesize_invalid_sensor(
         severity: Severity::Error,
         check_id: Some("cockpit.invalid_receipt".to_string()),
         code: cockpit_codes::INVALID_RECEIPT.to_string(),
-        message: format!("Invalid receipt for sensor `{}` at `{}`: {}", sensor_id, report_path, error),
+        message: format!(
+            "Invalid receipt for sensor `{}` at `{}`: {}",
+            sensor_id, report_path, error
+        ),
         location: None,
         help: Some("Validate that the sensor wrote JSON matching sensor.report.v1.".to_string()),
         url: None,
@@ -297,25 +356,259 @@ pub fn synthesize_invalid_sensor(
 
     let verdict = Verdict {
         status: VerdictStatus::Fail,
-        counts: compute_counts(&[finding.clone()]),
+        counts: compute_counts(std::slice::from_ref(&finding)),
         reasons: vec!["invalid_receipt".to_string()],
+    };
+
+    let policy_outcome = compute_policy_outcome(policy.blocking, &VerdictStatus::Fail);
+
+    let summary = SensorSummary {
+        id: sensor_id.to_string(),
+        blocking: policy.blocking,
+        missing: policy.missing,
+        presence: Presence::Invalid,
+        report_path: report_path.to_string(),
+        comment_path,
+        verdict,
+        truncated: false,
+        errors: vec![error],
+        missing_policy_applied: None,
+        policy_outcome: Some(policy_outcome),
+    };
+
+    let highlight = Some(Highlight {
+        sensor_id: sensor_id.to_string(),
+        finding,
+    });
+
+    (summary, highlight)
+}
+
+/// Synthesize a sensor summary when the receipt violates the JSON schema.
+/// This is distinct from invalid_receipt (JSON parse error): the receipt is valid JSON
+/// but does not conform to the sensor.report.v1 schema (e.g., missing required fields).
+pub fn synthesize_schema_violation_sensor(
+    sensor_id: &str,
+    policy: &SensorPolicy,
+    report_path: &str,
+    comment_path: Option<String>,
+    validation_errors: Vec<String>,
+) -> (SensorSummary, Option<Highlight>) {
+    let error_summary = if validation_errors.len() == 1 {
+        validation_errors[0].clone()
+    } else {
+        format!(
+            "{} schema violations: {}",
+            validation_errors.len(),
+            validation_errors.join("; ")
+        )
+    };
+
+    let finding = Finding {
+        severity: Severity::Error,
+        check_id: Some("cockpit.schema_violation".to_string()),
+        code: cockpit_codes::SCHEMA_VIOLATION.to_string(),
+        message: format!(
+            "Receipt for sensor `{}` at `{}` does not conform to sensor.report.v1 schema: {}",
+            sensor_id, report_path, error_summary
+        ),
+        location: None,
+        help: Some(
+            "Ensure the sensor output matches the JSON schema at schemas/sensor.report.v1.json."
+                .to_string(),
+        ),
+        url: None,
+        fingerprint: None,
+        data: None,
+    };
+
+    let verdict = Verdict {
+        status: VerdictStatus::Fail,
+        counts: compute_counts(std::slice::from_ref(&finding)),
+        reasons: vec!["schema_violation".to_string()],
+    };
+
+    let policy_outcome = compute_policy_outcome(policy.blocking, &VerdictStatus::Fail);
+
+    let summary = SensorSummary {
+        id: sensor_id.to_string(),
+        blocking: policy.blocking,
+        missing: policy.missing,
+        presence: Presence::Invalid,
+        report_path: report_path.to_string(),
+        comment_path,
+        verdict,
+        truncated: false,
+        errors: validation_errors,
+        missing_policy_applied: None,
+        policy_outcome: Some(policy_outcome),
+    };
+
+    let highlight = Some(Highlight {
+        sensor_id: sensor_id.to_string(),
+        finding,
+    });
+
+    (summary, highlight)
+}
+
+/// Synthesize a cockpit-level highlight for an unsafe path traversal attempt.
+pub fn synthesize_path_traversal_highlight(
+    sensor_id: &str,
+    path: &str,
+    context: Option<String>,
+) -> Highlight {
+    let detail = context
+        .map(|c| format!(" (unsafe {})", c))
+        .unwrap_or_default();
+    let finding = Finding {
+        severity: Severity::Error,
+        check_id: Some("cockpit.path_traversal".to_string()),
+        code: cockpit_codes::PATH_TRAVERSAL.to_string(),
+        message: format!(
+            "Rejected unsafe path for sensor `{}` at `{}`{}.",
+            sensor_id, path, detail
+        ),
+        location: None,
+        help: Some(
+            "Ensure sensor IDs and artifact paths do not contain path traversal or escape the artifacts root.".to_string(),
+        ),
+        url: None,
+        fingerprint: Some(format!("cockpit.path_traversal:{}:{}", sensor_id, path)),
+        data: None,
+    };
+    Highlight {
+        sensor_id: "_cockpit".to_string(),
+        finding,
+    }
+}
+
+/// Synthesize a sensor summary for an unsafe path traversal attempt.
+pub fn synthesize_path_traversal_sensor(
+    sensor_id: &str,
+    policy: &SensorPolicy,
+    report_path: &str,
+    comment_path: Option<String>,
+    context: Option<String>,
+) -> (SensorSummary, Highlight) {
+    let highlight = synthesize_path_traversal_highlight(sensor_id, report_path, context);
+
+    let verdict = Verdict {
+        status: VerdictStatus::Fail,
+        counts: compute_counts(std::slice::from_ref(&highlight.finding)),
+        reasons: vec!["path_traversal".to_string()],
     };
 
     let summary = SensorSummary {
         id: sensor_id.to_string(),
         blocking: policy.blocking,
         missing: policy.missing,
-        present: false,
+        presence: Presence::Missing,
         report_path: report_path.to_string(),
         comment_path,
         verdict,
         truncated: false,
-        errors: vec![error],
+        errors: vec![format!("unsafe path rejected: {}", report_path)],
+        missing_policy_applied: None,
+        policy_outcome: Some(PolicyOutcome::Blocked),
     };
 
-    let highlight = Some(Highlight { sensor_id: sensor_id.to_string(), finding });
+    (summary, highlight)
+}
+
+/// Synthesize a sensor summary for an oversized receipt.
+pub fn synthesize_receipt_oversized_sensor(
+    sensor_id: &str,
+    policy: &SensorPolicy,
+    report_path: &str,
+    comment_path: Option<String>,
+    size: u64,
+    cap: usize,
+) -> (SensorSummary, Highlight) {
+    let finding = Finding {
+        severity: Severity::Error,
+        check_id: Some("cockpit.receipt_oversized".to_string()),
+        code: cockpit_codes::RECEIPT_OVERSIZED.to_string(),
+        message: format!(
+            "Receipt for sensor `{}` exceeds size limit ({} bytes > {} bytes) at `{}`.",
+            sensor_id, size, cap, report_path
+        ),
+        location: None,
+        help: Some("Reduce receipt size or increase the max receipt size limit.".to_string()),
+        url: None,
+        fingerprint: Some(format!("cockpit.receipt_oversized:{}:{}", sensor_id, size)),
+        data: None,
+    };
+
+    let verdict = Verdict {
+        status: VerdictStatus::Fail,
+        counts: compute_counts(std::slice::from_ref(&finding)),
+        reasons: vec!["receipt_oversized".to_string()],
+    };
+
+    let policy_outcome = compute_policy_outcome(policy.blocking, &VerdictStatus::Fail);
+
+    let summary = SensorSummary {
+        id: sensor_id.to_string(),
+        blocking: policy.blocking,
+        missing: policy.missing,
+        presence: Presence::Invalid,
+        report_path: report_path.to_string(),
+        comment_path,
+        verdict,
+        truncated: false,
+        errors: vec![format!("receipt too large: {} bytes (cap {})", size, cap)],
+        missing_policy_applied: None,
+        policy_outcome: Some(policy_outcome),
+    };
+
+    let highlight = Highlight {
+        sensor_id: "_cockpit".to_string(),
+        finding,
+    };
 
     (summary, highlight)
+}
+
+/// Synthesize an informational highlight when receipt counts are inconsistent.
+pub fn synthesize_receipt_inconsistent(
+    sensor_id: &str,
+    reported: &VerdictCounts,
+    computed: &VerdictCounts,
+) -> Highlight {
+    let finding = Finding {
+        severity: Severity::Info,
+        check_id: Some("cockpit.receipt_inconsistent".to_string()),
+        code: cockpit_codes::RECEIPT_INCONSISTENT.to_string(),
+        message: format!(
+            "Receipt counts for sensor `{}` did not match findings: reported info={}, warn={}, error={}, computed info={}, warn={}, error={}.",
+            sensor_id,
+            reported.info,
+            reported.warn,
+            reported.error,
+            computed.info,
+            computed.warn,
+            computed.error
+        ),
+        location: None,
+        help: Some("Ensure receipt verdict counts match the findings array.".to_string()),
+        url: None,
+        fingerprint: Some(format!(
+            "cockpit.receipt_inconsistent:{}:{}:{}:{}:{}:{}:{}",
+            sensor_id,
+            reported.info,
+            reported.warn,
+            reported.error,
+            computed.info,
+            computed.warn,
+            computed.error
+        )),
+        data: None,
+    };
+    Highlight {
+        sensor_id: sensor_id.to_string(),
+        finding,
+    }
 }
 
 /// Construct a cockpit report from sensor reports and synthesized summaries.
@@ -341,6 +634,34 @@ pub fn build_cockpit_report(
     }
 }
 
+/// Create a warning highlight when sensor discovery was truncated due to max_receipts cap.
+pub fn synthesize_sensors_truncated(processed: usize, total_found: usize) -> Highlight {
+    let finding = Finding {
+        severity: Severity::Warn,
+        check_id: Some("cockpit.sensors_truncated".to_string()),
+        code: cockpit_codes::SENSORS_TRUNCATED.to_string(),
+        message: format!(
+            "Sensor discovery was truncated: processed {} of {} sensors found. Increase max_receipts limit if needed.",
+            processed, total_found
+        ),
+        location: None,
+        help: Some(
+            "This is a safety limit to prevent DoS. Consider reviewing why so many sensors exist."
+                .to_string(),
+        ),
+        url: None,
+        fingerprint: Some(format!(
+            "cockpit.sensors_truncated:{}:{}",
+            processed, total_found
+        )),
+        data: None,
+    };
+    Highlight {
+        sensor_id: "_cockpit".to_string(),
+        finding,
+    }
+}
+
 /// Convert a parsed sensor report into a cockpit sensor summary.
 pub fn summarize_sensor_report(
     sensor_id: &str,
@@ -356,28 +677,41 @@ pub fn summarize_sensor_report(
 
     // Recompute counts from surfaced findings (not the full report).
     // This matches the PR surface behavior; raw sensor report remains the record.
+    let reported = report.verdict.counts.clone();
     let computed = compute_counts(&surfaced);
     let mut verdict = report.verdict.clone();
+    let mut highlights = Vec::new();
     if verdict.counts != computed {
-        verdict.reasons.push(cockpit_codes::RECEIPT_INCONSISTENT.to_string());
+        verdict.reasons.push("receipt_inconsistent".to_string());
         verdict.counts = computed;
+        highlights.push(synthesize_receipt_inconsistent(
+            sensor_id,
+            &reported,
+            &verdict.counts,
+        ));
     }
+
+    let policy_outcome = compute_policy_outcome(policy.blocking, &verdict.status);
 
     let summary = SensorSummary {
         id: sensor_id.to_string(),
         blocking: policy.blocking,
         missing: policy.missing,
-        present: true,
+        presence: Presence::Present,
         report_path: report_path.to_string(),
         comment_path,
         verdict,
         truncated,
         errors: vec![],
+        missing_policy_applied: None,
+        policy_outcome: Some(policy_outcome),
     };
 
-    let mut highlights = Vec::new();
     for f in surfaced {
-        highlights.push(Highlight { sensor_id: sensor_id.to_string(), finding: f });
+        highlights.push(Highlight {
+            sensor_id: sensor_id.to_string(),
+            finding: f,
+        });
     }
 
     (summary, highlights)

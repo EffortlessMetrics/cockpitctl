@@ -1,0 +1,110 @@
+{
+  "$id": "urn:effortless:buildfix.plan.v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "buildfix.plan.v1",
+  "description": "Actuator protocol for deterministic fixes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "tool", "fixes"],
+  "properties": {
+    "schema": {
+      "const": "buildfix.plan.v1"
+    },
+    "tool": {
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": ["name", "version"],
+      "type": "object"
+    },
+    "fixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "safety", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique identifier for this fix."
+          },
+          "safety": {
+            "type": "string",
+            "enum": ["safe", "guarded", "unsafe"],
+            "description": "Safety level: safe (no side effects), guarded (requires confirmation), unsafe (may break things)."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable description of what this fix does."
+          },
+          "finding_refs": {
+            "type": "array",
+            "default": [],
+            "description": "References to findings this fix addresses.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sensor_id"],
+              "properties": {
+                "sensor_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "ID of the sensor that reported the finding."
+                },
+                "fingerprint": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Fingerprint of the finding."
+                },
+                "code": {
+                  "type": "string",
+                  "description": "Optional code of the finding."
+                },
+                "tool": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Tool name for routing."
+                },
+                "check_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Check ID for routing."
+                }
+              }
+            }
+          },
+          "preconditions": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["repo_head"],
+            "properties": {
+              "repo_head": { "type": "string", "minLength": 1 },
+              "receipt_digests": {
+                "type": "array",
+                "default": [],
+                "items": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
+          "data": {
+            "description": "Tool-specific payload; treated as opaque.",
+            "type": ["object", "array", "string", "number", "boolean", "null"]
+          }
+        }
+      }
+    }
+  }
+}

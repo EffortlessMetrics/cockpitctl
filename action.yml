@@ -1,0 +1,217 @@
+name: 'cockpitctl'
+description: 'Aggregate sensor receipts and produce a merge decision surface'
+author: 'cockpitctl'
+branding:
+  icon: 'check-circle'
+  color: 'green'
+
+inputs:
+  artifacts-path:
+    description: 'Path to the artifacts directory containing sensor receipts'
+    required: false
+    default: 'artifacts'
+  config-path:
+    description: 'Path to the cockpit.toml configuration file'
+    required: false
+    default: 'cockpit.toml'
+  labels:
+    description: 'Comma-separated list of PR labels to pass to cockpitctl (for label-gated sensors)'
+    required: false
+    default: ''
+  version:
+    description: 'Version of cockpitctl to install (e.g., "v1.0.0" or "latest")'
+    required: false
+    default: 'latest'
+  repository:
+    description: 'Repository to download cockpitctl from (e.g., "EffortlessMetrics/cockpitctl"). Defaults to the action repository.'
+    required: false
+    default: ''
+  post-comment:
+    description: 'Whether to post/update the PR comment (requires GITHUB_TOKEN with PR write access)'
+    required: false
+    default: 'true'
+  github-token:
+    description: 'GitHub token for posting PR comments (defaults to GITHUB_TOKEN)'
+    required: false
+    default: ${{ github.token }}
+  fail-on-error:
+    description: 'Fail the action if cockpitctl returns a non-zero exit code'
+    required: false
+    default: 'true'
+  toolpack:
+    description: 'Path to toolpack.json for manifest-based installation'
+    required: false
+    default: ''
+
+outputs:
+  exit-code:
+    description: 'Exit code from cockpitctl (0=pass, 2=policy fail, 1=runtime error)'
+    value: ${{ steps.ingest.outputs.exit-code }}
+  verdict:
+    description: 'Overall verdict (pass, warn, fail, skip)'
+    value: ${{ steps.ingest.outputs.verdict }}
+  report-path:
+    description: 'Path to the generated report.json'
+    value: ${{ steps.ingest.outputs.report-path }}
+  comment-path:
+    description: 'Path to the generated comment.md'
+    value: ${{ steps.ingest.outputs.comment-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Detect platform
+      id: platform
+      shell: bash
+      run: |
+        case "${{ runner.os }}" in
+          Linux)
+            echo "asset=cockpitctl-linux-x64" >> $GITHUB_OUTPUT
+            echo "binary=cockpitctl" >> $GITHUB_OUTPUT
+            ;;
+          macOS)
+            if [[ "${{ runner.arch }}" == "ARM64" ]]; then
+              echo "asset=cockpitctl-darwin-arm64" >> $GITHUB_OUTPUT
+            else
+              echo "asset=cockpitctl-darwin-x64" >> $GITHUB_OUTPUT
+            fi
+            echo "binary=cockpitctl" >> $GITHUB_OUTPUT
+            ;;
+          Windows)
+            echo "asset=cockpitctl-windows-x64.exe" >> $GITHUB_OUTPUT
+            echo "binary=cockpitctl.exe" >> $GITHUB_OUTPUT
+            ;;
+          *)
+            echo "::error::Unsupported platform: ${{ runner.os }}"
+            exit 1
+            ;;
+        esac
+
+    - name: Determine download URL
+      id: url
+      shell: bash
+      run: |
+        REPO="${{ inputs.repository }}"
+        if [[ -z "$REPO" ]]; then
+          REPO="${{ github.action_repository }}"
+        fi
+        
+        if [[ -z "$REPO" ]]; then
+          echo "::error::Unable to determine repository for downloads. Set inputs.repository (e.g. EffortlessMetrics/cockpitctl)."
+          exit 1
+        fi
+
+        VERSION="${{ inputs.version }}"
+        ASSET="${{ steps.platform.outputs.asset }}"
+
+        if [[ "$VERSION" == "latest" ]]; then
+          URL="https://github.com/${REPO}/releases/latest/download/${ASSET}"
+        else
+          # Ensure version starts with 'v'
+          if [[ "$VERSION" != v* ]]; then
+            VERSION="v${VERSION}"
+          fi
+          URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET}"
+        fi
+
+        echo "url=${URL}" >> $GITHUB_OUTPUT
+
+    - name: Download cockpitctl (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        curl -fsSL "${{ steps.url.outputs.url }}" -o /tmp/cockpitctl
+        chmod +x /tmp/cockpitctl
+        echo "/tmp" >> $GITHUB_PATH
+
+    - name: Download cockpitctl (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $url = "${{ steps.url.outputs.url }}"
+        $dest = "$env:RUNNER_TEMP\cockpitctl.exe"
+        Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing
+        "$env:RUNNER_TEMP" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Verify installation
+      shell: bash
+      run: |
+        cockpitctl --version || ${{ steps.platform.outputs.binary }} --version
+
+    - name: Run cockpitctl ingest
+      id: ingest
+      shell: bash
+      run: |
+        set +e
+
+        # Build argv as an array (no eval; avoids injection and quoting bugs)
+        CMD=(cockpitctl ingest
+          --artifacts "${{ inputs.artifacts-path }}"
+          --config "${{ inputs.config-path }}"
+        )
+
+        # Add labels if provided (inputs.labels is comma-separated)
+        if [[ -n "${{ inputs.labels }}" ]]; then
+          IFS=',' read -r -a LABELS <<< "${{ inputs.labels }}"
+          for label in "${LABELS[@]}"; do
+            # trim whitespace
+            label="${label#"${label%%[![:space:]]*}"}"
+            label="${label%"${label##*[![:space:]]}"}"
+            [[ -n "$label" ]] || continue
+            CMD+=(--label "$label")
+          done
+        fi
+
+        echo "Running: ${CMD[*]}"
+        "${CMD[@]}"
+        EXIT_CODE=$?
+
+        echo "exit-code=${EXIT_CODE}" >> $GITHUB_OUTPUT
+
+        # Determine verdict from exit code
+        case $EXIT_CODE in
+          0)
+            echo "verdict=pass" >> $GITHUB_OUTPUT
+            ;;
+          2)
+            echo "verdict=fail" >> $GITHUB_OUTPUT
+            ;;
+          *)
+            echo "verdict=error" >> $GITHUB_OUTPUT
+            ;;
+        esac
+
+        # Set output paths
+        echo "report-path=${{ inputs.artifacts-path }}/cockpit/report.json" >> $GITHUB_OUTPUT
+        echo "comment-path=${{ inputs.artifacts-path }}/cockpit/comment.md" >> $GITHUB_OUTPUT
+
+        # Store exit code for later
+        echo "COCKPITCTL_EXIT_CODE=${EXIT_CODE}" >> $GITHUB_ENV
+
+    - name: Post PR comment
+      if: inputs.post-comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: |
+        COMMENT_FILE="${{ inputs.artifacts-path }}/cockpit/comment.md"
+
+        if [[ ! -f "$COMMENT_FILE" ]]; then
+          echo "::warning::Comment file not found at ${COMMENT_FILE}, skipping PR comment"
+          exit 0
+        fi
+
+        PR_NUMBER="${{ github.event.pull_request.number }}"
+
+        # Try to update existing comment, fall back to creating new one
+        gh pr comment "$PR_NUMBER" --body-file "$COMMENT_FILE" --edit-last 2>/dev/null || \
+          gh pr comment "$PR_NUMBER" --body-file "$COMMENT_FILE"
+
+    - name: Check result
+      if: inputs.fail-on-error == 'true'
+      shell: bash
+      run: |
+        if [[ "$COCKPITCTL_EXIT_CODE" != "0" ]]; then
+          echo "::error::cockpitctl exited with code ${COCKPITCTL_EXIT_CODE}"
+          exit $COCKPITCTL_EXIT_CODE
+        fi

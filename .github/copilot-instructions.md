@@ -1,0 +1,147 @@
+# copilot-instructions.md — cockpitctl
+
+This file collects repository-specific guidance for Copilot sessions: build/test/lint commands, high-level architecture, and key conventions.
+
+---
+
+## 1) Build, test, and lint commands
+
+Run these from the repository root unless noted.
+
+- Build (workspace):
+
+`
+cargo build
+`
+
+- Run all tests (workspace):
+
+`
+cargo test --workspace --all-targets
+`
+
+- Run tests for a single package (example):
+
+`
+cargo test -p cockpitctl-cli
+`
+
+- Run a single test by name (example):
+
+`
+# run a unit test by name across the workspace
+cargo test -- <test_name>
+
+# run a test in a specific package
+cargo test -p <package> -- <test_name>
+`
+
+- Run a specific integration/golden test binary (examples from repo):
+
+`
+cargo test -p cockpitctl --test ingest_golden
+cargo test -p cockpitctl --test bdd
+`
+
+- Format check:
+
+`
+cargo fmt --all -- --check
+`
+
+- Lint (CI treats warnings as errors):
+
+`
+cargo clippy --workspace --all-targets -- -D warnings
+`
+
+- xtask utility (schema sync, conformance, fixtures):
+
+`
+cargo run -p xtask -- schema-sync-check
+cargo run -p xtask -- fixtures-help
+cargo run -p xtask -- conform --report <file> --all --sensor-id <id>
+cargo run -p xtask -- conform-dir --dir artifacts --all --validate-cockpit
+`
+
+- Optional tools referenced in docs:
+
+`
+cargo fuzz run parse_receipt        # fuzz harness
+cargo mutants --workspace          # mutation testing
+`
+
+
+## 2) High-level architecture (big picture)
+
+This repository follows a hexagonal / clean architecture split across small crates (microcrates). Dependencies point inward; domain crates do not depend on CLI/filesystem/network adapters.
+
+Core crates and roles (top-level overview):
+
+- crates/cockpitctl-types — stable DTOs, embedded schemas, ordering helpers
+- crates/cockpitctl-domain — policy evaluation, deterministic selection, normalization
+- crates/cockpitctl-ingest — use-case boundary and orchestration (ports)
+- crates/cockpitctl-render — PR comment renderer and budgeting
+- crates/cockpitctl-io — filesystem adapters (read receipts, write outputs)
+- crates/cockpitctl-core — facade re-exports
+- crates/cockpitctl-cli — binary entry point (clap)
+- crates/cockpitctl-conform & conformctl — conformance checking utilities
+- xtask/ — developer tooling: schema sync, fixture tooling, conformance helpers
+
+The product of the pipeline is deterministic evidence and a deterministic PR comment (artifacts/cockpit/report.json + artifacts/cockpit/comment.md).
+
+
+## 3) Key conventions (project-specific)
+
+- Receipt contract (inputs): each sensor writes exactly one receipt:
+
+`
+artifacts/<sensor_id>/report.json   # sensor.report.v1
+`
+
+- Cockpit outputs (always written by cockpitctl ingest even on policy failure):
+
+`
+artifacts/cockpit/report.json    # cockpit.report.v1
+artifacts/cockpit/comment.md     # deterministic markdown
+`
+
+- Precedence/override semantics:
+  - cockpit.toml supplies defaults (e.g., schema_validation = "lax" unless set).
+  - CLI flags only override when explicitly provided by the user.
+
+- Determinism requirements (important — must be stable):
+  - Sensor discovery: lexical order
+  - Findings sort: severity desc → sensor_id → path → line → code → message
+  - Highlights sort: severity desc → blocking-first → sensor_id → path → line → code
+
+- Safety constraints (receipts are untrusted):
+  - Refuse path traversal (..) in sensor IDs
+  - Do not follow symlinks out of the artifacts root
+  - Cap receipt file size (2MB default) and cap number of receipts processed
+
+- Exit codes (CI semantics):
+  - 0 — pass
+  - 2 — policy fail
+  - 1 — runtime error
+
+- Packaging and CI notes:
+  - cargo package --list -p cockpitctl must not include fixtures/docs junk
+  - CI enforces cargo run -p xtask -- schema-sync-check and treats clippy warnings as errors
+
+- Contracts and templates locations:
+  - JSON schemas: contracts/schemas/
+  - Comment template: templates/cockpit.comment.v1.md
+  - Contract docs: contracts/docs/
+
+
+## 4) AI assistant / agent files to consult
+
+- AGENTS.md and CLAUDE.md contain repository-specific guidance and the exact build/test/lint and CLI examples; Copilot sessions should consult these before making changes that affect CI, packaging, or contract handling.
+
+- Copilot CLI sessions: when asking about this CLI agent's capabilities, call fetch_copilot_cli_documentation first and use the returned documentation to answer capability questions.
+
+
+---
+
+If anything is missing or you'd like coverage for specific files (examples, CI/workflows, or xtask commands), request an update and it will be added.

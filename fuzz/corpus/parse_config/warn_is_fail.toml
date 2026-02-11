@@ -1,0 +1,17 @@
+[policy]
+warn_is_fail = true
+max_highlights = 10
+max_per_sensor_findings = 50
+max_annotations = 100
+section_order = ["Highlights", "Tests", "Diagnostics"]
+
+[sensors.clippy]
+blocking = false
+missing = "warn"
+section = "Diagnostics"
+
+[sensors.test]
+blocking = true
+missing = "fail"
+section = "Tests"
+require_label = "needs-tests"

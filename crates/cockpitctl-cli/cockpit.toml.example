@@ -1,0 +1,66 @@
+# Example cockpit policy file.
+#
+# This file is the *governance seam*:
+# - sensors emit observations
+# - cockpitctl decides what blocks merges, what is missing, and how much to render
+
+[policy]
+warn_is_fail = false
+max_highlights = 7
+max_per_sensor_findings = 20
+max_annotations = 25
+
+# Stable section order for the PR comment.
+# Sensors that do not specify a section are rendered under "Other".
+section_order = [
+  "Highlights",
+  "Repo contract",
+  "Dependencies",
+  "Policy",
+  "Tests",
+  "Diagnostics",
+  "Performance",
+  "Environment",
+  "Other",
+]
+
+[sensors.builddiag]
+blocking = true
+missing = "fail"
+section = "Repo contract"
+repro = "builddiag check --profile team --out artifacts/builddiag/report.json"
+
+[sensors.depguard]
+blocking = true
+missing = "warn"
+section = "Dependencies"
+repro = "depguard check --profile team --scope diff --out artifacts/depguard/report.json"
+
+[sensors.diffguard]
+blocking = true
+missing = "fail"
+section = "Policy"
+repro = "diffguard check --base $BASE_SHA --head $HEAD_SHA --out artifacts/diffguard/report.json"
+
+[sensors.covguard]
+blocking = true
+missing = "warn"
+section = "Tests"
+repro = "covguard check --lcov lcov.info --base $BASE_SHA --head $HEAD_SHA --out artifacts/covguard/report.json"
+
+[sensors.lintdiff]
+blocking = false
+missing = "skip"
+section = "Diagnostics"
+repro = "lintdiff ingest --diagnostics clippy.jsonl --base $BASE_SHA --head $HEAD_SHA --out artifacts/lintdiff/report.json"
+
+[sensors.perfgate]
+blocking = false
+missing = "skip"
+section = "Performance"
+require_label = "run-perf"
+
+[sensors.env-check]
+blocking = false
+missing = "skip"
+section = "Environment"
