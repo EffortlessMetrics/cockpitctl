@@ -82,12 +82,12 @@ download_binary() {
 }
 
 # Test conformctl
-test_conformctl() {
+test_conformctl() (
     local conformctl_path=$1
     local tag=$2
 
     log_info "Testing conformctl..."
-    
+
     # Check version
     "$conformctl_path" --version || {
         log_error "conformctl --version failed"
@@ -124,10 +124,10 @@ EOF
     }
 
     log_info "conformctl tests passed"
-}
+)
 
 # Test cockpitctl
-test_cockpitctl() {
+test_cockpitctl() (
     local cockpitctl_path=$1
     local tag=$2
 
@@ -214,17 +214,17 @@ EOF
     fi
 
     # Validate report structure
-    local verdict=$(jq -r '.verdict.status' artifacts/cockpit/report.json)
+    local verdict=$(python3 -c "import sys,json; print(json.load(open(sys.argv[1]))['verdict']['status'])" artifacts/cockpit/report.json)
     if [[ "$verdict" != "pass" ]]; then
         log_error "Expected verdict 'pass', got '$verdict'"
         return 1
     fi
 
     log_info "cockpitctl tests passed"
-}
+)
 
 # Test composite action (optional, requires gh CLI)
-test_composite_action() {
+test_composite_action() (
     local tag=$1
 
     if ! command -v gh &> /dev/null; then
@@ -261,7 +261,7 @@ EOF
     log_info "  1. Create a new GitHub repository or use an existing one"
     log_info "  2. Copy the workflow file to .github/workflows/"
     log_info "  3. Push and run the workflow manually via GitHub UI"
-}
+)
 
 # Main
 main() {

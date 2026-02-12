@@ -414,7 +414,7 @@ pub fn synthesize_schema_violation_sensor(
         ),
         location: None,
         help: Some(
-            "Ensure the sensor output matches the JSON schema at schemas/sensor.report.v1.json."
+            "Ensure the sensor output matches the JSON schema at contracts/schemas/sensor.report.v1.json."
                 .to_string(),
         ),
         url: None,

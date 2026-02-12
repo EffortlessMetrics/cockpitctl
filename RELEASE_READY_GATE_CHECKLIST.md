@@ -100,7 +100,7 @@ Requires both `publish` and `test-binaries` to complete.
 ## Verified Fixes
 
 ### Malformed JSON Handling
-✅ **CONFIRMED** — Malformed JSON produces a finding (`cockpit.invalid_receipt`), not a runtime abort. See `crates/cockpitctl-io/src/lib.rs`.
+✅ **CONFIRMED** — Malformed JSON produces a `cockpit.invalid_receipt` finding. Parseable but schema-invalid JSON produces a `cockpit.schema_violation` finding. Neither causes a runtime abort. See `crates/cockpitctl-io/src/lib.rs`.
 
 ### Determinism
 ✅ **CONFIRMED** — Documented in `docs/reference/determinism.md`. Covers sensor discovery order, findings sort, highlights sort, and JSON formatting rules.

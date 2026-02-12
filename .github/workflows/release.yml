@@ -302,15 +302,18 @@ jobs:
         run: chmod +x ${{ matrix.asset_name }}
 
       - name: Test ${{ matrix.package }} --version
+        shell: bash
         run: ./${{ matrix.asset_name }} --version
 
       - name: Test cockpitctl ingest command
         if: matrix.package == 'cockpitctl'
+        shell: bash
         run: |
           ./${{ matrix.asset_name }} ingest --artifacts fixtures/happy_path/artifacts --config fixtures/happy_path/cockpit.toml
 
       - name: Test conformctl check command
         if: matrix.package == 'conformctl'
+        shell: bash
         run: |
           ./${{ matrix.asset_name }} check --report fixtures/happy_path/artifacts/builddiag/report.json --sensor-id builddiag
 
@@ -337,8 +340,10 @@ jobs:
       - name: Generate SHA256 checksums
         run: |
           cd release-assets
-          # Generate checksums for all files
-          sha256sum * > SHA256SUMS.txt
+          # Generate checksums deterministically, excluding the output file itself
+          for f in $(ls -1 | sort); do
+            sha256sum "$f"
+          done > SHA256SUMS.txt
           echo "Generated SHA256SUMS.txt:"
           cat SHA256SUMS.txt
 

@@ -49,7 +49,7 @@
         "check_id": "cockpit.schema_violation",
         "code": "cockpit.schema_violation",
         "message": "Receipt for sensor `bad-sensor` at `artifacts/bad-sensor/report.json` does not conform to sensor.report.v1 schema: Additional properties are not allowed ('extra_not_allowed' was unexpected)",
-        "help": "Ensure the sensor output matches the JSON schema at schemas/sensor.report.v1.json.",
+        "help": "Ensure the sensor output matches the JSON schema at contracts/schemas/sensor.report.v1.json.",
         "fingerprint": "7d501a45062f6ed1d9f1186a8d527e20414e33a2ff3af844c80e91e3bbb39d6a"
       }
     }
