@@ -6,7 +6,7 @@ Reference documentation provides **technical descriptions** of the machinery and
 
 ### [CLI Commands](cli.md)
 
-Complete reference for all cockpitctl commands and flags.
+Complete reference for all cockpitctl and conformctl commands and flags.
 
 ## Configuration
 

@@ -45,6 +45,16 @@ Understanding the system:
 5. [Identity Specification](../contracts/docs/identity-spec.md) - Vocabulary and fingerprint rules
 6. [Compatibility Promise](reference/compatibility.md) - SemVer and contract stability
 
+### Release Managers
+
+Managing releases:
+
+1. [Release Preparation Guide](how-to/release-preparation-guide.md) - Comprehensive release process guide
+2. [Release Manager Checklist](how-to/release-manager-checklist.md) - Detailed release checklist
+3. [Release Runbook](how-to/release-runbook.md) - Step-by-step release execution
+4. [Smoke Test a Release](how-to/smoke-test-release.md) - Post-release validation
+5. [Release-Ready Gate Checklist](../RELEASE_READY_GATE_CHECKLIST.md) - Workflow verification
+
 ## Documentation Structure
 
 ```
@@ -56,6 +66,10 @@ docs/
 └── archive/            Historical documents
 
 contracts/docs/
-├── tokens.md           Canonical reason token registry
-└── identity-spec.md    Vocabulary and fingerprint rules
+├── tokens.md                   Canonical reason token registry
+├── identity-spec.md            Vocabulary and fingerprint rules
+├── artifact-layout.md          Directory structure and file layout
+├── comment-abi.md              PR comment contract and stability
+├── determinism.md              Determinism requirements
+└── presence-and-missingness.md Presence semantics and missing receipts
 ```

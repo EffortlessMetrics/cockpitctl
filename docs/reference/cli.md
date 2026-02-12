@@ -118,6 +118,68 @@ cockpitctl validate --input artifacts/builddiag/report.json
 cockpitctl validate --input artifacts/cockpit/report.json
 ```
 
+---
+
+## conformctl
+
+`conformctl` is a standalone conformance checker binary. It validates sensor
+receipts and cockpit reports against protocol rules without requiring the full
+cockpitctl workspace.
+
+### check
+
+Validate a single sensor report.
+
+```bash
+conformctl check [OPTIONS] --report <PATH>
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--report <PATH>` | required | Path to the sensor report JSON file |
+| `--sensor-id <ID>` | (none) | Expected sensor ID to verify |
+| `--all` | (none) | Enable all checks |
+| `--path-hygiene` | (none) | Reject absolute paths, backslashes, `..` traversal |
+| `--ordering` | (none) | Verify findings are in canonical sort order |
+| `--reason-lint` | (none) | Validate reason token format (`^[a-z0-9_]+$`) |
+| `--survivability` | (none) | Require explanatory findings/reasons when `status=fail` |
+| `--golden <FILE>` | (none) | Determinism check against a golden file |
+| `--sensor-id-format` | (none) | Validate sensor ID format (`[a-zA-Z0-9_-]+`) |
+| `--artifact-pointers` | (none) | Validate artifact pointer structure |
+| `--tool-error-identity` | (none) | Require canonical `check_id`/`code` for `tool_error` |
+
+**Example:**
+
+```bash
+conformctl check --report artifacts/builddiag/report.json --all --sensor-id builddiag
+```
+
+### check-dir
+
+Validate all sensor reports in an artifacts directory.
+
+```bash
+conformctl check-dir [OPTIONS] --dir <PATH>
+```
+
+**Options:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dir <PATH>` | required | Artifacts directory to scan |
+| `--all` | (none) | Enable all checks |
+| `--validate-cockpit` | (none) | Also validate the cockpit report |
+| `--presence-semantics` | (none) | Validate presence semantics |
+| All `check` flags | (none) | Applied to each discovered report |
+
+**Example:**
+
+```bash
+conformctl check-dir --dir artifacts --all --validate-cockpit
+```
+
 ## Environment Variables
 
 cockpitctl does not fetch CI context automatically. Supply context via flags or environment variables if needed for metadata population.

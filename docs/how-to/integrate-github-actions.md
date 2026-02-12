@@ -8,6 +8,44 @@ This guide shows how to set up a complete CI workflow with cockpitctl.
 - cockpitctl binary available (built or downloaded)
 - GitHub Actions enabled
 
+## Using the Composite Action (Recommended)
+
+The simplest way to integrate cockpitctl is the provided composite action:
+
+```yaml
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Run your sensors first...
+      - name: Run builddiag
+        run: builddiag check --output artifacts/builddiag/report.json
+
+      # Then aggregate with the composite action
+      - name: Cockpit
+        uses: EffortlessMetrics/cockpitctl@v0.2.0
+        with:
+          artifacts-path: artifacts
+          config-path: cockpit.toml
+          post-comment: true
+          fail-on-error: true
+```
+
+The action handles binary download, ingest, and PR comment posting in one step.
+See [`action.yml`](../../action.yml) for all available inputs and outputs.
+
+## Manual Workflow
+
+If you need more control, wire the steps yourself:
+
 ## Basic Workflow
 
 ```yaml

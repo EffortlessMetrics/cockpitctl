@@ -66,11 +66,14 @@ The rule: higher layers should not parse 10 sensor formats. They should parse on
 Workspace layout:
 
 - `cockpitctl-types`: stable DTOs, rankings, embedded schemas
+- `cockpitctl-conform`: conformance checking library (schema, path hygiene, ordering)
 - `cockpitctl-domain`: pure determinism, selection logic, normalization
 - `cockpitctl-ingest`: orchestration + ports + precedence + exit semantics
 - `cockpitctl-io`: filesystem adapters + safety limits + traversal protection
 - `cockpitctl-render`: markdown renderer + budgets + stable markers
+- `cockpitctl-core`: facade crate — re-exports all microcrates as one dependency
 - `cockpitctl-cli`: clap + subcommands (only clap crate)
+- `conformctl`: standalone conformance checker binary
 - `xtask`: schema checks, fixture tooling
 
 Key internal invariants (what tests are buying you):
@@ -128,6 +131,10 @@ CLI usage:
 cockpitctl ingest --artifacts artifacts --config cockpit.toml
 cockpitctl init --path cockpit.toml          # Write starter config
 cockpitctl validate --input report.json       # Validate receipt/report
+
+# Standalone conformance checker
+conformctl check --report report.json --all --sensor-id builddiag
+conformctl check-dir --dir artifacts --all --validate-cockpit
 ```
 
 Determinism requirements (must be byte-stable):

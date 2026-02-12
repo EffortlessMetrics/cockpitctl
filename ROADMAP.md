@@ -22,7 +22,8 @@ These milestones from the original implementation plan are done:
 - **M4 — Conformance harness + BDD.** `validate` command, `xtask conform` /
   `conform-dir`, 20+ BDD scenarios, fuzz harness, mutation testing guidance.
 - **M5 — Distribution and ecosystem.** Multi-platform binaries, release
-  workflow, Diataxis documentation, compatibility promise.
+  workflow, Diataxis documentation, compatibility promise, reusable GitHub
+  Action (`action.yml`).
 
 ---
 
@@ -38,12 +39,6 @@ default per-pipeline without rebuilding.
 A diagnostic command that, given a finding code (e.g. `cockpit.missing_receipt`),
 prints what it means, why it fires, and how to fix it. Useful for onboarding
 sensor authors and debugging CI failures.
-
-### Reusable GitHub Action
-
-A composite action or reusable workflow (`EffortlessMetrics/cockpitctl-action`)
-that wraps sensor aggregation + comment posting into a one-line CI step, reducing
-boilerplate for adopters.
 
 ### Annotation output
 

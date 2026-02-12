@@ -28,6 +28,20 @@ Troubleshoot common issues with receipt parsing and policy evaluation.
 
 Use the `validate` command to check receipt and report structure.
 
+## Release Management
+
+### [Release Preparation Guide](release-preparation-guide.md)
+
+Comprehensive guide covering pre-release verification, release execution, and post-release validation.
+
+### [Release Manager Checklist](release-manager-checklist.md)
+
+Detailed checklist for release managers covering all phases of the release process.
+
+### [Release Runbook](release-runbook.md)
+
+Step-by-step guide for executing a release with troubleshooting procedures.
+
 ### [Smoke Test a Release](smoke-test-release.md)
 
 Validate a release using only published artifacts (no vendoring required).
