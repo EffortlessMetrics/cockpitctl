@@ -48,23 +48,28 @@ try {
     
     $TestReceiptContent = @"
 {
-  "sensor_id": "test-sensor",
-  "sensor_version": "1.0.0",
-  "verdict": "pass",
-  "findings": [],
-  "highlights": [],
-  "metadata": {
-    "timestamp": "2024-01-01T00:00:00Z",
-    "run_id": "test-run-1"
-  }
+  "schema": "test-sensor.report.v1",
+  "tool": {
+    "name": "test-sensor",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2024-01-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": { "info": 0, "warn": 0, "error": 0 },
+    "reasons": []
+  },
+  "findings": []
 }
 "@
-    
+
     $TestReceiptPath = Join-Path $TestReceiptDir "report.json"
     $TestReceiptContent | Out-File -FilePath $TestReceiptPath -Encoding utf8
-    
+
     # Test conformctl check
-    & $ConformctlPath check $TestReceiptPath
+    & $ConformctlPath check --report $TestReceiptPath --sensor-id test-sensor
     if ($LASTEXITCODE -ne 0) {
         throw "conformctl check failed"
     }
@@ -108,25 +113,49 @@ required = true
     New-Item -ItemType Directory -Path $DiffguardDir -Force | Out-Null
     
     # Create sensor reports
-    $SensorReportContent = @"
+    $BuilddiagReportContent = @"
 {
-  "sensor_id": "builddiag",
-  "sensor_version": "1.0.0",
-  "verdict": "pass",
-  "findings": [],
-  "highlights": [],
-  "metadata": {
-    "timestamp": "2024-01-01T00:00:00Z",
-    "run_id": "test-run-1"
-  }
+  "schema": "builddiag.report.v1",
+  "tool": {
+    "name": "builddiag",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2024-01-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": { "info": 0, "warn": 0, "error": 0 },
+    "reasons": []
+  },
+  "findings": []
 }
 "@
-    
+
     $BuilddiagReportPath = Join-Path $BuilddiagDir "report.json"
-    $SensorReportContent -replace "builddiag", "builddiag" | Out-File -FilePath $BuilddiagReportPath -Encoding utf8
-    
+    $BuilddiagReportContent | Out-File -FilePath $BuilddiagReportPath -Encoding utf8
+
+    $DiffguardReportContent = @"
+{
+  "schema": "diffguard.report.v1",
+  "tool": {
+    "name": "diffguard",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2024-01-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": { "info": 0, "warn": 0, "error": 0 },
+    "reasons": []
+  },
+  "findings": []
+}
+"@
+
     $DiffguardReportPath = Join-Path $DiffguardDir "report.json"
-    $SensorReportContent -replace "builddiag", "diffguard" | Out-File -FilePath $DiffguardReportPath -Encoding utf8
+    $DiffguardReportContent | Out-File -FilePath $DiffguardReportPath -Encoding utf8
     
     # Run cockpitctl ingest
     Push-Location $TestArtifactsDir
@@ -152,8 +181,8 @@ required = true
     
     # Validate report structure
     $ReportContent = Get-Content $ReportPath -Raw | ConvertFrom-Json
-    if ($ReportContent.verdict -ne "pass") {
-        throw "Expected verdict 'pass', got '$($ReportContent.verdict)'"
+    if ($ReportContent.verdict.status -ne "pass") {
+        throw "Expected verdict 'pass', got '$($ReportContent.verdict.status)'"
     }
     
     Write-Host "cockpitctl tests passed" -ForegroundColor Green

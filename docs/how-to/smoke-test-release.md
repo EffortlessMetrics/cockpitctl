@@ -56,19 +56,24 @@ curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.
 # Test against a sample receipt
 cat > test-receipt.json << 'EOF'
 {
-  "sensor_id": "test-sensor",
-  "sensor_version": "1.0.0",
-  "verdict": "pass",
-  "findings": [],
-  "highlights": [],
-  "metadata": {
-    "timestamp": "2024-01-01T00:00:00Z",
-    "run_id": "test-run-1"
-  }
+  "schema": "test-sensor.report.v1",
+  "tool": {
+    "name": "test-sensor",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2024-01-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": { "info": 0, "warn": 0, "error": 0 },
+    "reasons": []
+  },
+  "findings": []
 }
 EOF
 
-./conformctl check test-receipt.json
+./conformctl check --report test-receipt.json --sensor-id test-sensor
 ```
 
 ### 2. Test cockpitctl
@@ -98,7 +103,7 @@ ls artifacts/cockpit/report.json
 ls artifacts/cockpit/comment.md
 
 # Verify report structure
-jq '.verdict' artifacts/cockpit/report.json  # Should be "pass"
+jq '.verdict.status' artifacts/cockpit/report.json  # Should be "pass"
 ```
 
 ### 3. Test Composite Action

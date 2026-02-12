@@ -100,20 +100,25 @@ test_conformctl() {
 
     cat > "$test_receipt_dir/report.json" << 'EOF'
 {
-  "sensor_id": "test-sensor",
-  "sensor_version": "1.0.0",
-  "verdict": "pass",
-  "findings": [],
-  "highlights": [],
-  "metadata": {
-    "timestamp": "2024-01-01T00:00:00Z",
-    "run_id": "test-run-1"
-  }
+  "schema": "test-sensor.report.v1",
+  "tool": {
+    "name": "test-sensor",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2024-01-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": { "info": 0, "warn": 0, "error": 0 },
+    "reasons": []
+  },
+  "findings": []
 }
 EOF
 
     # Run conformctl check
-    "$conformctl_path" check "$test_receipt_dir/report.json" || {
+    "$conformctl_path" check --report "$test_receipt_dir/report.json" --sensor-id test-sensor || {
         log_error "conformctl check failed on test receipt"
         return 1
     }
@@ -154,29 +159,39 @@ EOF
     # Create minimal sensor reports
     cat > "$test_artifacts_dir/artifacts/builddiag/report.json" << 'EOF'
 {
-  "sensor_id": "builddiag",
-  "sensor_version": "1.0.0",
-  "verdict": "pass",
-  "findings": [],
-  "highlights": [],
-  "metadata": {
-    "timestamp": "2024-01-01T00:00:00Z",
-    "run_id": "test-run-1"
-  }
+  "schema": "builddiag.report.v1",
+  "tool": {
+    "name": "builddiag",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2024-01-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": { "info": 0, "warn": 0, "error": 0 },
+    "reasons": []
+  },
+  "findings": []
 }
 EOF
 
     cat > "$test_artifacts_dir/artifacts/diffguard/report.json" << 'EOF'
 {
-  "sensor_id": "diffguard",
-  "sensor_version": "1.0.0",
-  "verdict": "pass",
-  "findings": [],
-  "highlights": [],
-  "metadata": {
-    "timestamp": "2024-01-01T00:00:00Z",
-    "run_id": "test-run-1"
-  }
+  "schema": "diffguard.report.v1",
+  "tool": {
+    "name": "diffguard",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2024-01-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": { "info": 0, "warn": 0, "error": 0 },
+    "reasons": []
+  },
+  "findings": []
 }
 EOF
 
@@ -199,7 +214,7 @@ EOF
     fi
 
     # Validate report structure
-    local verdict=$(jq -r '.verdict' artifacts/cockpit/report.json)
+    local verdict=$(jq -r '.verdict.status' artifacts/cockpit/report.json)
     if [[ "$verdict" != "pass" ]]; then
         log_error "Expected verdict 'pass', got '$verdict'"
         return 1
