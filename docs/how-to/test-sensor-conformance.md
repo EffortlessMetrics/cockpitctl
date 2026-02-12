@@ -185,7 +185,7 @@ npm install -g ajv-cli
 
 # Validate against schema
 ajv validate \
-  -s node_modules/cockpitctl/schemas/sensor.report.v1.json \
+  -s node_modules/cockpitctl/contracts/schemas/sensor.report.v1.json \
   -d artifacts/my-sensor/report.json
 ```
 
@@ -207,14 +207,17 @@ fn regression_issue_42() {
 }
 ```
 
-## xtask Conformance Harness
+## conformctl (Standalone Conformance Checker)
 
-cockpitctl ships an `xtask conform` command for automated protocol conformance checking. This is the recommended way to validate sensor receipts in CI.
+`conformctl` is a standalone binary for validating sensor receipts against the
+cockpitctl protocol. It does not require the cockpitctl workspace — download a
+pre-built binary from the
+[releases page](https://github.com/EffortlessMetrics/cockpitctl/releases).
 
 ### Single Report
 
 ```bash
-cargo run -p xtask -- conform \
+conformctl check \
   --report artifacts/my-sensor/report.json \
   --sensor-id my-sensor \
   --all
@@ -234,7 +237,7 @@ The `--all` flag enables every check. Individual checks can be toggled:
 ### Batch (All Sensors)
 
 ```bash
-cargo run -p xtask -- conform-dir \
+conformctl check-dir \
   --dir artifacts \
   --all \
   --validate-cockpit
@@ -245,6 +248,15 @@ This scans every `artifacts/<sensor>/report.json`, runs conformance checks per s
 Additional flags:
 - `--allow-missing-report` — skip sensors that lack a `report.json` instead of failing
 - `--validate-cockpit` — also validate `artifacts/cockpit/report.json`
+
+### Using xtask (workspace only)
+
+If you're working inside the cockpitctl workspace, you can also use `xtask`:
+
+```bash
+cargo run -p xtask -- conform --report artifacts/my-sensor/report.json --all --sensor-id my-sensor
+cargo run -p xtask -- conform-dir --dir artifacts --all --validate-cockpit
+```
 
 ## Version Compatibility
 

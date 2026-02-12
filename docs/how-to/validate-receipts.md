@@ -118,14 +118,14 @@ This catches schema violations before they reach cockpitctl.
 ## Schema Files
 
 The canonical schemas are:
-- `schemas/sensor.report.v1.json`
-- `schemas/cockpit.report.v1.json`
+- `contracts/schemas/sensor.report.v1.json`
+- `contracts/schemas/cockpit.report.v1.json`
 
 For full JSON Schema validation beyond cockpitctl:
 
 ```bash
 # Using ajv-cli
-npx ajv validate -s schemas/sensor.report.v1.json -d artifacts/sensor/report.json
+npx ajv validate -s contracts/schemas/sensor.report.v1.json -d artifacts/sensor/report.json
 ```
 
 ## What validate Checks

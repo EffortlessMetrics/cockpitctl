@@ -8,8 +8,8 @@ This is the staged, test-heavy plan to take `cockpitctl` from skeleton to "borin
 
 - [ ] Workspace microcrates created (types/domain/ingest/render/io/cli/xtask)
 - [ ] Schemas committed:
-  - `schemas/sensor.report.v1.json`
-  - `schemas/cockpit.report.v1.json`
+  - `contracts/schemas/sensor.report.v1.json`
+  - `contracts/schemas/cockpit.report.v1.json`
 - [ ] Comment contract template committed:
   - `templates/cockpit.comment.v1.md`
 - [ ] `cockpit.toml.example` committed

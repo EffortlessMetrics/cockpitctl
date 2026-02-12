@@ -1,0 +1,48 @@
+{
+  "version": "X.Y.Z",
+  "train": "stable",
+  "tools": {
+    "your-tool": {
+      "version": "X.Y.Z",
+      "assets": {
+        "linux-x64": {
+          "url": "https://github.com/your-org/your-repo/releases/download/vX.Y.Z/your-tool-linux-x64",
+          "sha256": ""
+        },
+        "darwin-x64": {
+          "url": "https://github.com/your-org/your-repo/releases/download/vX.Y.Z/your-tool-darwin-x64",
+          "sha256": ""
+        },
+        "darwin-arm64": {
+          "url": "https://github.com/your-org/your-repo/releases/download/vX.Y.Z/your-tool-darwin-arm64",
+          "sha256": ""
+        },
+        "windows-x64": {
+          "url": "https://github.com/your-org/your-repo/releases/download/vX.Y.Z/your-tool-windows-x64.exe",
+          "sha256": ""
+        }
+      }
+    }
+  },
+  "toolpacks": {
+    "standard": ["your-tool"]
+  }
+}
+
+# IMPORTANT NOTES:
+#
+# 1. Always use versioned URLs (releases/download/vX.Y.Z/), NOT latest
+#    - This ensures reproducibility and prevents unexpected updates
+#    - Teams can "grab our tag" and get consistent binaries
+#
+# 2. SHA256 values must be filled at release time:
+#    - Build and upload binaries to GitHub Releases
+#    - Calculate SHA256 for each binary asset:
+#      Linux/macOS: sha256sum <binary>
+#      macOS (alt): shasum -a 256 <binary>
+#      PowerShell: Get-FileHash <binary> -Algorithm SHA256
+#    - Update the sha256 field with the actual checksum
+#
+# 3. Replace X.Y.Z with your actual version number
+# 4. Replace your-org/your-repo with your GitHub organization and repository
+# 5. Replace your-tool with your tool's name

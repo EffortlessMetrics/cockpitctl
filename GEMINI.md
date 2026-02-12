@@ -25,6 +25,7 @@ The project follows a **Hexagonal / Clean Architecture** with a workspace of mic
 *   **`cockpitctl-io`**: Adapters implementing ports (filesystem access, safety limits).
 *   **`cockpitctl-render`**: Markdown renderer for the PR comment.
 *   **`cockpitctl-conform`**: Validation library (schema, path hygiene).
+*   **`cockpitctl-core`**: Facade crate — re-exports all microcrates as one dependency.
 *   **`cockpitctl-cli`**: Binary entry point (using `clap`). Wires adapters to the use case.
 *   **`conformctl`**: Standalone conformance checking binary.
 *   **`xtask`**: Dev tooling (schema sync, fixture generation).

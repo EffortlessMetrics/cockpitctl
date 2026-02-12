@@ -12,8 +12,8 @@ The following artifacts are covered by this compatibility promise:
 
 | Contract | Version | Location |
 |----------|---------|----------|
-| Sensor report schema | `sensor.report.v1` | `schemas/sensor.report.v1.json` |
-| Cockpit report schema | `cockpit.report.v1` | `schemas/cockpit.report.v1.json` |
+| Sensor report schema | `sensor.report.v1` | `contracts/schemas/sensor.report.v1.json` |
+| Cockpit report schema | `cockpit.report.v1` | `contracts/schemas/cockpit.report.v1.json` |
 | Comment template | `cockpit.comment.v1` | `templates/cockpit.comment.v1.md` |
 | CLI interface | v1 | `cockpitctl` binary |
 | Exit codes | v1 | Documented in [Exit Codes](exit-codes.md) |

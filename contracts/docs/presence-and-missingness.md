@@ -43,11 +43,11 @@ If `critical-sensor` produces no receipt, the aggregate verdict is `fail` with e
 
 Sensors may declare `require_label` in policy. Label gating is evaluated before presence:
 
-- If `require_label` is set and the label is **not** present in the PR labels, the sensor is **skipped entirely** (not treated as missing).
-- The sensor summary uses `presence = "missing"` with `missing = "skip"` regardless of the sensor's configured missing policy.
-- Label-gated sensors that are skipped do **not** emit findings or affect the aggregate verdict.
+- If `require_label` is set and the label is **not** present in the PR labels, the sensor is treated as missing with `missing = "skip"` policy.
+- The sensor summary uses `presence = "missing"` with `missing_policy_applied = "skip"` regardless of the sensor's configured missing policy.
+- Label-gated sensors that do not match do **not** emit findings or affect the aggregate verdict.
 
-This distinction matters: a label-gated sensor that does not match is intentionally excluded, not accidentally absent.
+This distinction matters: a label-gated sensor that does not match is intentionally excluded by policy, not accidentally absent due to a missing receipt.
 
 ## Error Surfacing
 

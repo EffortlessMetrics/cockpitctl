@@ -4,7 +4,7 @@ The `cockpit.report.v1` schema defines the aggregate report that cockpitctl prod
 
 ## Schema Location
 
-`schemas/cockpit.report.v1.json`
+`contracts/schemas/cockpit.report.v1.json`
 
 ## Overview
 
@@ -91,7 +91,7 @@ Per-sensor summaries.
     "id": "builddiag",
     "blocking": true,
     "missing": "fail",
-    "present": true,
+    "presence": "present",
     "verdict": {
       "status": "pass",
       "counts": { "info": 0, "warn": 0, "error": 0 }
@@ -109,7 +109,7 @@ Per-sensor summaries.
 | `id` | string | Sensor identifier |
 | `blocking` | bool | Whether sensor is blocking per policy |
 | `missing` | enum | Missing behavior: `skip`, `warn`, `fail` |
-| `present` | bool | Whether receipt was found |
+| `presence` | enum | Presence state: `present`, `missing`, `invalid` |
 | `verdict` | object | Sensor's verdict (or synthesized if missing/invalid) |
 | `report_path` | string | Path to sensor report |
 | `comment_path` | string | Path to sensor comment (if present) |
@@ -213,7 +213,7 @@ Director-specific payload for dashboards or downstream tools.
       "id": "builddiag",
       "blocking": true,
       "missing": "fail",
-      "present": true,
+      "presence": "present",
       "verdict": {
         "status": "pass",
         "counts": { "info": 2, "warn": 0, "error": 0 }

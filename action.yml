@@ -133,6 +133,139 @@ runs:
         Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing
         "$env:RUNNER_TEMP" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+    - name: Download SHA256SUMS.txt from release
+      id: sha256sums
+      shell: bash
+      run: |
+        REPO="${{ inputs.repository }}"
+        if [[ -z "$REPO" ]]; then
+          REPO="${{ github.action_repository }}"
+        fi
+        
+        VERSION="${{ inputs.version }}"
+        if [[ "$VERSION" != v* ]]; then
+          VERSION="v${VERSION}"
+        fi
+
+        # Determine the base URL for SHA256SUMS.txt
+        if [[ "$VERSION" == "latest" ]]; then
+          # For latest, we need to resolve the actual tag
+          LATEST_URL="https://api.github.com/repos/${REPO}/releases/latest"
+          ACTUAL_TAG=$(curl -fsSL "$LATEST_URL" | jq -r '.tag_name')
+          if [[ -n "$ACTUAL_TAG" ]]; then
+            VERSION="$ACTUAL_TAG"
+          fi
+        fi
+
+        SHA256_URL="https://github.com/${REPO}/releases/download/${VERSION}/SHA256SUMS.txt"
+        
+        # Try to download SHA256SUMS.txt
+        if curl -fsSL "$SHA256_URL" -o /tmp/SHA256SUMS.txt; then
+          echo "sha256sums-available=true" >> $GITHUB_OUTPUT
+          echo "::notice::Downloaded SHA256SUMS.txt from $SHA256_URL"
+        else
+          echo "sha256sums-available=false" >> $GITHUB_OUTPUT
+          echo "::warning::Could not download SHA256SUMS.txt from $SHA256_URL"
+        fi
+
+    - name: Extract checksum from SHA256SUMS.txt
+      id: release_checksum
+      shell: bash
+      run: |
+        ASSET="${{ steps.platform.outputs.asset }}"
+        EXPECTED_HASH=""
+
+        if [[ "${{ steps.sha256sums.outputs.sha256sums-available }}" == "true" ]]; then
+          # Extract SHA256 for the current asset from SHA256SUMS.txt
+          EXPECTED_HASH=$(grep -F "  ${ASSET}" /tmp/SHA256SUMS.txt | awk '{print $1}')
+
+          if [[ -n "$EXPECTED_HASH" ]]; then
+            echo "expected-hash=$EXPECTED_HASH" >> $GITHUB_OUTPUT
+            echo "checksum-source=release" >> $GITHUB_OUTPUT
+            echo "checksum-available=true" >> $GITHUB_OUTPUT
+            echo "::notice::Expected SHA256 checksum from SHA256SUMS.txt: $EXPECTED_HASH"
+          else
+            echo "checksum-available=false" >> $GITHUB_OUTPUT
+            echo "::warning::No SHA256 checksum found in SHA256SUMS.txt for asset '$ASSET'"
+          fi
+        else
+          echo "checksum-available=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Extract expected checksum from toolpack
+      id: checksum
+      shell: bash
+      run: |
+        TOOLPACK="${{ inputs.toolpack }}"
+        ASSET="${{ steps.platform.outputs.asset }}"
+        EXPECTED_HASH=""
+
+        # Only check toolpack if release checksum was not available
+        if [[ "${{ steps.release_checksum.outputs.checksum-available }}" != "true" ]] && [[ -n "$TOOLPACK" && -f "$TOOLPACK" ]]; then
+          # Extract SHA256 for the current asset from toolpack.json
+          EXPECTED_HASH=$(jq -r --arg asset "$ASSET" '.assets[$asset].sha256 // empty' "$TOOLPACK" 2>/dev/null || echo "")
+
+          if [[ -n "$EXPECTED_HASH" ]]; then
+            echo "expected-hash=$EXPECTED_HASH" >> $GITHUB_OUTPUT
+            echo "checksum-source=toolpack" >> $GITHUB_OUTPUT
+            echo "checksum-available=true" >> $GITHUB_OUTPUT
+            echo "::notice::Expected SHA256 checksum from toolpack.json: $EXPECTED_HASH"
+          else
+            echo "checksum-available=false" >> $GITHUB_OUTPUT
+            echo "::warning::No SHA256 checksum found in toolpack.json for asset '$ASSET'"
+          fi
+        elif [[ "${{ steps.release_checksum.outputs.checksum-available }}" == "true" ]]; then
+          # Release checksum is available, pass it through
+          echo "expected-hash=${{ steps.release_checksum.outputs.expected-hash }}" >> $GITHUB_OUTPUT
+          echo "checksum-source=${{ steps.release_checksum.outputs.checksum-source }}" >> $GITHUB_OUTPUT
+          echo "checksum-available=true" >> $GITHUB_OUTPUT
+        else
+          echo "checksum-available=false" >> $GITHUB_OUTPUT
+          if [[ -n "$TOOLPACK" ]]; then
+            echo "::warning::Toolpack file not found: $TOOLPACK - checksum verification unavailable"
+          else
+            echo "::warning::No toolpack provided and no SHA256SUMS.txt available - checksum verification unavailable"
+          fi
+        fi
+
+    - name: Compute checksum (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        ACTUAL_HASH=$(sha256sum /tmp/cockpitctl | awk '{print $1}')
+        echo "ACTUAL_HASH=$ACTUAL_HASH" >> $GITHUB_ENV
+        echo "::notice::Computed SHA256 checksum: $ACTUAL_HASH"
+
+    - name: Compute checksum (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $hash = (Get-FileHash -Path "$env:RUNNER_TEMP\cockpitctl.exe" -Algorithm SHA256).Hash.ToLower()
+        echo "ACTUAL_HASH=$hash" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        Write-Host "::notice::Computed SHA256 checksum: $hash"
+
+    - name: Verify checksum
+      shell: bash
+      run: |
+        if [[ "${{ steps.checksum.outputs.checksum-available }}" == "true" ]]; then
+          EXPECTED="${{ steps.checksum.outputs.expected-hash }}"
+          SOURCE="${{ steps.checksum.outputs.checksum-source }}"
+          ACTUAL="$ACTUAL_HASH"
+
+          if [[ "$ACTUAL" == "$EXPECTED" ]]; then
+            echo "::notice::Checksum verification passed (verified against $SOURCE)"
+          else
+            echo "::error::Checksum verification failed!"
+            echo "::error::Source: $SOURCE"
+            echo "::error::Expected: $EXPECTED"
+            echo "::error::Actual:   $ACTUAL"
+            exit 1
+          fi
+        else
+          echo "::warning::Checksum verification skipped - no expected hash available"
+          echo "::warning::The downloaded binary has not been cryptographically verified"
+        fi
+
     - name: Verify installation
       shell: bash
       run: |

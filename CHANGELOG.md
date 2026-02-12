@@ -6,6 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Release workflow: `build-binaries` job now depends on `quality-gate` to
+  prevent binary builds from starting before lint/format checks pass.
+- Release workflow: fixed `dtolnay/rust-action` typo to `dtolnay/rust-toolchain`
+  in the `build-binaries` job.
+
 ## [0.2.0] - 2026-02-10
 
 ### Added

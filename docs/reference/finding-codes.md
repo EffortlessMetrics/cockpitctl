@@ -54,7 +54,7 @@ Emitted when a receipt fails JSON Schema validation (only in strict mode).
   "severity": "error",
   "code": "cockpit.schema_violation",
   "message": "Receipt for sensor `builddiag` at `artifacts/builddiag/report.json` does not conform to sensor.report.v1 schema: /tool: \"version\" is a required property",
-  "help": "Ensure the sensor output matches the JSON schema at schemas/sensor.report.v1.json."
+  "help": "Ensure the sensor output matches the JSON schema at contracts/schemas/sensor.report.v1.json."
 }
 ```
 

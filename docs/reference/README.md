@@ -6,13 +6,17 @@ Reference documentation provides **technical descriptions** of the machinery and
 
 ### [CLI Commands](cli.md)
 
-Complete reference for all cockpitctl commands and flags.
+Complete reference for all cockpitctl and conformctl commands and flags.
 
 ## Configuration
 
 ### [cockpit.toml Reference](config.md)
 
 Full specification of the configuration file format.
+
+### [Toolpack Manifest](toolpack.md)
+
+The `toolpack.json` manifest for declaring tools and binary assets with versioned URLs and SHA256 checksums.
 
 ## Schemas
 

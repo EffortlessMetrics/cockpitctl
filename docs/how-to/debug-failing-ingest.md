@@ -131,7 +131,7 @@ warn_is_fail = true  # Warnings from blocking sensors cause failure
 ```
 
 **Solutions:**
-- Check receipt against schema: `schemas/sensor.report.v1.json`
+- Check receipt against schema: `contracts/schemas/sensor.report.v1.json`
 - Ensure sensor version matches expected schema
 - Use `cockpitctl validate` to check individual receipts
 

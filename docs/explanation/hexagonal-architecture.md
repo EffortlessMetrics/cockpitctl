@@ -21,30 +21,30 @@ Dependencies point inward: adapters depend on ports, ports depend on domain, dom
 ## Crate Map
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         cockpitctl-cli                          │
-│                    (binary, clap, wiring)                       │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-          ┌───────────────────┼───────────────────┐
-          ▼                   ▼                   ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│  cockpitctl-io  │  │cockpitctl-ingest│  │cockpitctl-render│
-│  (adapters)     │  │ (use cases)     │  │   (comment)     │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
-          │                   │                   │
-          └───────────────────┼───────────────────┘
-                              ▼
-                    ┌─────────────────┐
-                    │cockpitctl-domain│
-                    │ (business logic)│
-                    └─────────────────┘
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │cockpitctl-types │
-                    │   (DTOs, IDs)   │
-                    └─────────────────┘
+┌──────────────────────────┐              ┌──────────────────┐
+│     cockpitctl-cli       │              │    conformctl     │
+│  (binary, clap, wiring)  │              │ (standalone bin)  │
+└──────────────────────────┘              └──────────────────┘
+              │                                    │
+  ┌───────────┼───────────────┐                    │
+  ▼           ▼               ▼                    │
+┌──────┐ ┌──────────┐ ┌──────────┐                 │
+│  io  │ │  ingest  │ │  render  │                 │
+└──────┘ └──────────┘ └──────────┘                 │
+  │           │             │                      │
+  └───────────┼─────────────┘                      │
+              ▼                                    │
+       ┌────────────┐    ┌─────────────┐           │
+       │   domain   │    │   conform   │◄──────────┘
+       └────────────┘    └─────────────┘
+              │                │
+              └───────┬────────┘
+                      ▼
+               ┌────────────┐
+               │    types   │
+               └────────────┘
+
+         cockpitctl-core re-exports all microcrates
 ```
 
 ### cockpitctl-types
@@ -122,12 +122,34 @@ Binary entry point.
 - Wires adapters to use cases
 - Maps results to exit codes
 
+### cockpitctl-conform
+
+Conformance checking library.
+
+- Dependencies: `cockpitctl-types`
+- Schema validation, path hygiene, ordering, reason lint checks
+- Used by both `conformctl` and `xtask`
+
+### cockpitctl-core
+
+Facade crate.
+
+- Re-exports all microcrate APIs as a single dependency
+- Convenience for downstream consumers
+
+### conformctl
+
+Standalone conformance checker binary.
+
+- Dependencies: `cockpitctl-types`, `cockpitctl-conform`, `clap`
+- `check` (single report) and `check-dir` (batch) subcommands
+- Independent of the full cockpitctl workspace
+
 ### xtask
 
 Development tooling.
 
-- Schema checks
-- Fixture regeneration
+- Schema checks, conformance harness, fixture regeneration
 - Not part of the main binary
 
 ## The Rule
@@ -154,6 +176,7 @@ This is enforced by crate boundaries. If `cockpitctl-domain` tried to import `st
 | Crate | Test Type | What's Tested |
 |-------|-----------|---------------|
 | types | Unit | Serialization, ordering |
+| conform | Unit | Schema validation, path hygiene, ordering |
 | domain | Unit, property | Business rules, determinism |
 | ingest | Unit with mock ports | Use case flow |
 | render | Snapshot | Comment format stability |
