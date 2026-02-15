@@ -64,7 +64,7 @@ This comprehensive checklist guides release managers through preparing, executin
   ```bash
   grep "version = " Cargo.toml
   ```
-  - [ ] Version matches planned release (e.g., `0.2.0`)
+  - [ ] Version matches planned release (e.g., `0.2.1`)
 
 - [ ] **Verify individual crate versions**
   ```bash
@@ -194,21 +194,21 @@ This comprehensive checklist guides release managers through preparing, executin
 
 - [ ] **Create version tag**
   ```bash
-  git tag v0.2.0
+  git tag v0.2.1
   ```
   - [ ] Tag follows `v*` pattern
 
 - [ ] **Verify tag locally**
   ```bash
   git tag -l v*
-  git show v0.2.0
+  git show v0.2.1
   ```
   - [ ] Tag points to correct commit
   - [ ] Tag annotation is correct
 
 - [ ] **Push tag to origin**
   ```bash
-  git push origin v0.2.0
+  git push origin v0.2.1
   ```
   - [ ] Tag push succeeds
 
@@ -280,7 +280,7 @@ This comprehensive checklist guides release managers through preparing, executin
     - [ ] https://crates.io/crates/conformctl
 
 - [ ] **Verify GitHub Release**
-  - [ ] Release exists at `https://github.com/EffortlessMetrics/cockpitctl/releases/tag/v0.2.0`
+  - [ ] Release exists at `https://github.com/EffortlessMetrics/cockpitctl/releases/tag/v0.2.1`
   - [ ] Release notes are generated
   - [ ] All 8 binaries are attached
   - [ ] SHA256SUMS.txt is attached
@@ -292,13 +292,13 @@ This comprehensive checklist guides release managers through preparing, executin
 
 - [ ] **Run smoke test script** (Unix/Linux/macOS)
   ```bash
-  ./scripts/smoke-test-release.sh v0.2.0
+  ./scripts/smoke-test-release.sh v0.2.1
   ```
   - [ ] All smoke tests pass
 
 - [ ] **Run smoke test script** (Windows)
   ```powershell
-  ./scripts/smoke-test-release.ps1 v0.2.0
+  ./scripts/smoke-test-release.ps1 v0.2.1
   ```
   - [ ] All smoke tests pass
 
@@ -306,13 +306,13 @@ This comprehensive checklist guides release managers through preparing, executin
 
 - [ ] **Download checksums**
   ```bash
-  curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.0/SHA256SUMS.txt -o SHA256SUMS.txt
+  curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/SHA256SUMS.txt -o SHA256SUMS.txt
   ```
   - [ ] Checksums file downloaded
 
 - [ ] **Download and verify a binary**
   ```bash
-  curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.0/cockpitctl-linux-x64 -o cockpitctl-linux-x64
+  curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64 -o cockpitctl-linux-x64
   chmod +x cockpitctl-linux-x64
   sha256sum -c SHA256SUMS.txt --ignore-missing
   ```
@@ -438,15 +438,15 @@ This comprehensive checklist guides release managers through preparing, executin
 
 - [ ] **Yank all crates** (in reverse dependency order)
   ```bash
-  cargo yank --vers 0.2.0 conformctl
-  cargo yank --vers 0.2.0 cockpitctl
-  cargo yank --vers 0.2.0 cockpitctl-core
-  cargo yank --vers 0.2.0 cockpitctl-io
-  cargo yank --vers 0.2.0 cockpitctl-ingest
-  cargo yank --vers 0.2.0 cockpitctl-render
-  cargo yank --vers 0.2.0 cockpitctl-domain
-  cargo yank --vers 0.2.0 cockpitctl-conform
-  cargo yank --vers 0.2.0 cockpitctl-types
+  cargo yank --vers 0.2.1 conformctl
+  cargo yank --vers 0.2.1 cockpitctl
+  cargo yank --vers 0.2.1 cockpitctl-core
+  cargo yank --vers 0.2.1 cockpitctl-io
+  cargo yank --vers 0.2.1 cockpitctl-ingest
+  cargo yank --vers 0.2.1 cockpitctl-render
+  cargo yank --vers 0.2.1 cockpitctl-domain
+  cargo yank --vers 0.2.1 cockpitctl-conform
+  cargo yank --vers 0.2.1 cockpitctl-types
   ```
   - [ ] All crates yanked
 
@@ -454,14 +454,14 @@ This comprehensive checklist guides release managers through preparing, executin
 
 - [ ] **Delete GitHub release**
   ```bash
-  gh release delete v0.2.0 --yes
+  gh release delete v0.2.1 --yes
   ```
   - [ ] Release deleted
 
 - [ ] **Delete tag** (optional, only if no one has pulled it)
   ```bash
-  git tag -d v0.2.0
-  git push origin :refs/tags/v0.2.0
+  git tag -d v0.2.1
+  git push origin :refs/tags/v0.2.1
   ```
   - [ ] Tag deleted
 
@@ -473,7 +473,7 @@ This comprehensive checklist guides release managers through preparing, executin
 
 - [ ] **Prepare patch release**
   - [ ] Update CHANGELOG with patch notes
-  - [ ] Bump patch version (e.g., 0.2.0 → 0.2.1)
+  - [ ] Bump patch version (e.g., 0.2.1 → 0.2.1)
   - [ ] Create new tag
 
 - [ ] **Execute patch release**

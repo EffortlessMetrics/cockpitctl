@@ -48,9 +48,11 @@ crates/
   cockpitctl-ingest    # use case + ports (clean/hexagonal boundary)
   cockpitctl-render    # PR comment renderer (budgeted)
   cockpitctl-io        # filesystem adapters (read receipts, write outputs)
+  cockpitctl-conform   # conformance checking library
   cockpitctl-core      # facade crate — re-exports all microcrates as one dependency
   cockpitctl-cli       # `cockpitctl` binary (clap)
     features/          # cucumber feature files
+  conformctl/          # standalone conformance checker binary
 xtask/                 # schema sync, conformance harness, fixture tooling
 contracts/
   schemas/             # JSON Schemas (source-of-truth)
@@ -77,10 +79,10 @@ Before announcing a release, validate it using only published artifacts:
 
 ```bash
 # Unix/macOS
-./scripts/smoke-test-release.sh v0.2.0
+./scripts/smoke-test-release.sh v0.2.1
 
 # Windows PowerShell
-.\scripts\smoke-test-release.ps1 -Tag v0.2.0
+.\scripts\smoke-test-release.ps1 -Tag v0.2.1
 ```
 
 See [`docs/how-to/smoke-test-release.md`](docs/how-to/smoke-test-release.md) for details.

@@ -31,7 +31,7 @@ jobs:
 
       # Then aggregate with the composite action
       - name: Cockpit
-        uses: EffortlessMetrics/cockpitctl@v0.2.0
+        uses: EffortlessMetrics/cockpitctl@v0.2.1
         with:
           artifacts-path: artifacts
           config-path: cockpit.toml
@@ -175,7 +175,7 @@ Or download a pre-built binary:
 ```yaml
 - name: Install cockpitctl
   run: |
-    curl -L https://github.com/your-org/cockpitctl/releases/download/v0.2.0/cockpitctl-linux-x64 -o cockpitctl
+    curl -L https://github.com/your-org/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64 -o cockpitctl
     chmod +x cockpitctl
     sudo mv cockpitctl /usr/local/bin/
 ```

@@ -13,7 +13,7 @@ keywords = ["ci", "pr-comment", "markdown", "rendering"]
 categories = ["development-tools", "text-processing"]
 
 [dependencies]
-cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.1" }
 
 [dev-dependencies]
 criterion.workspace = true

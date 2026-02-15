@@ -15,5 +15,5 @@ categories = ["development-tools"]
 [dependencies]
 anyhow.workspace = true
 serde_json.workspace = true
-cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.0" }
-cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.2.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.1" }
+cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.2.1" }
