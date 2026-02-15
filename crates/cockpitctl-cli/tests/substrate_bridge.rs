@@ -135,7 +135,7 @@ fn workspace_root() -> std::path::PathBuf {
 fn tool_info() -> ToolInfo {
     ToolInfo {
         name: "cockpitctl".to_string(),
-        version: "0.2.0".to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
         commit: None,
     }
 }

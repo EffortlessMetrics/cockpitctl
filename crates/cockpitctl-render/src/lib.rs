@@ -8,7 +8,8 @@
 //! It should not parse sensor-specific markdown. Link only.
 
 use cockpitctl_types::{
-    CockpitConfig, CockpitReport, Highlight, Severity, VerdictStatus, severity_rank,
+    BuildfixSummary, CockpitConfig, CockpitReport, Highlight, SafetyLevel, Severity, TrendDelta,
+    VerdictStatus, severity_rank,
 };
 
 /// Result of annotation rendering, tracking whether truncation occurred.
@@ -176,29 +177,7 @@ pub fn render_annotations(
     // Sort deterministically: severity desc, blocking sensors first, then sensor_id/path/line/code/message.
     let mut sorted: Vec<&Highlight> = highlights.iter().collect();
     sorted.sort_by(|a, b| {
-        let a_block = sensor_blocking.get(&a.sensor_id).cloned().unwrap_or(false);
-        let b_block = sensor_blocking.get(&b.sensor_id).cloned().unwrap_or(false);
-
-        let a_key = (
-            severity_rank(&a.finding.severity),
-            if a_block { 0u8 } else { 1u8 },
-            &a.sensor_id,
-            a.finding.location.as_ref().and_then(|l| l.path.as_ref()),
-            a.finding.location.as_ref().and_then(|l| l.line),
-            &a.finding.code,
-            &a.finding.message,
-        );
-        let b_key = (
-            severity_rank(&b.finding.severity),
-            if b_block { 0u8 } else { 1u8 },
-            &b.sensor_id,
-            b.finding.location.as_ref().and_then(|l| l.path.as_ref()),
-            b.finding.location.as_ref().and_then(|l| l.line),
-            &b.finding.code,
-            &b.finding.message,
-        );
-
-        a_key.cmp(&b_key)
+        annotation_sort_key(a, sensor_blocking).cmp(&annotation_sort_key(b, sensor_blocking))
     });
 
     let truncated = total_count > max;
@@ -267,6 +246,275 @@ pub fn render_annotations_section(
     out.push_str(&result.content);
     out.push('\n');
     out
+}
+
+// ============================================================================
+// Trend section rendering
+// ============================================================================
+
+/// Render a trend delta as a markdown section for the PR comment.
+pub fn render_trend_section(trend: &TrendDelta) -> String {
+    let mut out = String::new();
+    out.push_str("### Trend\n\n");
+
+    if let Some(vc) = &trend.verdict_change {
+        out.push_str(&format!(
+            "Verdict: {} → {}\n\n",
+            status_badge(&vc.before),
+            status_badge(&vc.after)
+        ));
+    }
+
+    let cd = &trend.count_deltas;
+    if cd.info_delta != 0 || cd.warn_delta != 0 || cd.error_delta != 0 {
+        out.push_str("| Severity | Delta |\n|---|---:|\n");
+        if cd.error_delta != 0 {
+            out.push_str(&format!("| Error | {:+} |\n", cd.error_delta));
+        }
+        if cd.warn_delta != 0 {
+            out.push_str(&format!("| Warn | {:+} |\n", cd.warn_delta));
+        }
+        if cd.info_delta != 0 {
+            out.push_str(&format!("| Info | {:+} |\n", cd.info_delta));
+        }
+        out.push('\n');
+    }
+
+    if !trend.new_findings.is_empty() {
+        out.push_str(&format!(
+            "**{} new finding(s)**:\n",
+            trend.new_findings.len()
+        ));
+        for f in &trend.new_findings {
+            let loc = f
+                .path
+                .as_ref()
+                .map(|p| {
+                    if let Some(line) = f.line {
+                        format!(" at `{}:{}`", p, line)
+                    } else {
+                        format!(" at `{}`", p)
+                    }
+                })
+                .unwrap_or_default();
+            out.push_str(&format!(
+                "- {} **{}**: `{}`{}\n",
+                severity_badge(&f.severity),
+                f.sensor_id,
+                f.code,
+                loc
+            ));
+        }
+        out.push('\n');
+    }
+
+    if !trend.fixed_findings.is_empty() {
+        out.push_str(&format!(
+            "**{} fixed finding(s)**:\n",
+            trend.fixed_findings.len()
+        ));
+        for f in &trend.fixed_findings {
+            out.push_str(&format!(
+                "- ~**{}**: `{}`~ — {}\n",
+                f.sensor_id, f.code, f.message
+            ));
+        }
+        out.push('\n');
+    }
+
+    if !trend.sensors_added.is_empty() {
+        out.push_str(&format!(
+            "Sensors added: {}\n",
+            trend
+                .sensors_added
+                .iter()
+                .map(|s| format!("`{}`", s))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    if !trend.sensors_removed.is_empty() {
+        out.push_str(&format!(
+            "Sensors removed: {}\n",
+            trend
+                .sensors_removed
+                .iter()
+                .map(|s| format!("`{}`", s))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+
+    if trend.verdict_change.is_none()
+        && trend.new_findings.is_empty()
+        && trend.fixed_findings.is_empty()
+        && trend.sensors_added.is_empty()
+        && trend.sensors_removed.is_empty()
+        && cd.info_delta == 0
+        && cd.warn_delta == 0
+        && cd.error_delta == 0
+    {
+        out.push_str("_No changes from baseline._\n");
+    }
+
+    out.push('\n');
+    out
+}
+
+// ============================================================================
+// Buildfix section rendering
+// ============================================================================
+
+fn safety_badge(s: &SafetyLevel) -> &'static str {
+    match s {
+        SafetyLevel::Safe => "🟢 safe",
+        SafetyLevel::Guarded => "🟡 guarded",
+        SafetyLevel::Unsafe => "🔴 unsafe",
+    }
+}
+
+/// Render a buildfix summary as a markdown section for the PR comment.
+pub fn render_buildfix_section(summary: &BuildfixSummary) -> String {
+    let mut out = String::new();
+    out.push_str("### Buildfix\n\n");
+
+    if summary.fixes.is_empty() {
+        out.push_str("_No fixes available._\n\n");
+        return out;
+    }
+
+    out.push_str(&format!(
+        "{} fix(es) available ({} matched, {} unmatched)\n\n",
+        summary.total_fixes, summary.matched_count, summary.unmatched_count
+    ));
+
+    out.push_str("| Fix | Safety | Matched | Description |\n");
+    out.push_str("|---|---|---:|---|\n");
+
+    for fix in &summary.fixes {
+        let matched = if fix.unmatched { "no" } else { "yes" };
+        out.push_str(&format!(
+            "| `{}` | {} | {} | {} |\n",
+            fix.fix_id,
+            safety_badge(&fix.safety),
+            matched,
+            fix.description.replace('\n', " ")
+        ));
+    }
+
+    out.push('\n');
+    out
+}
+
+// ============================================================================
+// GitHub Actions workflow command annotations
+// ============================================================================
+
+/// Result of GitHub annotation rendering.
+pub struct GitHubAnnotationResult {
+    /// Rendered `::error`/`::warning`/`::notice` lines.
+    pub lines: Vec<String>,
+    /// Whether annotations were truncated due to cap.
+    pub truncated: bool,
+    /// Total number of annotations before capping.
+    pub total_count: usize,
+    /// Number of annotations actually rendered.
+    pub rendered_count: usize,
+}
+
+/// Escape a string for GitHub Actions workflow command parameters.
+fn gh_escape(s: &str) -> String {
+    s.replace('%', "%25")
+        .replace('\n', "%0A")
+        .replace('\r', "%0D")
+}
+
+/// Map severity to GitHub Actions annotation level.
+fn gh_level(s: &Severity) -> &'static str {
+    match s {
+        Severity::Error => "error",
+        Severity::Warn => "warning",
+        Severity::Info => "notice",
+    }
+}
+
+/// Render GitHub Actions workflow command annotations from highlights.
+///
+/// Produces lines like:
+/// `::error file={path},line={line},col={col},title=[{sensor_id}] {code}::{message}`
+///
+/// Capped by `max_annotations` from policy. Same deterministic sort as markdown annotations.
+pub fn render_github_annotations(
+    highlights: &[Highlight],
+    cfg: &CockpitConfig,
+    sensor_blocking: &std::collections::BTreeMap<String, bool>,
+) -> GitHubAnnotationResult {
+    let max = cfg.policy.max_annotations;
+    let total_count = highlights.len();
+
+    let mut sorted: Vec<&Highlight> = highlights.iter().collect();
+    sorted.sort_by(|a, b| {
+        annotation_sort_key(a, sensor_blocking).cmp(&annotation_sort_key(b, sensor_blocking))
+    });
+
+    let truncated = total_count > max;
+    let rendered_count = total_count.min(max);
+
+    let mut lines = Vec::with_capacity(rendered_count);
+    for h in sorted.iter().take(max) {
+        let f = &h.finding;
+        let level = gh_level(&f.severity);
+        let title = gh_escape(&format!("[{}] {}", h.sensor_id, f.code));
+
+        let mut params = Vec::new();
+        if let Some(loc) = &f.location {
+            if let Some(path) = &loc.path {
+                params.push(format!("file={}", path));
+            }
+            if let Some(line) = loc.line {
+                params.push(format!("line={}", line));
+            }
+            if let Some(col) = loc.col {
+                params.push(format!("col={}", col));
+            }
+        }
+        params.push(format!("title={}", title));
+
+        let message = gh_escape(&f.message);
+        lines.push(format!("::{} {}::{}", level, params.join(","), message));
+    }
+
+    GitHubAnnotationResult {
+        lines,
+        truncated,
+        total_count,
+        rendered_count,
+    }
+}
+
+/// Shared sort key for annotation ordering (severity desc, blocking first, then sensor_id/path/line/code/message).
+fn annotation_sort_key<'a>(
+    h: &'a Highlight,
+    sensor_blocking: &std::collections::BTreeMap<String, bool>,
+) -> (
+    u8,
+    u8,
+    &'a str,
+    Option<&'a str>,
+    Option<u32>,
+    &'a str,
+    &'a str,
+) {
+    let blocking = sensor_blocking.get(&h.sensor_id).cloned().unwrap_or(false);
+    (
+        severity_rank(&h.finding.severity),
+        if blocking { 0u8 } else { 1u8 },
+        &h.sensor_id,
+        h.finding.location.as_ref().and_then(|l| l.path.as_deref()),
+        h.finding.location.as_ref().and_then(|l| l.line),
+        &h.finding.code,
+        &h.finding.message,
+    )
 }
 
 #[cfg(test)]

@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-02-14
+
 ### Fixed
 
 - Release workflow: `build-binaries` job now depends on `quality-gate` to

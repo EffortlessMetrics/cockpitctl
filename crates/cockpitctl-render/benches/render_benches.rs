@@ -199,8 +199,10 @@ fn generate_report(
             max_annotations: 25,
             section_order: section_order.clone(),
             schema_validation: SchemaValidation::Strict,
+            max_receipt_size_bytes: 2 * 1024 * 1024,
         },
         sensors: sensors_map.clone(),
+        hooks: vec![],
     };
 
     // Generate sensor summaries

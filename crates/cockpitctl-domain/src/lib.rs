@@ -6,10 +6,10 @@
 //! No filesystem, no clap, no network.
 
 use cockpitctl_types::{
-    CockpitConfig, CockpitReport, Finding, FindingSortKey, Highlight, MissingPolicy, PolicyOutcome,
-    PolicySensorSnapshot, PolicySnapshot, Presence, RunInfo, SensorPolicy, SensorReport,
-    SensorSummary, Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus, severity_rank,
-    verdict_status_rank,
+    CockpitConfig, CockpitReport, CountDeltas, Finding, FindingSortKey, Highlight, MissingPolicy,
+    PolicyOutcome, PolicySensorSnapshot, PolicySnapshot, Presence, RunInfo, SensorPolicy,
+    SensorReport, SensorSummary, Severity, ToolInfo, TrendDelta, TrendFinding, Verdict,
+    VerdictChange, VerdictCounts, VerdictStatus, severity_rank, verdict_status_rank,
 };
 use sha2::{Digest, Sha256};
 
@@ -35,6 +35,80 @@ pub mod cockpit_codes {
     pub const SENSORS_TRUNCATED: &str = "cockpit.sensors_truncated";
     pub const PATH_TRAVERSAL: &str = "cockpit.path_traversal";
     pub const RECEIPT_OVERSIZED: &str = "cockpit.receipt_oversized";
+}
+
+// ============================================================================
+// Code explanations for `cockpitctl explain`
+// ============================================================================
+
+/// Explanation of a cockpit finding code.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodeExplanation {
+    pub code: &'static str,
+    pub title: &'static str,
+    pub description: &'static str,
+    pub cause: &'static str,
+    pub fix: &'static str,
+}
+
+/// Look up an explanation for a cockpit finding code.
+pub fn explain_code(code: &str) -> Option<CodeExplanation> {
+    all_codes().into_iter().find(|e| e.code == code)
+}
+
+/// Return all known cockpit finding codes with explanations.
+pub fn all_codes() -> Vec<CodeExplanation> {
+    vec![
+        CodeExplanation {
+            code: cockpit_codes::MISSING_RECEIPT,
+            title: "Missing Receipt",
+            description: "A sensor declared in cockpit.toml did not produce a receipt file.",
+            cause: "The sensor either did not run, failed before writing output, or wrote to the wrong path.",
+            fix: "Ensure the sensor ran and wrote artifacts/<sensor>/report.json. Check the sensor's logs for errors.",
+        },
+        CodeExplanation {
+            code: cockpit_codes::INVALID_RECEIPT,
+            title: "Invalid Receipt",
+            description: "A sensor receipt file exists but could not be parsed as valid JSON.",
+            cause: "The sensor wrote malformed JSON (syntax error, truncated output, or binary data).",
+            fix: "Validate the receipt file with `cockpitctl validate --input <path>`. Fix the sensor's output format.",
+        },
+        CodeExplanation {
+            code: cockpit_codes::SCHEMA_VIOLATION,
+            title: "Schema Violation",
+            description: "A sensor receipt is valid JSON but does not conform to the sensor.report.v1 schema.",
+            cause: "The receipt is missing required fields, has wrong types, or includes disallowed properties.",
+            fix: "Run `cockpitctl validate --input <path> --strict` to see specific violations. Update the sensor to match the schema.",
+        },
+        CodeExplanation {
+            code: cockpit_codes::RECEIPT_INCONSISTENT,
+            title: "Receipt Inconsistent",
+            description: "The verdict counts in a receipt do not match the actual findings array.",
+            cause: "The sensor reported different counts (info/warn/error) than what the findings array contains.",
+            fix: "Update the sensor to compute verdict counts from the findings array, or fix the findings array.",
+        },
+        CodeExplanation {
+            code: cockpit_codes::SENSORS_TRUNCATED,
+            title: "Sensors Truncated",
+            description: "More sensor directories were found than the safety limit allows.",
+            cause: "The artifacts directory contains more sensor directories than max_receipts (default 100).",
+            fix: "Review why so many sensors exist. Increase max_receipts if legitimate, or clean up stale sensor directories.",
+        },
+        CodeExplanation {
+            code: cockpit_codes::PATH_TRAVERSAL,
+            title: "Path Traversal Rejected",
+            description: "A sensor ID or artifact path attempted to escape the artifacts root directory.",
+            cause: "A sensor ID contains `..`, `/`, `\\`, or other unsafe path characters.",
+            fix: "Ensure sensor IDs contain only alphanumeric characters, hyphens, and underscores.",
+        },
+        CodeExplanation {
+            code: cockpit_codes::RECEIPT_OVERSIZED,
+            title: "Receipt Oversized",
+            description: "A sensor receipt exceeds the maximum allowed file size.",
+            cause: "The receipt file is larger than max_receipt_size_bytes (default 2MB).",
+            fix: "Reduce the receipt size (fewer findings, smaller payloads) or increase max_receipt_size_bytes in cockpit.toml.",
+        },
+    ]
 }
 
 /// Normalize and cap a sensor report's findings for cockpit surfacing.
@@ -414,7 +488,7 @@ pub fn synthesize_schema_violation_sensor(
         ),
         location: None,
         help: Some(
-            "Ensure the sensor output matches the JSON schema at schemas/sensor.report.v1.json."
+            "Ensure the sensor output matches the JSON schema at contracts/schemas/sensor.report.v1.json."
                 .to_string(),
         ),
         url: None,
@@ -715,4 +789,227 @@ pub fn summarize_sensor_report(
     }
 
     (summary, highlights)
+}
+
+// ============================================================================
+// Trend tracking (baseline comparison)
+// ============================================================================
+
+/// Index key for matching findings between baseline and current.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct FindingKey {
+    sensor_id: String,
+    code: String,
+    path: String,
+    line: u32,
+}
+
+fn finding_to_key(sensor_id: &str, f: &Finding) -> FindingKey {
+    FindingKey {
+        sensor_id: sensor_id.to_string(),
+        code: f.code.clone(),
+        path: f
+            .location
+            .as_ref()
+            .and_then(|l| l.path.clone())
+            .unwrap_or_default(),
+        line: f.location.as_ref().and_then(|l| l.line).unwrap_or(0),
+    }
+}
+
+fn highlight_to_trend_finding(h: &Highlight) -> TrendFinding {
+    TrendFinding {
+        sensor_id: h.sensor_id.clone(),
+        code: h.finding.code.clone(),
+        message: h.finding.message.clone(),
+        path: h.finding.location.as_ref().and_then(|l| l.path.clone()),
+        line: h.finding.location.as_ref().and_then(|l| l.line),
+        fingerprint: h.finding.fingerprint.clone(),
+        severity: h.finding.severity.clone(),
+    }
+}
+
+/// Compute the trend delta between a baseline and current cockpit report.
+pub fn compute_trend(baseline: &CockpitReport, current: &CockpitReport) -> TrendDelta {
+    // Index baseline findings by fingerprint then by composite key.
+    let mut baseline_by_fp: std::collections::BTreeMap<String, &Highlight> =
+        std::collections::BTreeMap::new();
+    let mut baseline_by_key: std::collections::BTreeMap<FindingKey, &Highlight> =
+        std::collections::BTreeMap::new();
+    for h in &baseline.highlights {
+        if let Some(fp) = &h.finding.fingerprint {
+            baseline_by_fp.insert(fp.clone(), h);
+        }
+        let key = finding_to_key(&h.sensor_id, &h.finding);
+        baseline_by_key.insert(key, h);
+    }
+
+    let mut current_by_fp: std::collections::BTreeMap<String, &Highlight> =
+        std::collections::BTreeMap::new();
+    let mut current_by_key: std::collections::BTreeMap<FindingKey, &Highlight> =
+        std::collections::BTreeMap::new();
+    for h in &current.highlights {
+        if let Some(fp) = &h.finding.fingerprint {
+            current_by_fp.insert(fp.clone(), h);
+        }
+        let key = finding_to_key(&h.sensor_id, &h.finding);
+        current_by_key.insert(key, h);
+    }
+
+    // New findings: in current but not in baseline.
+    let mut new_findings = Vec::new();
+    for h in &current.highlights {
+        let matched = if let Some(fp) = &h.finding.fingerprint {
+            baseline_by_fp.contains_key(fp)
+        } else {
+            let key = finding_to_key(&h.sensor_id, &h.finding);
+            baseline_by_key.contains_key(&key)
+        };
+        if !matched {
+            new_findings.push(highlight_to_trend_finding(h));
+        }
+    }
+
+    // Fixed findings: in baseline but not in current.
+    let mut fixed_findings = Vec::new();
+    for h in &baseline.highlights {
+        let matched = if let Some(fp) = &h.finding.fingerprint {
+            current_by_fp.contains_key(fp)
+        } else {
+            let key = finding_to_key(&h.sensor_id, &h.finding);
+            current_by_key.contains_key(&key)
+        };
+        if !matched {
+            fixed_findings.push(highlight_to_trend_finding(h));
+        }
+    }
+
+    // Verdict change.
+    let verdict_change = if baseline.verdict.status != current.verdict.status {
+        Some(VerdictChange {
+            before: baseline.verdict.status.clone(),
+            after: current.verdict.status.clone(),
+        })
+    } else {
+        None
+    };
+
+    // Count deltas.
+    let count_deltas = CountDeltas {
+        info_delta: current.verdict.counts.info as i64 - baseline.verdict.counts.info as i64,
+        warn_delta: current.verdict.counts.warn as i64 - baseline.verdict.counts.warn as i64,
+        error_delta: current.verdict.counts.error as i64 - baseline.verdict.counts.error as i64,
+    };
+
+    // Sensors added/removed.
+    let baseline_sensors: std::collections::BTreeSet<String> =
+        baseline.sensors.iter().map(|s| s.id.clone()).collect();
+    let current_sensors: std::collections::BTreeSet<String> =
+        current.sensors.iter().map(|s| s.id.clone()).collect();
+    let sensors_added: Vec<String> = current_sensors
+        .difference(&baseline_sensors)
+        .cloned()
+        .collect();
+    let sensors_removed: Vec<String> = baseline_sensors
+        .difference(&current_sensors)
+        .cloned()
+        .collect();
+
+    TrendDelta {
+        verdict_change,
+        count_deltas,
+        new_findings,
+        fixed_findings,
+        sensors_added,
+        sensors_removed,
+    }
+}
+
+// ============================================================================
+// Buildfix plan matching
+// ============================================================================
+
+use cockpitctl_types::{BuildfixPlan, BuildfixSummary, FixSummary, MatchedFinding, SafetyLevel};
+
+/// Rank a safety level for sorting: safe=0, guarded=1, unsafe=2.
+fn safety_rank(s: &SafetyLevel) -> u8 {
+    match s {
+        SafetyLevel::Safe => 0,
+        SafetyLevel::Guarded => 1,
+        SafetyLevel::Unsafe => 2,
+    }
+}
+
+/// Match fixes from a buildfix plan to findings in the report.
+///
+/// A fix matches a finding when:
+/// - `FindingRef.sensor_id` matches the sensor
+/// - If `fingerprint` is set, it must match
+/// - If `code` is set, it must match
+pub fn match_buildfix_plan(
+    sensor_id: &str,
+    plan: &BuildfixPlan,
+    highlights: &[Highlight],
+) -> BuildfixSummary {
+    let mut fixes = Vec::new();
+
+    for fix in &plan.fixes {
+        let mut matched_findings = Vec::new();
+        let mut any_matched = false;
+
+        for fref in &fix.finding_refs {
+            if fref.sensor_id != sensor_id {
+                continue;
+            }
+            for h in highlights {
+                if h.sensor_id != sensor_id {
+                    continue;
+                }
+                let fp_match = match (&fref.fingerprint, &h.finding.fingerprint) {
+                    (Some(ref_fp), Some(finding_fp)) => ref_fp == finding_fp,
+                    (Some(_), None) => false,
+                    (None, _) => true,
+                };
+                let code_match = match &fref.code {
+                    Some(ref_code) => ref_code == &h.finding.code,
+                    None => true,
+                };
+                if fp_match && code_match {
+                    matched_findings.push(MatchedFinding {
+                        sensor_id: h.sensor_id.clone(),
+                        code: h.finding.code.clone(),
+                        fingerprint: h.finding.fingerprint.clone(),
+                    });
+                    any_matched = true;
+                }
+            }
+        }
+
+        fixes.push(FixSummary {
+            fix_id: fix.id.clone(),
+            sensor_id: sensor_id.to_string(),
+            safety: fix.safety,
+            description: fix.description.clone(),
+            matched_findings,
+            unmatched: !any_matched,
+        });
+    }
+
+    // Sort: safety_rank → sensor_id → fix_id.
+    fixes.sort_by(|a, b| {
+        let a_key = (safety_rank(&a.safety), &a.sensor_id, &a.fix_id);
+        let b_key = (safety_rank(&b.safety), &b.sensor_id, &b.fix_id);
+        a_key.cmp(&b_key)
+    });
+
+    let total_fixes = fixes.len();
+    let unmatched_count = fixes.iter().filter(|f| f.unmatched).count();
+    let matched_count = total_fixes - unmatched_count;
+
+    BuildfixSummary {
+        fixes,
+        total_fixes,
+        matched_count,
+        unmatched_count,
+    }
 }

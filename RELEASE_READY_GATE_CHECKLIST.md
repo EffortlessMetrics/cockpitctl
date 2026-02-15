@@ -100,7 +100,7 @@ Requires both `publish` and `test-binaries` to complete.
 ## Verified Fixes
 
 ### Malformed JSON Handling
-✅ **CONFIRMED** — Malformed JSON produces a finding (`cockpit.invalid_receipt`), not a runtime abort. See `crates/cockpitctl-io/src/lib.rs`.
+✅ **CONFIRMED** — Malformed JSON produces a `cockpit.invalid_receipt` finding. Parseable but schema-invalid JSON produces a `cockpit.schema_violation` finding. Neither causes a runtime abort. See `crates/cockpitctl-io/src/lib.rs`.
 
 ### Determinism
 ✅ **CONFIRMED** — Documented in `docs/reference/determinism.md`. Covers sensor discovery order, findings sort, highlights sort, and JSON formatting rules.
@@ -126,9 +126,9 @@ The release process is fully automated and triggered by version tags:
 1. Ensure all changes are merged to `main`
 2. Update `CHANGELOG.md` — move items from `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`
 3. Bump version in workspace `Cargo.toml` if needed
-4. Tag: `git tag v0.2.0 && git push origin v0.2.0`
+4. Tag: `git tag v0.2.1 && git push origin v0.2.1`
 5. Monitor the release workflow in GitHub Actions
-6. After release, run `scripts/smoke-test-release.sh v0.2.0` (or `.ps1` on Windows) to validate published artifacts
+6. After release, run `scripts/smoke-test-release.sh v0.2.1` (or `.ps1` on Windows) to validate published artifacts
 
 ## Comprehensive Release Documentation
 
@@ -159,13 +159,13 @@ If a critical issue is discovered after release:
 
 1. **Yank the crates** from crates.io:
    ```bash
-   cargo yank --vers 0.2.0 cockpitctl
+   cargo yank --vers 0.2.1 cockpitctl
    # Repeat for all published crates
    ```
 
 2. **Delete the GitHub release** (if necessary):
    ```bash
-   gh release delete v0.2.0 --yes
+   gh release delete v0.2.1 --yes
    ```
 
 3. **Prepare a patch release** (e.g., `v0.2.1`):
@@ -240,7 +240,7 @@ Before creating a release tag, ensure:
 
 After the release is complete:
 
-- [ ] Run smoke test script: `./scripts/smoke-test-release.sh v0.2.0`
+- [ ] Run smoke test script: `./scripts/smoke-test-release.sh v0.2.1`
 - [ ] Verify checksums match downloaded binaries
 - [ ] Test crates.io installation: `cargo add cockpitctl`
 - [ ] Test binaries on available platforms

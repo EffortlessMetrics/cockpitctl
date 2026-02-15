@@ -9,6 +9,7 @@ warn_is_fail = false
 max_highlights = 7
 max_per_sensor_findings = 20
 max_annotations = 25
+# max_receipt_size_bytes = 2097152  # 2MB default; increase for large receipts
 
 # Stable section order for the PR comment.
 # Sensors that do not specify a section are rendered under "Other".

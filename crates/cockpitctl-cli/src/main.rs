@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator, SchemaValidator};
 use cockpitctl_io::{FsLayout, FsOutputSink, FsPolicySource, FsReceiptSource, JsonSchemaValidator};
-use cockpitctl_render::render_comment;
+use cockpitctl_render::{render_comment, render_github_annotations};
 use cockpitctl_types::{RunInfo, SchemaValidation, ToolInfo};
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
@@ -15,6 +15,16 @@ pub enum SchemaValidationMode {
     Lax,
     /// Validate receipts against schemas/sensor.report.v1.json.
     Strict,
+}
+
+/// Output format for the cockpit report.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, ValueEnum)]
+pub enum OutputFormat {
+    /// Standard cockpit report (default).
+    #[default]
+    Cockpit,
+    /// SARIF v2.1.0 (Static Analysis Results Interchange Format).
+    Sarif,
 }
 
 impl From<SchemaValidationMode> for SchemaValidation {
@@ -57,6 +67,18 @@ enum Commands {
         ///   violations are surfaced as findings rather than causing parse errors.
         #[arg(long, value_enum)]
         schema_validation: Option<SchemaValidationMode>,
+
+        /// Emit GitHub Actions workflow command annotations (::error, ::warning, ::notice) to stdout.
+        #[arg(long)]
+        github_annotations: bool,
+
+        /// Output format for the cockpit report.
+        #[arg(long, value_enum, default_value = "cockpit")]
+        format: OutputFormat,
+
+        /// Path to a previous cockpit report for trend comparison.
+        #[arg(long)]
+        baseline: Option<String>,
     },
 
     /// Write a starter cockpit.toml (does not overwrite).
@@ -78,6 +100,12 @@ enum Commands {
         /// Skip JSON Schema validation; only parse as JSON.
         #[arg(long, conflicts_with = "strict")]
         lax: bool,
+    },
+
+    /// Explain a cockpit finding code (e.g. cockpit.missing_receipt).
+    Explain {
+        /// The finding code to explain, or "all" to list every code.
+        code: String,
     },
 }
 
@@ -106,9 +134,21 @@ fn run(cli: Cli) -> Result<i32> {
             config,
             label,
             schema_validation,
-        } => cmd_ingest(&artifacts, &config, label, schema_validation),
+            github_annotations,
+            format,
+            baseline,
+        } => cmd_ingest(
+            &artifacts,
+            &config,
+            label,
+            schema_validation,
+            github_annotations,
+            format,
+            baseline.as_deref(),
+        ),
         Commands::Init { path } => cmd_init(&path),
         Commands::Validate { input, strict, lax } => cmd_validate(&input, strict, lax),
+        Commands::Explain { code } => cmd_explain(&code),
     }
 }
 
@@ -133,12 +173,27 @@ fn cmd_ingest(
     config: &str,
     labels: Vec<String>,
     schema_validation: Option<SchemaValidationMode>,
+    github_annotations: bool,
+    format: OutputFormat,
+    baseline: Option<&str>,
 ) -> Result<i32> {
-    let layout = FsLayout::new(artifacts, config);
+    // Two-phase config loading: read config first to extract operational limits,
+    // then build adapters with those limits. Config is parsed again inside
+    // IngestUseCase::execute() — this is idempotent and cheap.
+    let pre_cfg: cockpitctl_types::CockpitConfig = if std::path::Path::new(config).exists() {
+        let txt =
+            std::fs::read_to_string(config).with_context(|| format!("read config {}", config))?;
+        toml::from_str(&txt).with_context(|| format!("parse config {}", config))?
+    } else {
+        cockpitctl_types::CockpitConfig::default()
+    };
+
+    let layout = FsLayout::new(artifacts, config)
+        .with_max_receipt_bytes(pre_cfg.policy.max_receipt_size_bytes);
 
     let receipts = FsReceiptSource::new(layout.clone());
     let policy = FsPolicySource::new(layout.clone());
-    let output = FsOutputSink::new(layout);
+    let output = FsOutputSink::new(layout.clone());
 
     let tool = ToolInfo {
         name: "cockpitctl".to_string(),
@@ -165,13 +220,12 @@ fn cmd_ingest(
     };
 
     // Execute with the appropriate schema validator based on CLI flag.
-    match schema_validation_override {
+    let result = match schema_validation_override {
         Some(SchemaValidation::Lax) => {
             let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, |r, cfg| {
                 render_comment(r, cfg)
             });
-            let result = uc.execute(req).context("ingest")?;
-            Ok(result.exit_code)
+            uc.execute(req).context("ingest")?
         }
         _ => {
             let validator = JsonSchemaValidator::sensor_report_v1()
@@ -179,8 +233,84 @@ fn cmd_ingest(
             let uc = IngestUseCase::new(receipts, policy, output, validator, |r, cfg| {
                 render_comment(r, cfg)
             });
-            let result = uc.execute(req).context("ingest")?;
-            Ok(result.exit_code)
+            uc.execute(req).context("ingest")?
+        }
+    };
+
+    // Emit GitHub Actions annotations if requested.
+    if github_annotations {
+        let sensor_blocking: BTreeMap<String, bool> = result
+            .report
+            .sensors
+            .iter()
+            .map(|s| (s.id.clone(), s.blocking))
+            .collect();
+        let gh = render_github_annotations(&result.report.highlights, &pre_cfg, &sensor_blocking);
+        for line in &gh.lines {
+            println!("{}", line);
+        }
+    }
+
+    // Write SARIF output if requested.
+    if matches!(format, OutputFormat::Sarif) {
+        let sarif_json = cockpitctl_sarif::cockpit_report_to_sarif_json(&result.report)
+            .context("render SARIF")?;
+        let sarif_path = std::path::Path::new(artifacts)
+            .join("cockpit")
+            .join("sarif.json");
+        std::fs::write(&sarif_path, &sarif_json)
+            .with_context(|| format!("write {}", sarif_path.display()))?;
+    }
+
+    // Compute and render trend if baseline provided.
+    if let Some(baseline_path) = baseline {
+        let baseline_bytes = std::fs::read(baseline_path)
+            .with_context(|| format!("read baseline {}", baseline_path))?;
+        let baseline_report: cockpitctl_types::CockpitReport =
+            serde_json::from_slice(&baseline_bytes)
+                .with_context(|| format!("parse baseline {}", baseline_path))?;
+        let trend = cockpitctl_domain::compute_trend(&baseline_report, &result.report);
+        let trend_md = cockpitctl_render::render_trend_section(&trend);
+        eprint!("{}", trend_md);
+    }
+
+    // Run post-processor hooks if configured.
+    if !pre_cfg.hooks.is_empty() {
+        let report_json =
+            serde_json::to_string_pretty(&result.report).context("serialize report for hooks")?;
+        let hook_output = FsOutputSink::new(layout);
+        let sections = cockpitctl_io::run_hooks(&pre_cfg.hooks, &report_json, &hook_output)
+            .context("run hooks")?;
+        if !sections.is_empty() {
+            eprintln!("cockpitctl: {} hook section(s) collected", sections.len());
+        }
+    }
+
+    Ok(result.exit_code)
+}
+
+fn cmd_explain(code: &str) -> Result<i32> {
+    if code == "all" {
+        let codes = cockpitctl_domain::all_codes();
+        for e in &codes {
+            println!("{:<35} {}", e.code, e.title);
+        }
+        return Ok(0);
+    }
+
+    match cockpitctl_domain::explain_code(code) {
+        Some(e) => {
+            println!("{}", e.code);
+            println!("  Title:       {}", e.title);
+            println!("  Description: {}", e.description);
+            println!("  Cause:       {}", e.cause);
+            println!("  Fix:         {}", e.fix);
+            Ok(0)
+        }
+        None => {
+            eprintln!("unknown code: {}", code);
+            eprintln!("run `cockpitctl explain all` to list all codes");
+            Ok(1)
         }
     }
 }
@@ -555,6 +685,9 @@ mod tests {
                 config: config_path.to_string_lossy().to_string(),
                 label: vec![],
                 schema_validation: None,
+                github_annotations: false,
+                format: OutputFormat::Cockpit,
+                baseline: None,
             },
         })
         .expect("run ingest");
@@ -579,6 +712,9 @@ mod tests {
             config_path.to_string_lossy().as_ref(),
             vec![],
             Some(SchemaValidationMode::Lax),
+            false,
+            OutputFormat::Cockpit,
+            None,
         )
         .expect("cmd_ingest");
         assert_eq!(code, 0);
@@ -609,6 +745,9 @@ mod tests {
             config_path.to_string_lossy().as_ref(),
             vec![],
             Some(SchemaValidationMode::Lax),
+            false,
+            OutputFormat::Cockpit,
+            None,
         )
         .expect_err("expected ingest error");
         assert!(format!("{:#}", err).contains("ingest"));
@@ -634,6 +773,9 @@ mod tests {
             artifacts_file.to_string_lossy().as_ref(),
             config_path.to_string_lossy().as_ref(),
             vec![],
+            None,
+            false,
+            OutputFormat::Cockpit,
             None,
         )
         .expect_err("expected ingest error");
