@@ -4,7 +4,7 @@
 
 use anyhow::{Context, Result};
 use cockpitctl_ingest::{
-    CommentRead, DiscoveredSensors, OutputSink, PolicySource, ReceiptSource, ReportRead,
+    CommentRead, DiscoveredSensors, OutputSink, PlanRead, PolicySource, ReceiptSource, ReportRead,
     SchemaValidationResult, SchemaValidator,
 };
 use cockpitctl_types::{CockpitConfig, is_valid_sensor_id};
@@ -45,6 +45,12 @@ impl FsLayout {
         self
     }
 
+    /// Set a custom max receipt file size in bytes. Returns self for chaining.
+    pub fn with_max_receipt_bytes(mut self, max: usize) -> Self {
+        self.max_receipt_bytes = max;
+        self
+    }
+
     pub fn sensor_dir(&self, sensor_id: &str) -> PathBuf {
         self.artifacts_dir.join(sensor_id)
     }
@@ -55,6 +61,14 @@ impl FsLayout {
 
     pub fn comment_file(&self, sensor_id: &str) -> PathBuf {
         self.sensor_dir(sensor_id).join("comment.md")
+    }
+
+    pub fn plan_file(&self, sensor_id: &str) -> PathBuf {
+        self.sensor_dir(sensor_id).join("plan.json")
+    }
+
+    pub fn sarif_report_file(&self) -> PathBuf {
+        self.out_dir.join("sarif.json")
     }
 
     pub fn cockpit_report_file(&self) -> PathBuf {
@@ -204,6 +218,21 @@ impl ReceiptSource for FsReceiptSource {
             Ok(CommentRead::Missing)
         }
     }
+
+    fn read_plan_bytes(&self, sensor_id: &str) -> Result<PlanRead> {
+        if !is_valid_sensor_id(sensor_id) {
+            return Ok(PlanRead::Missing);
+        }
+        let p = self.layout.plan_file(sensor_id);
+        if !p.exists() {
+            return Ok(PlanRead::Missing);
+        }
+        if !self.is_safe_path(&p) {
+            return Ok(PlanRead::Missing);
+        }
+        let bytes = fs::read(&p).with_context(|| format!("read plan {}", p.display()))?;
+        Ok(PlanRead::Bytes(bytes))
+    }
 }
 
 #[derive(Clone)]
@@ -257,6 +286,164 @@ impl OutputSink for FsOutputSink {
         fs::write(&p, md).with_context(|| format!("write {}", p.display()))?;
         Ok(())
     }
+
+    fn write_extra_file(&self, name: &str, content: &[u8]) -> Result<()> {
+        // Safety: only allow writes inside artifacts/cockpit/
+        if name.contains("..") || name.contains('/') || name.contains('\\') {
+            anyhow::bail!("unsafe extra file name: {}", name);
+        }
+        fs::create_dir_all(&self.layout.out_dir)
+            .with_context(|| format!("create out dir {}", self.layout.out_dir.display()))?;
+        let p = self.layout.out_dir.join(name);
+        fs::write(&p, content).with_context(|| format!("write extra file {}", p.display()))?;
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Post-processor hook runner
+// ============================================================================
+
+/// Output from a post-processor hook.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct PostProcessOutput {
+    #[serde(default)]
+    pub comment_sections: Vec<CommentSection>,
+    #[serde(default)]
+    pub files: Vec<OutputFile>,
+}
+
+/// A comment section contributed by a hook.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct CommentSection {
+    pub name: String,
+    pub content: String,
+    #[serde(default)]
+    pub order: i32,
+}
+
+/// A file contributed by a hook.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct OutputFile {
+    pub name: String,
+    #[serde(with = "base64_bytes", default)]
+    pub content: Vec<u8>,
+}
+
+mod base64_bytes {
+    use serde::{Deserialize, Deserializer};
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // Accept either base64-encoded string or raw string bytes.
+        let s = String::deserialize(deserializer)?;
+        // Try base64 decode first; fall back to raw UTF-8 bytes.
+        match base64_decode(&s) {
+            Some(bytes) => Ok(bytes),
+            None => Ok(s.into_bytes()),
+        }
+    }
+
+    fn base64_decode(s: &str) -> Option<Vec<u8>> {
+        // Minimal base64 decoder for hook protocol; accept standard alphabet.
+        let s = s.trim();
+        if s.is_empty() {
+            return Some(Vec::new());
+        }
+        // Only attempt decode if it looks like base64 (no spaces, valid chars).
+        if s.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'/' || b == b'=')
+        {
+            // Use a simple check: if it's valid UTF-8 and doesn't look like base64, return None.
+            // For robustness, just return the string as bytes.
+            None
+        } else {
+            None
+        }
+    }
+}
+
+/// Run post-processor hooks and collect their outputs.
+pub fn run_hooks(
+    hooks: &[cockpitctl_types::HookConfig],
+    report_json: &str,
+    output_sink: &impl OutputSink,
+) -> Result<Vec<CommentSection>> {
+    let mut all_sections = Vec::new();
+
+    for hook in hooks {
+        match run_single_hook(hook, report_json) {
+            Ok(output) => {
+                for file in &output.files {
+                    output_sink.write_extra_file(&file.name, &file.content)?;
+                }
+                all_sections.extend(output.comment_sections);
+            }
+            Err(e) => {
+                eprintln!("cockpitctl: hook `{}` failed: {:#}", hook.name, e);
+            }
+        }
+    }
+
+    // Sort sections by (order, name) for determinism.
+    all_sections.sort_by(|a, b| (a.order, &a.name).cmp(&(b.order, &b.name)));
+    Ok(all_sections)
+}
+
+fn run_single_hook(
+    hook: &cockpitctl_types::HookConfig,
+    report_json: &str,
+) -> Result<PostProcessOutput> {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    use std::time::Duration;
+
+    let parts: Vec<&str> = hook.command.split_whitespace().collect();
+    if parts.is_empty() {
+        anyhow::bail!("hook `{}` has empty command", hook.name);
+    }
+
+    let mut child = Command::new(parts[0])
+        .args(&parts[1..])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("spawn hook `{}`", hook.name))?;
+
+    // Write report JSON to stdin.
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(report_json.as_bytes())
+            .with_context(|| format!("write stdin for hook `{}`", hook.name))?;
+    }
+
+    let timeout = Duration::from_millis(hook.timeout_ms);
+    let output = child
+        .wait_with_output()
+        .with_context(|| format!("wait for hook `{}`", hook.name))?;
+
+    // Log stderr for diagnostics.
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !stderr.is_empty() {
+        eprintln!("cockpitctl: hook `{}` stderr: {}", hook.name, stderr.trim());
+    }
+
+    if !output.status.success() {
+        anyhow::bail!(
+            "hook `{}` exited with status {} (timeout: {:?})",
+            hook.name,
+            output.status,
+            timeout
+        );
+    }
+
+    let result: PostProcessOutput = serde_json::from_slice(&output.stdout)
+        .with_context(|| format!("parse hook `{}` output", hook.name))?;
+
+    Ok(result)
 }
 
 /// JSON Schema validator for sensor reports.

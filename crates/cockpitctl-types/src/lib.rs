@@ -306,6 +306,10 @@ pub struct Policy {
     /// validates receipts against the embedded sensor.report.v1 schema.
     #[serde(default)]
     pub schema_validation: SchemaValidation,
+    /// Maximum receipt file size in bytes (default 2MB). Receipts exceeding this
+    /// limit are rejected with a `cockpit.receipt_oversized` finding.
+    #[serde(default = "default_max_receipt_size_bytes")]
+    pub max_receipt_size_bytes: usize,
 }
 
 fn default_max_highlights() -> usize {
@@ -316,6 +320,9 @@ fn default_max_per_sensor_findings() -> usize {
 }
 fn default_max_annotations() -> usize {
     25
+}
+fn default_max_receipt_size_bytes() -> usize {
+    2 * 1024 * 1024 // 2MB
 }
 fn default_section_order() -> Vec<String> {
     vec![
@@ -340,6 +347,7 @@ impl Default for Policy {
             max_annotations: default_max_annotations(),
             section_order: default_section_order(),
             schema_validation: SchemaValidation::default(),
+            max_receipt_size_bytes: default_max_receipt_size_bytes(),
         }
     }
 }
@@ -350,6 +358,8 @@ pub struct CockpitConfig {
     pub policy: Policy,
     #[serde(default)]
     pub sensors: std::collections::BTreeMap<String, SensorPolicy>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hooks: Vec<HookConfig>,
 }
 
 /// A single sensor row in the cockpit aggregate report.
@@ -513,4 +523,118 @@ pub struct BuildfixPlan {
     pub schema: SchemaId,
     pub tool: ToolInfo,
     pub fixes: Vec<Fix>,
+}
+
+// ============================================================================
+// Trend tracking types
+// ============================================================================
+
+/// Change in the overall verdict between baseline and current.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct VerdictChange {
+    pub before: VerdictStatus,
+    pub after: VerdictStatus,
+}
+
+/// Delta counts for findings.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CountDeltas {
+    pub info_delta: i64,
+    pub warn_delta: i64,
+    pub error_delta: i64,
+}
+
+/// A finding that changed between baseline and current.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TrendFinding {
+    pub sensor_id: String,
+    pub code: String,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub line: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fingerprint: Option<String>,
+    pub severity: Severity,
+}
+
+/// Category of change for a trending finding.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TrendChange {
+    New,
+    Fixed,
+}
+
+/// Full trend delta between a baseline and current report.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TrendDelta {
+    pub verdict_change: Option<VerdictChange>,
+    pub count_deltas: CountDeltas,
+    pub new_findings: Vec<TrendFinding>,
+    pub fixed_findings: Vec<TrendFinding>,
+    pub sensors_added: Vec<String>,
+    pub sensors_removed: Vec<String>,
+}
+
+// ============================================================================
+// Buildfix summary types (for cockpit report surfacing)
+// ============================================================================
+
+/// A matched finding for a fix.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MatchedFinding {
+    pub sensor_id: String,
+    pub code: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fingerprint: Option<String>,
+}
+
+/// Summary of a single fix for cockpit surfacing.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct FixSummary {
+    pub fix_id: String,
+    pub sensor_id: String,
+    pub safety: SafetyLevel,
+    pub description: String,
+    pub matched_findings: Vec<MatchedFinding>,
+    pub unmatched: bool,
+}
+
+/// Summary of buildfix plans for cockpit surfacing.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BuildfixSummary {
+    pub fixes: Vec<FixSummary>,
+    pub total_fixes: usize,
+    pub matched_count: usize,
+    pub unmatched_count: usize,
+}
+
+// ============================================================================
+// Hook config types
+// ============================================================================
+
+/// When a hook should run.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum HookWhen {
+    /// Run after ingest completes.
+    #[default]
+    AfterIngest,
+}
+
+/// Configuration for a post-processing hook.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct HookConfig {
+    pub name: String,
+    pub command: String,
+    #[serde(default)]
+    pub when: HookWhen,
+    #[serde(default = "default_hook_timeout_ms")]
+    pub timeout_ms: u64,
+}
+
+fn default_hook_timeout_ms() -> u64 {
+    30_000 // 30 seconds
 }

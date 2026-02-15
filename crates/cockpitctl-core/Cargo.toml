@@ -18,3 +18,4 @@ cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.2.1" }
 cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.2.1" }
 cockpitctl-render = { path = "../cockpitctl-render", version = "0.2.1" }
 cockpitctl-io = { path = "../cockpitctl-io", version = "0.2.1" }
+cockpitctl-sarif = { path = "../cockpitctl-sarif", version = "0.2.1" }

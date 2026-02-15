@@ -8,6 +8,7 @@ pub use cockpitctl_domain as domain;
 pub use cockpitctl_ingest as ingest;
 pub use cockpitctl_io as io;
 pub use cockpitctl_render as render;
+pub use cockpitctl_sarif as sarif;
 pub use cockpitctl_types as types;
 
 // Flatten the most-used ingest items.
@@ -22,5 +23,11 @@ pub use cockpitctl_types::{
     VerdictStatus,
 };
 
+// Flatten domain helpers.
+pub use cockpitctl_domain::{CodeExplanation, all_codes, explain_code};
+
+// Flatten SARIF export.
+pub use cockpitctl_sarif::{cockpit_report_to_sarif, cockpit_report_to_sarif_json};
+
 // Flatten the renderer.
-pub use cockpitctl_render::render_comment;
+pub use cockpitctl_render::{GitHubAnnotationResult, render_comment, render_github_annotations};

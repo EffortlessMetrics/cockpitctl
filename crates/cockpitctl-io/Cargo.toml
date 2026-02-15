@@ -14,6 +14,7 @@ categories = ["development-tools", "filesystem"]
 
 [dependencies]
 anyhow.workspace = true
+serde.workspace = true
 toml.workspace = true
 walkdir.workspace = true
 serde_json.workspace = true

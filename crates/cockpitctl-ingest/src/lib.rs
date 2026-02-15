@@ -5,14 +5,15 @@
 
 use anyhow::{Context, Result};
 use cockpitctl_domain::{
-    build_cockpit_report, select_highlights, sort_sensor_summaries, summarize_sensor_report,
-    synthesize_invalid_sensor, synthesize_missing_sensor, synthesize_path_traversal_highlight,
-    synthesize_path_traversal_sensor, synthesize_receipt_oversized_sensor,
-    synthesize_schema_violation_sensor, synthesize_sensors_truncated,
+    build_cockpit_report, match_buildfix_plan, select_highlights, sort_sensor_summaries,
+    summarize_sensor_report, synthesize_invalid_sensor, synthesize_missing_sensor,
+    synthesize_path_traversal_highlight, synthesize_path_traversal_sensor,
+    synthesize_receipt_oversized_sensor, synthesize_schema_violation_sensor,
+    synthesize_sensors_truncated,
 };
 use cockpitctl_types::{
-    CockpitConfig, CockpitReport, MissingPolicy, RunInfo, SchemaValidation, ToolInfo,
-    is_valid_sensor_id,
+    BuildfixSummary, CockpitConfig, CockpitReport, MissingPolicy, RunInfo, SchemaValidation,
+    ToolInfo, is_valid_sensor_id,
 };
 
 /// Result of sensor discovery, including any truncation info.
@@ -42,6 +43,12 @@ pub enum CommentRead {
     UnsafePath,
 }
 
+/// Result of reading a buildfix plan.
+pub enum PlanRead {
+    Missing,
+    Bytes(Vec<u8>),
+}
+
 /// Ports: where receipts come from.
 pub trait ReceiptSource {
     /// Return a stable list of discovered sensor IDs that have a receipt file present.
@@ -56,6 +63,11 @@ pub trait ReceiptSource {
 
     /// Return canonical relative path to the sensor's comment.md if present.
     fn comment_path_if_present(&self, sensor_id: &str) -> Result<CommentRead>;
+
+    /// Read the plan.json bytes for a sensor if present (buildfix integration).
+    fn read_plan_bytes(&self, _sensor_id: &str) -> Result<PlanRead> {
+        Ok(PlanRead::Missing)
+    }
 }
 
 /// Ports: policy source (cockpit.toml).
@@ -67,6 +79,11 @@ pub trait PolicySource {
 pub trait OutputSink {
     fn write_cockpit_report(&self, json: &str) -> Result<()>;
     fn write_cockpit_comment(&self, md: &str) -> Result<()>;
+
+    /// Write an extra file (e.g. from a post-processor hook). Default is a no-op.
+    fn write_extra_file(&self, _name: &str, _content: &[u8]) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// Result of JSON Schema validation.
@@ -106,6 +123,7 @@ pub struct IngestResult {
     pub report: CockpitReport,
     pub comment_md: String,
     pub exit_code: i32,
+    pub buildfix: Option<BuildfixSummary>,
 }
 
 pub struct IngestUseCase<R, P, O, S, RenderFn>
@@ -324,13 +342,49 @@ where
         // Select highlights and cap.
         let highlights = select_highlights(highlight_candidates, &cfg, &sensor_blocking);
 
-        let report = build_cockpit_report(
+        // Buildfix plan ingestion: read plan.json for each discovered sensor.
+        let mut buildfix_summary: Option<BuildfixSummary> = None;
+        let mut all_fixes = Vec::new();
+        for sensor_id in &discovered {
+            if let PlanRead::Bytes(bytes) = self.receipts.read_plan_bytes(sensor_id)?
+                && let Ok(plan) = serde_json::from_slice::<cockpitctl_types::BuildfixPlan>(&bytes)
+            {
+                let summary = match_buildfix_plan(sensor_id, &plan, &highlights);
+                all_fixes.extend(summary.fixes);
+            }
+        }
+        if !all_fixes.is_empty() {
+            let total_fixes = all_fixes.len();
+            let unmatched_count = all_fixes.iter().filter(|f| f.unmatched).count();
+            let matched_count = total_fixes - unmatched_count;
+            buildfix_summary = Some(BuildfixSummary {
+                fixes: all_fixes,
+                total_fixes,
+                matched_count,
+                unmatched_count,
+            });
+        }
+
+        let mut report = build_cockpit_report(
             &cfg,
             req.tool.clone(),
             req.run.clone(),
             sensor_summaries,
             highlights,
         );
+
+        // Store buildfix summary in report.data if present.
+        if let Some(ref bf) = buildfix_summary {
+            let bf_value = serde_json::to_value(bf).ok();
+            if let Some(val) = bf_value {
+                let data = report
+                    .data
+                    .get_or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+                if let Some(obj) = data.as_object_mut() {
+                    obj.insert("_buildfix".to_string(), val);
+                }
+            }
+        }
 
         // Render comment.
         let comment_md = (self.render)(&report, &cfg);
@@ -352,6 +406,7 @@ where
             report,
             comment_md,
             exit_code,
+            buildfix: buildfix_summary,
         })
     }
 }

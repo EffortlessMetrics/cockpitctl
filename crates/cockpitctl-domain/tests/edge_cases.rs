@@ -120,6 +120,7 @@ fn sort_sensor_summaries_respects_section_order_and_other() {
             max_annotations: 25,
             section_order: vec!["Tests".to_string()],
             schema_validation: Default::default(),
+            max_receipt_size_bytes: 2 * 1024 * 1024,
         },
         ..Default::default()
     };
