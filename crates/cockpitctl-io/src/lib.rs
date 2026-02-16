@@ -230,6 +230,13 @@ impl ReceiptSource for FsReceiptSource {
         if !self.is_safe_path(&p) {
             return Ok(PlanRead::Missing);
         }
+        let meta = fs::metadata(&p)?;
+        if meta.len() as usize > self.layout.max_receipt_bytes {
+            return Ok(PlanRead::Oversized {
+                size: meta.len(),
+                cap: self.layout.max_receipt_bytes,
+            });
+        }
         let bytes = fs::read(&p).with_context(|| format!("read plan {}", p.display()))?;
         Ok(PlanRead::Bytes(bytes))
     }
@@ -331,6 +338,7 @@ pub struct OutputFile {
 }
 
 mod base64_bytes {
+    use base64::Engine;
     use serde::{Deserialize, Deserializer};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
@@ -347,18 +355,14 @@ mod base64_bytes {
     }
 
     fn base64_decode(s: &str) -> Option<Vec<u8>> {
-        // Minimal base64 decoder for hook protocol; accept standard alphabet.
         let s = s.trim();
         if s.is_empty() {
             return Some(Vec::new());
         }
-        // Only attempt decode if it looks like base64 (no spaces, valid chars).
         if s.bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'+' || b == b'/' || b == b'=')
         {
-            // Use a simple check: if it's valid UTF-8 and doesn't look like base64, return None.
-            // For robustness, just return the string as bytes.
-            None
+            base64::engine::general_purpose::STANDARD.decode(s).ok()
         } else {
             None
         }
@@ -396,9 +400,10 @@ fn run_single_hook(
     hook: &cockpitctl_types::HookConfig,
     report_json: &str,
 ) -> Result<PostProcessOutput> {
-    use std::io::Write;
+    use std::io::{Read, Write};
     use std::process::{Command, Stdio};
     use std::time::Duration;
+    use wait_timeout::ChildExt;
 
     let parts: Vec<&str> = hook.command.split_whitespace().collect();
     if parts.is_empty() {
@@ -420,27 +425,55 @@ fn run_single_hook(
             .with_context(|| format!("write stdin for hook `{}`", hook.name))?;
     }
 
+    // Take ownership of stdout/stderr handles and drain them in threads
+    // to prevent pipe-buffer deadlock when the child writes >64KB.
+    let mut stdout_handle = child.stdout.take();
+    let mut stderr_handle = child.stderr.take();
+
+    let stdout_thread = std::thread::spawn(move || -> Vec<u8> {
+        let mut buf = Vec::new();
+        if let Some(ref mut h) = stdout_handle {
+            let _ = h.read_to_end(&mut buf);
+        }
+        buf
+    });
+
+    let stderr_thread = std::thread::spawn(move || -> Vec<u8> {
+        let mut buf = Vec::new();
+        if let Some(ref mut h) = stderr_handle {
+            let _ = h.read_to_end(&mut buf);
+        }
+        buf
+    });
+
     let timeout = Duration::from_millis(hook.timeout_ms);
-    let output = child
-        .wait_with_output()
-        .with_context(|| format!("wait for hook `{}`", hook.name))?;
+    let status = match child
+        .wait_timeout(timeout)
+        .with_context(|| format!("wait for hook `{}`", hook.name))?
+    {
+        Some(status) => status,
+        None => {
+            // Timeout: kill the child and reap the zombie.
+            let _ = child.kill();
+            let _ = child.wait();
+            anyhow::bail!("hook `{}` timed out after {}ms", hook.name, hook.timeout_ms);
+        }
+    };
+
+    let stdout_bytes = stdout_thread.join().unwrap_or_default();
+    let stderr_bytes = stderr_thread.join().unwrap_or_default();
 
     // Log stderr for diagnostics.
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stderr = String::from_utf8_lossy(&stderr_bytes);
     if !stderr.is_empty() {
         eprintln!("cockpitctl: hook `{}` stderr: {}", hook.name, stderr.trim());
     }
 
-    if !output.status.success() {
-        anyhow::bail!(
-            "hook `{}` exited with status {} (timeout: {:?})",
-            hook.name,
-            output.status,
-            timeout
-        );
+    if !status.success() {
+        anyhow::bail!("hook `{}` exited with status {}", hook.name, status);
     }
 
-    let result: PostProcessOutput = serde_json::from_slice(&output.stdout)
+    let result: PostProcessOutput = serde_json::from_slice(&stdout_bytes)
         .with_context(|| format!("parse hook `{}` output", hook.name))?;
 
     Ok(result)
@@ -1470,5 +1503,48 @@ missing = "warn"
             .err()
             .expect("expected read error");
         assert!(format!("{:#}", err).contains("read receipt"));
+    }
+
+    // -------------------------------------------------------------------------
+    // base64 decoder tests
+    // -------------------------------------------------------------------------
+
+    fn decode_output_file_content(content: &str) -> Vec<u8> {
+        let json = format!(r#"{{"name":"test.txt","content":"{}"}}"#, content);
+        let file: OutputFile = serde_json::from_str(&json).unwrap();
+        file.content
+    }
+
+    #[test]
+    fn output_file_base64_content_is_decoded() {
+        let bytes = decode_output_file_content("SGVsbG8gV29ybGQ=");
+        assert_eq!(bytes, b"Hello World");
+    }
+
+    #[test]
+    fn output_file_plain_text_content_is_preserved() {
+        // Contains a space, which is not a valid base64 char → falls back to raw bytes.
+        let bytes = decode_output_file_content("Hello World");
+        assert_eq!(bytes, b"Hello World");
+    }
+
+    #[test]
+    fn output_file_empty_content_is_empty_vec() {
+        let bytes = decode_output_file_content("");
+        assert!(bytes.is_empty());
+    }
+
+    #[test]
+    fn output_file_invalid_base64_falls_back_to_raw() {
+        // All chars are base64-valid but the padding is wrong → decode fails → raw bytes.
+        let bytes = decode_output_file_content("NOT===VALID");
+        assert_eq!(bytes, b"NOT===VALID");
+    }
+
+    #[test]
+    fn output_file_binary_base64_roundtrip() {
+        // [0x00, 0xFF, 0x80, 0x7F]
+        let bytes = decode_output_file_content("AP+Afw==");
+        assert_eq!(bytes, vec![0x00, 0xFF, 0x80, 0x7F]);
     }
 }

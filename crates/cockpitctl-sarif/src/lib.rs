@@ -27,8 +27,6 @@ pub struct SarifLog {
 pub struct SarifRun {
     pub tool: SarifTool,
     pub results: Vec<SarifResult>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub rules: Vec<SarifRule>,
 }
 
 #[derive(Debug, Serialize)]
@@ -167,7 +165,7 @@ pub fn cockpit_report_to_sarif(report: &CockpitReport) -> SarifLog {
             });
     }
 
-    let rules: Vec<SarifRule> = rules_map.values().cloned().collect();
+    let rules: Vec<SarifRule> = rules_map.into_values().collect();
     let results: Vec<SarifResult> = report
         .highlights
         .iter()
@@ -182,11 +180,10 @@ pub fn cockpit_report_to_sarif(report: &CockpitReport) -> SarifLog {
                 driver: SarifToolComponent {
                     name: report.tool.name.clone(),
                     version: report.tool.version.clone(),
-                    rules: rules.clone(),
+                    rules,
                 },
             },
             results,
-            rules,
         }],
     }
 }
@@ -324,8 +321,7 @@ mod tests {
     fn sarif_dedupes_rules_by_code() {
         let report = minimal_report_with_highlights();
         let sarif = cockpit_report_to_sarif(&report);
-        // Two highlights with different codes → two rules.
-        assert_eq!(sarif.runs[0].rules.len(), 2);
+        // Two highlights with different codes → two rules (in driver only).
         assert_eq!(sarif.runs[0].tool.driver.rules.len(), 2);
     }
 

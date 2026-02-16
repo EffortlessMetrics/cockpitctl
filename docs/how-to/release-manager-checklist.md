@@ -127,6 +127,7 @@ This comprehensive checklist guides release managers through preparing, executin
   cargo publish --dry-run -p cockpitctl-render
   cargo publish --dry-run -p cockpitctl-ingest
   cargo publish --dry-run -p cockpitctl-io
+  cargo publish --dry-run -p cockpitctl-sarif
   cargo publish --dry-run -p cockpitctl-core
   cargo publish --dry-run -p cockpitctl
   cargo publish --dry-run -p conformctl
@@ -234,6 +235,7 @@ This comprehensive checklist guides release managers through preparing, executin
     - [ ] cockpitctl-render
     - [ ] cockpitctl-ingest
     - [ ] cockpitctl-io
+    - [ ] cockpitctl-sarif
     - [ ] cockpitctl-core
     - [ ] cockpitctl
     - [ ] conformctl
@@ -268,13 +270,14 @@ This comprehensive checklist guides release managers through preparing, executin
 ### Release Verification
 
 - [ ] **Verify crates.io publications**
-  - [ ] All 9 crates are published:
+  - [ ] All 10 crates are published:
     - [ ] https://crates.io/crates/cockpitctl-types
     - [ ] https://crates.io/crates/cockpitctl-conform
     - [ ] https://crates.io/crates/cockpitctl-domain
     - [ ] https://crates.io/crates/cockpitctl-render
     - [ ] https://crates.io/crates/cockpitctl-ingest
     - [ ] https://crates.io/crates/cockpitctl-io
+    - [ ] https://crates.io/crates/cockpitctl-sarif
     - [ ] https://crates.io/crates/cockpitctl-core
     - [ ] https://crates.io/crates/cockpitctl
     - [ ] https://crates.io/crates/conformctl
@@ -473,7 +476,7 @@ This comprehensive checklist guides release managers through preparing, executin
 
 - [ ] **Prepare patch release**
   - [ ] Update CHANGELOG with patch notes
-  - [ ] Bump patch version (e.g., 0.2.1 → 0.2.1)
+  - [ ] Bump patch version (e.g., 0.2.1 → 0.2.2)
   - [ ] Create new tag
 
 - [ ] **Execute patch release**

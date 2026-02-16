@@ -149,6 +149,9 @@ runs:
         INPUT_VERSION: ${{ inputs.version }}
         FALLBACK_REPO: ${{ github.action_repository }}
       run: |
+        PY=python3
+        command -v python3 >/dev/null 2>&1 || PY=python
+
         REPO="$INPUT_REPO"
         if [[ -z "$REPO" ]]; then
           REPO="$FALLBACK_REPO"
@@ -157,7 +160,7 @@ runs:
         VERSION="$INPUT_VERSION"
         if [[ "$VERSION" == "latest" ]]; then
           LATEST_URL="https://api.github.com/repos/${REPO}/releases/latest"
-          VERSION=$(curl -fsSL "$LATEST_URL" | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+          VERSION=$(curl -fsSL "$LATEST_URL" | $PY -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
         elif [[ "$VERSION" != v* ]]; then
           VERSION="v${VERSION}"
         fi
@@ -201,6 +204,9 @@ runs:
       id: checksum
       shell: bash
       run: |
+        PY=python3
+        command -v python3 >/dev/null 2>&1 || PY=python
+
         TOOLPACK="${{ inputs.toolpack }}"
         PLATFORM="${{ steps.platform.outputs.platform }}"
         EXPECTED_HASH=""
@@ -208,7 +214,7 @@ runs:
         # Only check toolpack if release checksum was not available
         if [[ "${{ steps.release_checksum.outputs.checksum-available }}" != "true" ]] && [[ -n "$TOOLPACK" && -f "$TOOLPACK" ]]; then
           # Extract SHA256 for the current platform from toolpack.json
-          EXPECTED_HASH=$(python3 -c "
+          EXPECTED_HASH=$($PY -c "
 import sys, json
 tp = json.load(open(sys.argv[1]))
 print(tp.get('tools',{}).get('cockpitctl',{}).get('assets',{}).get(sys.argv[2],{}).get('sha256',''))

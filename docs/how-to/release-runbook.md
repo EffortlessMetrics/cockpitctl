@@ -133,6 +133,7 @@ cargo publish --dry-run -p cockpitctl-domain
 cargo publish --dry-run -p cockpitctl-render
 cargo publish --dry-run -p cockpitctl-ingest
 cargo publish --dry-run -p cockpitctl-io
+cargo publish --dry-run -p cockpitctl-sarif
 cargo publish --dry-run -p cockpitctl-core
 cargo publish --dry-run -p cockpitctl
 cargo publish --dry-run -p conformctl
@@ -298,6 +299,7 @@ gh repo view --web
 - https://crates.io/crates/cockpitctl-render
 - https://crates.io/crates/cockpitctl-ingest
 - https://crates.io/crates/cockpitctl-io
+- https://crates.io/crates/cockpitctl-sarif
 - https://crates.io/crates/cockpitctl-core
 - https://crates.io/crates/cockpitctl
 - https://crates.io/crates/conformctl
@@ -584,7 +586,7 @@ git push origin :refs/tags/v0.2.1
 
 1. **Fix the critical issue**
 2. **Update CHANGELOG** with patch notes
-3. **Bump patch version** (e.g., `0.2.1` → `0.2.1`)
+3. **Bump patch version** (e.g., `0.2.1` → `0.2.2`)
 4. **Create new tag**
 5. **Execute normal release process**
 

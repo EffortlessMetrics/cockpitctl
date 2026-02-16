@@ -52,3 +52,5 @@ criterion = { version = "0.8.2", features = ["html_reports"] }
 rand = "0.10.0"
 cucumber = "0.22.1"
 futures = "0.3.31"
+wait-timeout = "0.2"
+base64 = "0.22.1"
