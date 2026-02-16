@@ -230,6 +230,13 @@ impl ReceiptSource for FsReceiptSource {
         if !self.is_safe_path(&p) {
             return Ok(PlanRead::Missing);
         }
+        let meta = fs::metadata(&p)?;
+        if meta.len() as usize > self.layout.max_receipt_bytes {
+            return Ok(PlanRead::Oversized {
+                size: meta.len(),
+                cap: self.layout.max_receipt_bytes,
+            });
+        }
         let bytes = fs::read(&p).with_context(|| format!("read plan {}", p.display()))?;
         Ok(PlanRead::Bytes(bytes))
     }

@@ -47,6 +47,7 @@ pub enum CommentRead {
 pub enum PlanRead {
     Missing,
     Bytes(Vec<u8>),
+    Oversized { size: u64, cap: usize },
 }
 
 /// Ports: where receipts come from.
