@@ -122,24 +122,34 @@ cargo test -p cockpitctl --test ingest_golden
 
 **Expected output**: All tests pass
 
-### Step 6: Dry-Run Publish Validation
+### Step 6: Package Validation + Dry-Run Strategy
 
-Run dry-run publishes in dependency order:
+Validate package contents locally:
+
+```bash
+cargo package --list -p cockpitctl-types
+cargo package --list -p cockpitctl-conform
+cargo package --list -p cockpitctl-domain
+cargo package --list -p cockpitctl-render
+cargo package --list -p cockpitctl-ingest
+cargo package --list -p cockpitctl-io
+cargo package --list -p cockpitctl-sarif
+cargo package --list -p cockpitctl-core
+cargo package --list -p cockpitctl
+cargo package --list -p conformctl
+```
+
+Optional local check:
 
 ```bash
 cargo publish --dry-run -p cockpitctl-types
-cargo publish --dry-run -p cockpitctl-conform
-cargo publish --dry-run -p cockpitctl-domain
-cargo publish --dry-run -p cockpitctl-render
-cargo publish --dry-run -p cockpitctl-ingest
-cargo publish --dry-run -p cockpitctl-io
-cargo publish --dry-run -p cockpitctl-sarif
-cargo publish --dry-run -p cockpitctl-core
-cargo publish --dry-run -p cockpitctl
-cargo publish --dry-run -p conformctl
 ```
 
-**Expected output**: All dry-runs complete successfully
+Dependent crate dry-runs can fail locally before release if the new dependency
+versions are not yet in crates.io. The release workflow runs dry-run + publish
+in dependency tiers to avoid this.
+
+**Expected output**: Package listing succeeds locally; release-workflow dry-runs succeed in CI
 
 ### Step 7: Build and Test Locally
 
@@ -596,12 +606,12 @@ git push origin :refs/tags/v0.2.1
 
 # Commit changes
 git add -A
-git commit -m "Prepare patch release v0.2.1"
+git commit -m "Prepare patch release v0.2.2"
 
 # Create and push tag
-git tag v0.2.1
+git tag v0.2.2
 git push origin main
-git push origin v0.2.1
+git push origin v0.2.2
 ```
 
 ### Step 6: Announce Patch Release

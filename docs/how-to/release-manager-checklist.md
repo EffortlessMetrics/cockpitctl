@@ -119,27 +119,35 @@ This comprehensive checklist guides release managers through preparing, executin
 
 ### Package Verification
 
-- [ ] **Run dry-run publish for all crates** (in dependency order)
+- [ ] **Run local package validation for all crates**
+  ```bash
+  cargo package --list -p cockpitctl-types
+  cargo package --list -p cockpitctl-conform
+  cargo package --list -p cockpitctl-domain
+  cargo package --list -p cockpitctl-render
+  cargo package --list -p cockpitctl-ingest
+  cargo package --list -p cockpitctl-io
+  cargo package --list -p cockpitctl-sarif
+  cargo package --list -p cockpitctl-core
+  cargo package --list -p cockpitctl
+  cargo package --list -p conformctl
+  ```
+  - [ ] All package listings complete successfully
+  - [ ] No packaging warnings or errors
+
+- [ ] **Optionally dry-run first publish tier**
   ```bash
   cargo publish --dry-run -p cockpitctl-types
-  cargo publish --dry-run -p cockpitctl-conform
-  cargo publish --dry-run -p cockpitctl-domain
-  cargo publish --dry-run -p cockpitctl-render
-  cargo publish --dry-run -p cockpitctl-ingest
-  cargo publish --dry-run -p cockpitctl-io
-  cargo publish --dry-run -p cockpitctl-sarif
-  cargo publish --dry-run -p cockpitctl-core
-  cargo publish --dry-run -p cockpitctl
-  cargo publish --dry-run -p conformctl
   ```
-  - [ ] All dry-runs complete successfully
-  - [ ] No packaging warnings or errors
+  - [ ] First-tier dry-run succeeds
+  - [ ] CI release workflow will perform per-crate dry-runs before each publish step
 
 - [ ] **Verify packaging contents**
   ```bash
   cargo package --list -p cockpitctl
   ```
-  - [ ] No fixtures or test files included
+  - [ ] No large fixtures or docs junk included
+  - [ ] Expected source/tests/schemas are present
   - [ ] All necessary files are included
   - [ ] Embedded schemas are included
 

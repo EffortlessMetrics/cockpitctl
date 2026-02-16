@@ -36,7 +36,7 @@ Requires `quality-gate` to pass first.
 | Publish in dependency order | crates.io dependency resolution | ✅ |
 | 30s waits between tiers | crates.io index propagation | ✅ |
 
-**Publish order:** types → conform → domain → render → ingest → io → core → cockpitctl → conformctl
+**Publish order:** types → conform → domain → render → ingest → io → sarif → core → cockpitctl → conformctl
 
 ### 3. Build Binaries Job (`build-binaries`)
 
@@ -168,7 +168,7 @@ If a critical issue is discovered after release:
    gh release delete v0.2.1 --yes
    ```
 
-3. **Prepare a patch release** (e.g., `v0.2.1`):
+3. **Prepare a patch release** (e.g., `v0.2.2`):
    - Fix the issue
    - Update CHANGELOG
    - Create new tag
@@ -180,13 +180,14 @@ See the [Release Manager Checklist](docs/how-to/release-manager-checklist.md#rol
 
 Each release produces:
 
-**Crates.io packages (9 crates):**
+**Crates.io packages (10 crates):**
 - `cockpitctl-types` — Core DTOs and embedded schemas
 - `cockpitctl-conform` — Conformance checking library
 - `cockpitctl-domain` — Pure determinism and selection logic
 - `cockpitctl-render` — Markdown renderer
 - `cockpitctl-ingest` — Orchestration and ports
 - `cockpitctl-io` — Filesystem adapters
+- `cockpitctl-sarif` — SARIF exporter
 - `cockpitctl-core` — Facade crate
 - `cockpitctl` — CLI binary
 - `conformctl` — Standalone conformance checker
@@ -233,7 +234,7 @@ Before creating a release tag, ensure:
 - [ ] Documentation is current and accurate
 - [ ] Schema sync check passes: `cargo run -p xtask -- schema-sync-check`
 - [ ] Golden tests pass: `cargo test -p cockpitctl --test ingest_golden`
-- [ ] Dry-run publishes succeed for all crates
+- [ ] Local package listing passes for all crates; release-workflow dry-runs succeed in CI
 - [ ] Security audit passes: `cargo audit`
 
 ### Post-Release Validation Summary

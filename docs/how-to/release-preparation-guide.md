@@ -24,13 +24,14 @@ The cockpitctl release process is automated via GitHub Actions and triggered by 
 
 Each release produces:
 
-- **Crates.io packages**: 9 crates published to crates.io
+- **Crates.io packages**: 10 crates published to crates.io
   - `cockpitctl-types`
   - `cockpitctl-conform`
   - `cockpitctl-domain`
   - `cockpitctl-render`
   - `cockpitctl-ingest`
   - `cockpitctl-io`
+  - `cockpitctl-sarif`
   - `cockpitctl-core`
   - `cockpitctl`
   - `conformctl`
@@ -124,7 +125,7 @@ Ensure embedded schemas are synchronized with source schemas:
 cargo run -p xtask -- schema-sync-check
 ```
 
-**Expected result**: No output (exit code 0) indicates schemas are in sync.
+**Expected result**: Command exits 0 and reports schemas are in sync.
 
 ### 6. Golden Tests Verification
 
@@ -136,24 +137,34 @@ cargo test -p cockpitctl --test ingest_golden
 
 **Expected result**: All golden tests pass.
 
-### 7. Dry-Run Publish Validation
+### 7. Package Validation + Dry-Run Strategy
 
-Perform dry-run publishes to catch packaging errors:
+Validate package contents locally before tagging:
 
 ```bash
-# For each crate in dependency order:
-cargo publish --dry-run -p cockpitctl-types
-cargo publish --dry-run -p cockpitctl-conform
-cargo publish --dry-run -p cockpitctl-domain
-cargo publish --dry-run -p cockpitctl-render
-cargo publish --dry-run -p cockpitctl-ingest
-cargo publish --dry-run -p cockpitctl-io
-cargo publish --dry-run -p cockpitctl-core
-cargo publish --dry-run -p cockpitctl
-cargo publish --dry-run -p conformctl
+cargo package --list -p cockpitctl-types
+cargo package --list -p cockpitctl-conform
+cargo package --list -p cockpitctl-domain
+cargo package --list -p cockpitctl-render
+cargo package --list -p cockpitctl-ingest
+cargo package --list -p cockpitctl-io
+cargo package --list -p cockpitctl-sarif
+cargo package --list -p cockpitctl-core
+cargo package --list -p cockpitctl
+cargo package --list -p conformctl
 ```
 
-**Expected result**: All dry-runs complete successfully with no warnings or errors.
+Optional local publish dry-run:
+
+```bash
+cargo publish --dry-run -p cockpitctl-types
+```
+
+`cargo publish --dry-run` for dependent crates can fail locally before release
+because the new dependency versions are not on crates.io yet. The release
+workflow handles this by running dry-run + publish in dependency tiers.
+
+**Expected result**: `cargo package --list` succeeds for all crates, and CI dry-runs pass during the release workflow.
 
 ### 8. Binary Build Verification
 
@@ -221,7 +232,7 @@ git push origin v0.2.1
 Ensure all jobs complete successfully:
 
 - ✅ Quality Gate: `cargo fmt` and `cargo clippy` pass
-- ✅ Publish: All 9 crates published to crates.io
+- ✅ Publish: All 10 crates published to crates.io
 - ✅ Build Binaries: All 8 binaries built successfully
 - ✅ Test Binaries: All binaries pass smoke tests
 - ✅ GitHub Release: Release created with all assets
@@ -236,6 +247,7 @@ Visit crates.io to verify all packages are published:
 - https://crates.io/crates/cockpitctl-render
 - https://crates.io/crates/cockpitctl-ingest
 - https://crates.io/crates/cockpitctl-io
+- https://crates.io/crates/cockpitctl-sarif
 - https://crates.io/crates/cockpitctl-core
 - https://crates.io/crates/cockpitctl
 - https://crates.io/crates/conformctl
@@ -426,7 +438,7 @@ If a critical issue is discovered after release:
    gh release delete v0.2.1 --yes
    ```
 
-3. **Prepare a patch release** (e.g., `v0.2.1`):
+3. **Prepare a patch release** (e.g., `v0.2.2`):
    - Fix the issue
    - Update CHANGELOG
    - Create new tag
