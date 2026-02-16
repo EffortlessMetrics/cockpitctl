@@ -8,6 +8,8 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
+description = "Fuzzing harness for cockpitctl parsing and conformance inputs."
+readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
 

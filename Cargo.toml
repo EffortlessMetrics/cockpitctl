@@ -21,6 +21,9 @@ license = "MIT OR Apache-2.0"
 rust-version = "1.92"
 repository = "https://github.com/EffortlessMetrics/cockpitctl"
 homepage = "https://github.com/EffortlessMetrics/cockpitctl"
+description = "Offline CI director that compiles sensor receipts into deterministic merge evidence."
+keywords = ["ci", "sensor-receipts", "merge-surface", "policy", "static-analysis", "rust"]
+categories = ["development-tools"]
 authors = ["Effortless Metrics"]
 readme = "README.md"
 

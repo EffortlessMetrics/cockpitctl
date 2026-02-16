@@ -7,8 +7,8 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
+description = "Conformance checking library for validating cockpitctl sensor receipts and outputs"
 readme.workspace = true
-description = "Conformance checking library for cockpitctl sensor receipts"
 keywords = ["ci", "cd", "sensors", "conformance", "validation"]
 categories = ["development-tools"]
 

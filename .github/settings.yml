@@ -1,5 +1,5 @@
 # .github/settings.yml
 repository:
-  description: "Director for Effortless Metrics PR cockpits: ingests sensor receipts and renders deterministic merge surfaces."
+  description: "Offline CI director that compiles sensor receipts into deterministic merge evidence and stable PR surfaces."
   homepage: "https://github.com/EffortlessMetrics/cockpitctl"
-  topics: rust, devex, receipts, cockpit, pr-automation, static-analysis
+  topics: rust, ci, sensor-receipts, static-analysis, policy, merge-surface, deterministic, evidence
