@@ -299,6 +299,7 @@ gh repo view --web
 - https://crates.io/crates/cockpitctl-render
 - https://crates.io/crates/cockpitctl-ingest
 - https://crates.io/crates/cockpitctl-io
+- https://crates.io/crates/cockpitctl-sarif
 - https://crates.io/crates/cockpitctl-core
 - https://crates.io/crates/cockpitctl
 - https://crates.io/crates/conformctl

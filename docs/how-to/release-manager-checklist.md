@@ -270,7 +270,7 @@ This comprehensive checklist guides release managers through preparing, executin
 ### Release Verification
 
 - [ ] **Verify crates.io publications**
-  - [ ] All 9 crates are published:
+  - [ ] All 10 crates are published:
     - [ ] https://crates.io/crates/cockpitctl-types
     - [ ] https://crates.io/crates/cockpitctl-conform
     - [ ] https://crates.io/crates/cockpitctl-domain
