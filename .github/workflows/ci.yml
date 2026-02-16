@@ -38,6 +38,7 @@ jobs:
             -p cockpitctl-ingest \
             -p cockpitctl-render \
             -p cockpitctl-io \
+            -p cockpitctl-sarif \
             -p cockpitctl-core \
             -p cockpitctl-conform \
             -p conformctl \
@@ -53,23 +54,15 @@ jobs:
             -p cockpitctl-ingest \
             -p cockpitctl-render \
             -p cockpitctl-io \
+            -p cockpitctl-sarif \
             -p cockpitctl-core \
             -p cockpitctl-conform \
             -p conformctl \
             -p cockpitctl \
             --no-verify --registry crates-io
 
-      - name: Publish dry-run (all crates, dependency order)
-        run: |
-          cargo publish --dry-run -p cockpitctl-types
-          cargo publish --dry-run -p cockpitctl-conform
-          cargo publish --dry-run -p cockpitctl-domain
-          cargo publish --dry-run -p cockpitctl-render
-          cargo publish --dry-run -p cockpitctl-ingest
-          cargo publish --dry-run -p cockpitctl-io
-          cargo publish --dry-run -p cockpitctl-core
-          cargo publish --dry-run -p cockpitctl
-          cargo publish --dry-run -p conformctl
+      - name: Publish dry-run (types only, safe pre-first-publish)
+        run: cargo publish --dry-run -p cockpitctl-types
 
       - name: Ensure cockpitctl-core has no CLI dependencies
         run: |

@@ -111,6 +111,12 @@ jobs:
       - name: Publish cockpitctl-io
         run: cargo publish -p cockpitctl-io --token ${{ secrets.CRATES_IO_TOKEN }}
 
+      - name: Dry-run publish cockpitctl-sarif
+        run: cargo publish --dry-run -p cockpitctl-sarif --token ${{ secrets.CRATES_IO_TOKEN }}
+
+      - name: Publish cockpitctl-sarif
+        run: cargo publish -p cockpitctl-sarif --token ${{ secrets.CRATES_IO_TOKEN }}
+
       - name: Wait for crates.io index update
         run: sleep 30
 
@@ -340,10 +346,11 @@ jobs:
       - name: Generate SHA256 checksums
         run: |
           cd release-assets
-          # Generate checksums deterministically, excluding the output file itself
+          tmp="$(mktemp)"
           for f in $(ls -1 | sort); do
-            sha256sum "$f"
-          done > SHA256SUMS.txt
+            sha256sum "$f" >> "$tmp"
+          done
+          mv "$tmp" SHA256SUMS.txt
           echo "Generated SHA256SUMS.txt:"
           cat SHA256SUMS.txt
 
