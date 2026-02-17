@@ -1,0 +1,11 @@
+[policy]
+warn_is_fail = false
+max_highlights = 7
+max_per_sensor_findings = 20
+max_annotations = 25
+section_order = ["Highlights", "Diagnostics", "Other"]
+
+[sensors.buildfix]
+blocking = true
+missing = "fail"
+section = "Diagnostics"

@@ -206,7 +206,7 @@ mod tests {
             schema: "cockpit.report.v1".to_string(),
             tool: ToolInfo {
                 name: "cockpitctl".to_string(),
-                version: "0.2.1".to_string(),
+                version: "0.3.0".to_string(),
                 commit: None,
             },
             run: RunInfo {

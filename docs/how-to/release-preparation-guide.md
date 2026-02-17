@@ -12,7 +12,7 @@ This guide provides comprehensive instructions for preparing and executing a coc
 
 ## Overview
 
-The cockpitctl release process is automated via GitHub Actions and triggered by pushing a version tag (e.g., `v0.2.1`). The workflow consists of five jobs:
+The cockpitctl release process is automated via GitHub Actions and triggered by pushing a version tag (e.g., `v0.3.0`). The workflow consists of five jobs:
 
 1. **Quality Gate** — Code formatting and linting checks
 2. **Publish** — Publishes crates to crates.io in dependency order
@@ -76,7 +76,7 @@ Verify version consistency across all files:
 # Check workspace Cargo.toml version
 grep "version = " Cargo.toml
 
-# The version should match the tag you plan to create (e.g., 0.2.1 for v0.2.1)
+# The version should match the tag you plan to create (e.g., 0.3.0 for v0.3.0)
 ```
 
 Files to verify:
@@ -206,13 +206,13 @@ Once all pre-release verification steps pass, execute the release.
 
 ```bash
 # Create the version tag
-git tag v0.2.1
+git tag v0.3.0
 
 # Push the tag to trigger the release workflow
-git push origin v0.2.1
+git push origin v0.3.0
 ```
 
-**Note**: The tag format must be `v*` (e.g., `v0.2.1`, `v1.0.0`). The workflow will verify that the tag version matches the version in [`Cargo.toml`](../../Cargo.toml:17).
+**Note**: The tag format must be `v*` (e.g., `v0.3.0`, `v1.0.0`). The workflow will verify that the tag version matches the version in [`Cargo.toml`](../../Cargo.toml:17).
 
 ### 2. Monitor Release Workflow
 
@@ -257,7 +257,7 @@ Visit crates.io to verify all packages are published:
 Visit the GitHub release page:
 
 ```
-https://github.com/EffortlessMetrics/cockpitctl/releases/tag/v0.2.1
+https://github.com/EffortlessMetrics/cockpitctl/releases/tag/v0.3.0
 ```
 
 Verify:
@@ -276,10 +276,10 @@ Run the smoke test script to validate published artifacts:
 
 ```bash
 # Unix/Linux/macOS
-./scripts/smoke-test-release.sh v0.2.1
+./scripts/smoke-test-release.sh v0.3.0
 
 # Windows PowerShell
-./scripts/smoke-test-release.ps1 v0.2.1
+./scripts/smoke-test-release.ps1 v0.3.0
 ```
 
 The smoke test validates:
@@ -296,10 +296,10 @@ Download and verify checksums:
 
 ```bash
 # Download checksums
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/SHA256SUMS.txt -o SHA256SUMS.txt
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/SHA256SUMS.txt -o SHA256SUMS.txt
 
 # Download a binary
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64 -o cockpitctl-linux-x64
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-linux-x64 -o cockpitctl-linux-x64
 chmod +x cockpitctl-linux-x64
 
 # Verify checksum
@@ -386,10 +386,10 @@ Commit fixes and create a new tag.
 ```bash
 # Update version in Cargo.toml
 # Then delete and recreate the tag
-git tag -d v0.2.1
-git push origin :refs/tags/v0.2.1
-git tag v0.2.1
-git push origin v0.2.1
+git tag -d v0.3.0
+git push origin :refs/tags/v0.3.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 ### Publish Failures
@@ -428,17 +428,17 @@ If a critical issue is discovered after release:
 
 1. **Yank the crates** (if necessary):
    ```bash
-   cargo yank --vers 0.2.1 cockpitctl
-   cargo yank --vers 0.2.1 cockpitctl-core
+   cargo yank --vers 0.3.0 cockpitctl
+   cargo yank --vers 0.3.0 cockpitctl-core
    # ... repeat for all crates
    ```
 
 2. **Delete the GitHub release** (if necessary):
    ```bash
-   gh release delete v0.2.1 --yes
+   gh release delete v0.3.0 --yes
    ```
 
-3. **Prepare a patch release** (e.g., `v0.2.2`):
+3. **Prepare a patch release** (e.g., `v0.3.1`):
    - Fix the issue
    - Update CHANGELOG
    - Create new tag

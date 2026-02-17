@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+No changes yet.
+
+## [0.3.0] - 2026-02-17
+
 ### Added
 
 - Buildfix auto-apply safety gating:

@@ -179,6 +179,79 @@ Feature: cockpitctl ingest
     And the cockpit comment matches the golden file
 
   # ─────────────────────────────────────────────────────────────────────────────
+  # Extended Feature Set (Roadmap Lock-In)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: configurable max receipt size surfaces oversized receipts
+    Given a fixture "receipt_oversized"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the verdict status is "fail"
+    And the cockpit report contains a highlight "cockpit.receipt_oversized"
+
+  Scenario: github annotations are emitted and capped by policy
+    Given a fixture "annotation_cap"
+    When I run "cockpitctl ingest" on the fixture with "--github-annotations"
+    Then the exit code is 2
+    And stdout contains "::error"
+    And stdout has exactly 2 lines starting with "::"
+
+  Scenario: sarif output is written when requested
+    Given a fixture "happy_path"
+    When I run "cockpitctl ingest" on the fixture with "--format sarif"
+    Then the exit code is 0
+    And the file "artifacts/cockpit/sarif.json" exists
+    And the JSON file "artifacts/cockpit/sarif.json" field "version" equals "2.1.0"
+
+  Scenario: baseline trend output is rendered when baseline is provided
+    Given a fixture "happy_path"
+    And a baseline report from fixture "empty_findings"
+    When I run "cockpitctl ingest" on the fixture with "--baseline {baseline_report}"
+    Then the exit code is 0
+    And stderr contains "### Trend"
+    And stderr contains "new finding(s)"
+
+  Scenario: configured hooks append sections before sticky end marker
+    Given a fixture "happy_path"
+    And a hook script is configured
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the comment contains "### Hook Notes"
+    And the comment contains "From hook"
+    And in the comment "### Hook Notes" appears before "<!-- cockpit:end -->"
+
+  Scenario: buildfix plans are surfaced in report data and comment
+    Given a fixture "buildfix_plan"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the report data contains key "_buildfix"
+    And the report field "data._buildfix.matched_count" equals 1
+    And the report field "data._buildfix.unmatched_count" equals 1
+    And the comment contains "### Buildfix"
+
+  Scenario: buildfix auto-apply writes deterministic apply evidence
+    Given a fixture "buildfix_plan"
+    And a successful buildfix actuator script
+    When I run "cockpitctl ingest" on the fixture with "--buildfix-auto-apply --buildfix-actuator {actuator_script} --buildfix-max-auto-apply-safety safe --buildfix-actuator-timeout-ms 5000"
+    Then the exit code is 0
+    And the file "artifacts/cockpit/buildfix.apply.json" exists
+    And the JSON file "artifacts/cockpit/buildfix.apply.json" field "status" equals "applied"
+    And the report data contains key "_buildfix_apply"
+    And the report field "data._buildfix_apply.status" equals "applied"
+    And the comment contains "### Buildfix Apply"
+
+  Scenario: policy signing writes signature evidence and comment section
+    Given a fixture "happy_path"
+    And a policy signing key file
+    When I run "cockpitctl ingest" on the fixture with "--policy-sign --policy-sign-key-path {policy_sign_key} --policy-sign-key-id ci-key"
+    Then the exit code is 0
+    And the file "artifacts/cockpit/policy.signature.json" exists
+    And the JSON file "artifacts/cockpit/policy.signature.json" field "schema" equals "cockpit.policy_signature.v1"
+    And the report data contains key "_policy_signature"
+    And the report field "data._policy_signature.key_id" equals "ci-key"
+    And the comment contains "### Policy Signature"
+
+  # ─────────────────────────────────────────────────────────────────────────────
   # Determinism
   # ─────────────────────────────────────────────────────────────────────────────
 

@@ -17,8 +17,8 @@ name = "conformctl"
 path = "src/main.rs"
 
 [dependencies]
-cockpitctl-conform = { path = "../cockpitctl-conform", version = "0.2.1" }
-cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.1" }
+cockpitctl-conform = { path = "../cockpitctl-conform", version = "0.3.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 anyhow.workspace = true
 clap.workspace = true
 serde_json.workspace = true

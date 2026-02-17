@@ -30,7 +30,7 @@ The binary is at `target/release/cockpitctl`.
 Download from releases:
 
 ```bash
-curl -L https://github.com/your-org/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64 -o cockpitctl
+curl -L https://github.com/your-org/cockpitctl/releases/download/v0.3.0/cockpitctl-linux-x64 -o cockpitctl
 chmod +x cockpitctl
 ```
 

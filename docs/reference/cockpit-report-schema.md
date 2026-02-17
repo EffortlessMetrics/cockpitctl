@@ -42,7 +42,7 @@ cockpitctl version information.
 ```json
 "tool": {
   "name": "cockpitctl",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "commit": "abc1234"
 }
 ```
@@ -208,7 +208,7 @@ When policy signing is enabled, `data` also includes `_policy_signature`:
   "schema": "cockpit.report.v1",
   "tool": {
     "name": "cockpitctl",
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "run": {
     "started_at": "2024-01-15T10:35:00Z"

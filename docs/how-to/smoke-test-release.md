@@ -22,7 +22,7 @@ The easiest way to validate a release is using the provided smoke test script:
 
 ```bash
 # Test a specific tag
-./scripts/smoke-test-release.sh v0.2.1
+./scripts/smoke-test-release.sh v0.3.0
 
 # The script will:
 # 1. Detect your platform
@@ -40,15 +40,15 @@ If you prefer to test manually, follow these steps:
 ```bash
 # Download conformctl for your platform
 # Linux x64
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/conformctl-linux-x64 -o conformctl
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/conformctl-linux-x64 -o conformctl
 chmod +x conformctl
 
 # macOS ARM64
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/conformctl-darwin-arm64 -o conformctl
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/conformctl-darwin-arm64 -o conformctl
 chmod +x conformctl
 
 # Windows x64
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/conformctl-windows-x64.exe -o conformctl.exe
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/conformctl-windows-x64.exe -o conformctl.exe
 
 # Verify version
 ./conformctl --version
@@ -81,15 +81,15 @@ EOF
 ```bash
 # Download cockpitctl for your platform
 # Linux x64
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64 -o cockpitctl
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-linux-x64 -o cockpitctl
 chmod +x cockpitctl
 
 # macOS ARM64
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-darwin-arm64 -o cockpitctl
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-darwin-arm64 -o cockpitctl
 chmod +x cockpitctl
 
 # Windows x64
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-windows-x64.exe -o cockpitctl.exe
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-windows-x64.exe -o cockpitctl.exe
 
 # Verify version
 ./cockpitctl --version
@@ -120,11 +120,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test cockpitctl action
-        uses: EffortlessMetrics/cockpitctl@v0.2.1
+        uses: EffortlessMetrics/cockpitctl@v0.3.0
         with:
           artifacts-path: fixtures/happy_path/artifacts
           config-path: fixtures/happy_path/cockpit.toml
-          version: v0.2.1
+          version: v0.3.0
           post-comment: false
           fail-on-error: true
 ```
@@ -172,7 +172,7 @@ All functionality is contained in the pre-compiled binaries.
 ## Troubleshooting
 
 ### Binary download fails
-- Verify the tag exists: `gh release view v0.2.1`
+- Verify the tag exists: `gh release view v0.3.0`
 - Check the asset name matches your platform
 
 ### `cockpitctl ingest` fails
