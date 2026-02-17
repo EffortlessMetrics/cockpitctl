@@ -1,8 +1,9 @@
 use cockpitctl_render::render_comment;
 use cockpitctl_types::{
-    CockpitConfig, CockpitReport, Finding, Highlight, Location, PolicySensorSnapshot,
-    PolicySnapshot, Presence, RunInfo, SensorPolicy, SensorSummary, Severity, ToolInfo, Verdict,
-    VerdictCounts, VerdictStatus,
+    BuildfixApplyStatus, BuildfixApplySummary, BuildfixSummary, CockpitConfig, CockpitReport,
+    Finding, FixSummary, Highlight, Location, PolicySensorSnapshot, PolicySnapshot, Presence,
+    RunInfo, SafetyLevel, SensorPolicy, SensorSummary, Severity, ToolInfo, Verdict, VerdictCounts,
+    VerdictStatus,
 };
 
 fn tool_info() -> ToolInfo {
@@ -341,4 +342,140 @@ fn render_comment_highlight_with_empty_location_omits_loc() {
     let md = render_comment(&report, &cfg);
     assert!(md.contains("`I1`"));
     assert!(!md.contains(" at `"));
+}
+
+#[test]
+fn render_comment_includes_buildfix_section_from_report_data() {
+    let cfg = CockpitConfig::default();
+    let buildfix = BuildfixSummary {
+        fixes: vec![FixSummary {
+            fix_id: "fix-1".to_string(),
+            sensor_id: "alpha".to_string(),
+            safety: SafetyLevel::Safe,
+            description: "Apply import fix".to_string(),
+            matched_findings: vec![],
+            unmatched: false,
+        }],
+        total_fixes: 1,
+        matched_count: 1,
+        unmatched_count: 0,
+    };
+
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Pass,
+            counts: VerdictCounts::default(),
+            reasons: vec![],
+        },
+        sensors: vec![sensor_summary("alpha", VerdictStatus::Pass, false)],
+        highlights: vec![],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: Some(serde_json::json!({
+            "_buildfix": buildfix
+        })),
+    };
+
+    let md = render_comment(&report, &cfg);
+    assert!(md.contains("### Buildfix"));
+    assert!(md.contains("`fix-1`"));
+    assert!(md.contains("🟢 safe"));
+}
+
+#[test]
+fn render_comment_ignores_invalid_buildfix_data() {
+    let cfg = CockpitConfig::default();
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Pass,
+            counts: VerdictCounts::default(),
+            reasons: vec![],
+        },
+        sensors: vec![sensor_summary("alpha", VerdictStatus::Pass, false)],
+        highlights: vec![],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: Some(serde_json::json!({
+            "_buildfix": "invalid"
+        })),
+    };
+
+    let md = render_comment(&report, &cfg);
+    assert!(!md.contains("### Buildfix"));
+}
+
+#[test]
+fn render_comment_includes_buildfix_apply_section() {
+    let cfg = CockpitConfig::default();
+    let apply = BuildfixApplySummary {
+        status: BuildfixApplyStatus::Applied,
+        auto_apply_enabled: true,
+        max_auto_apply_safety: SafetyLevel::Safe,
+        require_matched_finding: false,
+        candidate_fix_ids: vec!["fix-1".to_string()],
+        selected_fix_ids: vec!["fix-1".to_string()],
+        applied_fix_ids: vec!["fix-1".to_string()],
+        skipped_fix_ids: vec![],
+        errors: vec![],
+        reason: None,
+        actuator_command: Some("apply-fixes".to_string()),
+    };
+
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Pass,
+            counts: VerdictCounts::default(),
+            reasons: vec![],
+        },
+        sensors: vec![sensor_summary("alpha", VerdictStatus::Pass, false)],
+        highlights: vec![],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: Some(serde_json::json!({
+            "_buildfix_apply": apply
+        })),
+    };
+
+    let md = render_comment(&report, &cfg);
+    assert!(md.contains("### Buildfix Apply"));
+    assert!(md.contains("✅ applied"));
+    assert!(md.contains("`fix-1`"));
+}
+
+#[test]
+fn render_comment_includes_policy_signature_section() {
+    let cfg = CockpitConfig::default();
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Pass,
+            counts: VerdictCounts::default(),
+            reasons: vec![],
+        },
+        sensors: vec![sensor_summary("alpha", VerdictStatus::Pass, false)],
+        highlights: vec![],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: Some(serde_json::json!({
+            "_policy_signature": {
+                "schema": "cockpit.policy_signature.v1",
+                "algorithm": "hmac_sha256",
+                "policy_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                "signature": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+                "key_id": "ci-key"
+            }
+        })),
+    };
+
+    let md = render_comment(&report, &cfg);
+    assert!(md.contains("### Policy Signature"));
+    assert!(md.contains("`hmac_sha256`"));
+    assert!(md.contains("`ci-key`"));
 }

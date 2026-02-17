@@ -7,9 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "Filesystem adapters implementing the cockpitctl ports and receipt I/O boundaries"
-readme.workspace = true
-keywords = ["ci", "filesystem", "adapters", "io"]
+description = "Filesystem adapters for cockpitctl ingest ports with path and size safety limits."
+readme = "README.md"
+keywords = ["ci", "filesystem", "adapters", "receipts", "security"]
 categories = ["development-tools", "filesystem"]
 
 [dependencies]

@@ -8,8 +8,9 @@
 //! It should not parse sensor-specific markdown. Link only.
 
 use cockpitctl_types::{
-    BuildfixSummary, CockpitConfig, CockpitReport, Highlight, SafetyLevel, Severity, TrendDelta,
-    VerdictStatus, severity_rank,
+    BuildfixApplyStatus, BuildfixApplySummary, BuildfixSummary, CockpitConfig, CockpitReport,
+    Highlight, PolicySignatureAlgorithm, PolicySignatureEvidence, SafetyLevel, Severity,
+    TrendDelta, VerdictStatus, severity_rank,
 };
 
 /// Result of annotation rendering, tracking whether truncation occurred.
@@ -39,6 +40,24 @@ fn severity_badge(s: &Severity) -> &'static str {
         Severity::Warn => "⚠️",
         Severity::Info => "ℹ️",
     }
+}
+
+fn extract_buildfix_summary(report: &CockpitReport) -> Option<BuildfixSummary> {
+    let data = report.data.as_ref()?;
+    let raw = data.get("_buildfix")?;
+    serde_json::from_value(raw.clone()).ok()
+}
+
+fn extract_buildfix_apply_summary(report: &CockpitReport) -> Option<BuildfixApplySummary> {
+    let data = report.data.as_ref()?;
+    let raw = data.get("_buildfix_apply")?;
+    serde_json::from_value(raw.clone()).ok()
+}
+
+fn extract_policy_signature(report: &CockpitReport) -> Option<PolicySignatureEvidence> {
+    let data = report.data.as_ref()?;
+    let raw = data.get("_policy_signature")?;
+    serde_json::from_value(raw.clone()).ok()
 }
 
 pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
@@ -122,6 +141,16 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
         &sensor_blocking,
     ));
 
+    if let Some(buildfix) = extract_buildfix_summary(report) {
+        out.push_str(&render_buildfix_section(&buildfix));
+    }
+    if let Some(apply) = extract_buildfix_apply_summary(report) {
+        out.push_str(&render_buildfix_apply_section(&apply));
+    }
+    if let Some(signature) = extract_policy_signature(report) {
+        out.push_str(&render_policy_signature_section(&signature));
+    }
+
     // Sections: group sensors by section label, render in cfg.policy.section_order order.
     let mut by_section: std::collections::BTreeMap<String, Vec<&cockpitctl_types::SensorSummary>> =
         std::collections::BTreeMap::new();
@@ -158,6 +187,45 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
     }
 
     out.push_str("<!-- cockpit:end -->\n");
+    out
+}
+
+/// Append externally supplied comment sections before the cockpit end marker.
+///
+/// This is used by post-processing hooks to contribute extra markdown sections
+/// while preserving stable sticky markers.
+pub fn append_comment_sections(comment_md: &str, sections: &[(String, String)]) -> String {
+    if sections.is_empty() {
+        return comment_md.to_string();
+    }
+
+    let mut rendered_sections = String::new();
+    for (name, content) in sections {
+        rendered_sections.push_str(&format!("### {}\n\n", name.trim()));
+        rendered_sections.push_str(content.trim_end());
+        rendered_sections.push_str("\n\n");
+    }
+
+    const END_MARKER: &str = "<!-- cockpit:end -->";
+    if let Some(idx) = comment_md.rfind(END_MARKER) {
+        let (head, tail) = comment_md.split_at(idx);
+        let mut out = String::new();
+        out.push_str(head);
+        if !head.ends_with("\n\n") {
+            if head.ends_with('\n') {
+                out.push('\n');
+            } else {
+                out.push_str("\n\n");
+            }
+        }
+        out.push_str(&rendered_sections);
+        out.push_str(tail);
+        return out;
+    }
+
+    let mut out = comment_md.trim_end().to_string();
+    out.push_str("\n\n");
+    out.push_str(&rendered_sections);
     out
 }
 
@@ -403,6 +471,90 @@ pub fn render_buildfix_section(summary: &BuildfixSummary) -> String {
     }
 
     out.push('\n');
+    out
+}
+
+fn apply_status_badge(status: BuildfixApplyStatus) -> &'static str {
+    match status {
+        BuildfixApplyStatus::Skipped => "⏭ skipped",
+        BuildfixApplyStatus::Applied => "✅ applied",
+        BuildfixApplyStatus::Failed => "❌ failed",
+    }
+}
+
+/// Render buildfix apply evidence (if present) as a markdown section.
+pub fn render_buildfix_apply_section(summary: &BuildfixApplySummary) -> String {
+    let mut out = String::new();
+    out.push_str("### Buildfix Apply\n\n");
+    out.push_str(&format!(
+        "Status: {} · max safety: `{}` · require matched finding: `{}`\n\n",
+        apply_status_badge(summary.status),
+        match summary.max_auto_apply_safety {
+            SafetyLevel::Safe => "safe",
+            SafetyLevel::Guarded => "guarded",
+            SafetyLevel::Unsafe => "unsafe",
+        },
+        summary.require_matched_finding
+    ));
+
+    if let Some(reason) = &summary.reason {
+        out.push_str(&format!("Reason: `{}`\n\n", reason));
+    }
+
+    if !summary.selected_fix_ids.is_empty() {
+        out.push_str(&format!(
+            "Selected fixes: {}\n\n",
+            summary
+                .selected_fix_ids
+                .iter()
+                .map(|id| format!("`{}`", id))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+
+    if !summary.applied_fix_ids.is_empty() {
+        out.push_str(&format!(
+            "Applied fixes: {}\n\n",
+            summary
+                .applied_fix_ids
+                .iter()
+                .map(|id| format!("`{}`", id))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+
+    if !summary.errors.is_empty() {
+        out.push_str("Errors:\n");
+        for e in &summary.errors {
+            out.push_str(&format!("- {}\n", e.replace('\n', " ")));
+        }
+        out.push('\n');
+    }
+
+    out
+}
+
+fn policy_signature_algorithm_label(algorithm: PolicySignatureAlgorithm) -> &'static str {
+    match algorithm {
+        PolicySignatureAlgorithm::HmacSha256 => "hmac_sha256",
+    }
+}
+
+/// Render policy signature evidence as a markdown section for the PR comment.
+pub fn render_policy_signature_section(signature: &PolicySignatureEvidence) -> String {
+    let mut out = String::new();
+    out.push_str("### Policy Signature\n\n");
+    out.push_str(&format!(
+        "- algorithm: `{}`\n",
+        policy_signature_algorithm_label(signature.algorithm)
+    ));
+    if let Some(key_id) = &signature.key_id {
+        out.push_str(&format!("- key_id: `{}`\n", key_id));
+    }
+    out.push_str(&format!("- policy_sha256: `{}`\n", signature.policy_sha256));
+    out.push_str(&format!("- signature: `{}`\n\n", signature.signature));
     out
 }
 
@@ -851,5 +1003,28 @@ mod tests {
 
         assert!(result.content.contains("`code2`"));
         assert!(!result.content.contains(" at `"));
+    }
+
+    #[test]
+    fn append_comment_sections_inserts_before_end_marker() {
+        let base = "<!-- cockpit:begin -->\n## Cockpit\n\n<!-- cockpit:end -->\n";
+        let sections = vec![("Hook".to_string(), "From hook".to_string())];
+
+        let out = append_comment_sections(base, &sections);
+        let hook_idx = out.find("### Hook").expect("hook section");
+        let end_idx = out.find("<!-- cockpit:end -->").expect("end marker");
+
+        assert!(hook_idx < end_idx, "hook section must be before end marker");
+        assert!(out.contains("From hook"));
+    }
+
+    #[test]
+    fn append_comment_sections_appends_when_marker_missing() {
+        let base = "## Cockpit\n";
+        let sections = vec![("Extra".to_string(), "Section body".to_string())];
+
+        let out = append_comment_sections(base, &sections);
+        assert!(out.contains("### Extra"));
+        assert!(out.ends_with("Section body\n\n"));
     }
 }

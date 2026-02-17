@@ -187,6 +187,20 @@ Director-specific payload for dashboards or downstream tools.
 }
 ```
 
+When policy signing is enabled, `data` also includes `_policy_signature`:
+
+```json
+"data": {
+  "_policy_signature": {
+    "schema": "cockpit.policy_signature.v1",
+    "algorithm": "hmac_sha256",
+    "policy_sha256": "<sha256-hex>",
+    "signature": "<hmac-hex>",
+    "key_id": "ci-key"
+  }
+}
+```
+
 ## Example Complete Report
 
 ```json

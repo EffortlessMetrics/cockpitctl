@@ -7,9 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "Core façade crate exposing deterministic cockpit operations with no CLI dependencies."
-readme.workspace = true
-keywords = ["ci", "cd", "compiler", "aggregation", "sensors"]
+description = "Facade crate that re-exports cockpitctl microcrates as one dependency."
+readme = "README.md"
+keywords = ["ci", "cockpit", "facade", "receipts", "policy"]
 categories = ["development-tools"]
 
 [dependencies]

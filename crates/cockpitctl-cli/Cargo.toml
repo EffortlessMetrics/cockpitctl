@@ -7,9 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "Director CLI that ingests CI sensor receipts and emits deterministic merge evidence."
-readme.workspace = true
-keywords = ["ci", "cd", "cli", "sensors", "merge-decisions"]
+description = "CLI for ingesting sensor receipts into cockpit.report.v1 and deterministic PR comments."
+readme = "README.md"
+keywords = ["ci", "cockpit", "receipts", "cli", "policy"]
 categories = ["command-line-utilities", "development-tools"]
 
 [lib]

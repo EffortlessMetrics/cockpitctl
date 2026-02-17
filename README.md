@@ -27,6 +27,8 @@ cockpitctl ingest --artifacts artifacts --config cockpit.toml
 Outputs:
 - `artifacts/cockpit/report.json`
 - `artifacts/cockpit/comment.md`
+- `artifacts/cockpit/buildfix.apply.json` (when buildfix apply is evaluated)
+- `artifacts/cockpit/policy.signature.json` (when policy signing is enabled)
 
 ## Policy (`cockpit.toml`)
 See: `docs/reference/config.md` for full reference.
@@ -43,16 +45,16 @@ See: `docs/reference/config.md` for full reference.
 
 ```
 crates/
-  cockpitctl-types     # DTOs (sensor + cockpit), stable IDs, embedded schemas
-  cockpitctl-domain    # policy evaluation, ordering, highlight selection
-  cockpitctl-ingest    # use case + ports (clean/hexagonal boundary)
-  cockpitctl-render    # PR comment renderer (budgeted)
-  cockpitctl-io        # filesystem adapters (read receipts, write outputs)
+  cockpitctl-types     # stable DTOs + embedded schemas
+  cockpitctl-domain    # pure policy logic, sorting, synthesis
+  cockpitctl-ingest    # use case + ports + exit semantics
+  cockpitctl-io        # filesystem adapters + safety guards
+  cockpitctl-render    # deterministic markdown + annotation rendering
+  cockpitctl-sarif     # SARIF v2.1.0 export
   cockpitctl-conform   # conformance checking library
-  cockpitctl-core      # facade crate — re-exports all microcrates as one dependency
-  cockpitctl-cli       # `cockpitctl` binary (clap)
-    features/          # cucumber feature files
-  conformctl/          # standalone conformance checker binary
+  cockpitctl-core      # facade crate (re-exports all microcrates)
+  cockpitctl-cli       # `cockpitctl` CLI package (binary + compatibility lib)
+  conformctl           # standalone conformance checker CLI
 xtask/                 # schema sync, conformance harness, fixture tooling
 contracts/
   schemas/             # JSON Schemas (source-of-truth)

@@ -1,13 +1,14 @@
 use cockpitctl_domain::{
-    COCKPIT_SCHEMA_ID, build_cockpit_report, compute_policy_outcome, summarize_sensor_report,
-    synthesize_invalid_sensor, synthesize_missing_sensor, synthesize_path_traversal_highlight,
-    synthesize_path_traversal_sensor, synthesize_receipt_inconsistent,
-    synthesize_receipt_oversized_sensor, synthesize_schema_violation_sensor,
-    synthesize_sensors_truncated,
+    COCKPIT_SCHEMA_ID, build_cockpit_report, compute_policy_outcome, select_auto_apply_fixes,
+    summarize_sensor_report, synthesize_invalid_sensor, synthesize_missing_sensor,
+    synthesize_path_traversal_highlight, synthesize_path_traversal_sensor,
+    synthesize_receipt_inconsistent, synthesize_receipt_oversized_sensor,
+    synthesize_schema_violation_sensor, synthesize_sensors_truncated,
 };
 use cockpitctl_types::{
-    CockpitConfig, Finding, Location, MissingPolicy, PolicyOutcome, Presence, RunInfo,
-    SensorPolicy, SensorReport, Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus,
+    BuildfixSummary, CockpitConfig, Finding, FixSummary, Location, MissingPolicy, PolicyOutcome,
+    Presence, RunInfo, SensorPolicy, SensorReport, Severity, ToolInfo, Verdict, VerdictCounts,
+    VerdictStatus,
 };
 
 fn tool_info() -> ToolInfo {
@@ -265,4 +266,56 @@ fn build_cockpit_report_sets_schema_id() {
         vec![],
     );
     assert_eq!(report.schema, COCKPIT_SCHEMA_ID);
+}
+
+#[test]
+fn select_auto_apply_fixes_respects_safety_and_match_gate() {
+    let summary = BuildfixSummary {
+        fixes: vec![
+            FixSummary {
+                fix_id: "safe_matched".to_string(),
+                sensor_id: "builddiag".to_string(),
+                safety: cockpitctl_types::SafetyLevel::Safe,
+                description: "safe".to_string(),
+                matched_findings: vec![],
+                unmatched: false,
+            },
+            FixSummary {
+                fix_id: "guarded_matched".to_string(),
+                sensor_id: "builddiag".to_string(),
+                safety: cockpitctl_types::SafetyLevel::Guarded,
+                description: "guarded".to_string(),
+                matched_findings: vec![],
+                unmatched: false,
+            },
+            FixSummary {
+                fix_id: "safe_unmatched".to_string(),
+                sensor_id: "builddiag".to_string(),
+                safety: cockpitctl_types::SafetyLevel::Safe,
+                description: "unmatched".to_string(),
+                matched_findings: vec![],
+                unmatched: true,
+            },
+        ],
+        total_fixes: 3,
+        matched_count: 2,
+        unmatched_count: 1,
+    };
+
+    let safe_only = select_auto_apply_fixes(&summary, cockpitctl_types::SafetyLevel::Safe, true);
+    let ids: Vec<&str> = safe_only.iter().map(|f| f.fix_id.as_str()).collect();
+    assert_eq!(ids, vec!["safe_matched"]);
+
+    let guarded_and_safe =
+        select_auto_apply_fixes(&summary, cockpitctl_types::SafetyLevel::Guarded, true);
+    let ids: Vec<&str> = guarded_and_safe.iter().map(|f| f.fix_id.as_str()).collect();
+    assert_eq!(ids, vec!["safe_matched", "guarded_matched"]);
+
+    let include_unmatched =
+        select_auto_apply_fixes(&summary, cockpitctl_types::SafetyLevel::Safe, false);
+    let ids: Vec<&str> = include_unmatched
+        .iter()
+        .map(|f| f.fix_id.as_str())
+        .collect();
+    assert_eq!(ids, vec!["safe_matched", "safe_unmatched"]);
 }

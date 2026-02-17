@@ -7,9 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "Ingest use case and port traits for deterministic CI receipt processing"
-readme.workspace = true
-keywords = ["ci", "ingest", "hexagonal", "ports", "use-case"]
+description = "Ingest use case and ports for composing sensor receipts into cockpit reports."
+readme = "README.md"
+keywords = ["ci", "ingest", "ports", "receipts", "orchestration"]
 categories = ["development-tools"]
 
 [dependencies]

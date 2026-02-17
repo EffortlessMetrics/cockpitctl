@@ -139,6 +139,8 @@ fn generate_config(num_sensors: usize) -> CockpitConfig {
             schema_validation: SchemaValidation::Strict,
             max_receipt_size_bytes: 2 * 1024 * 1024,
         },
+        buildfix: Default::default(),
+        policy_signing: Default::default(),
         sensors,
         hooks: vec![],
     }

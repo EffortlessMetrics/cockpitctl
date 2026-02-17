@@ -65,3 +65,23 @@ require_label = "run-perf"
 blocking = false
 missing = "skip"
 section = "Environment"
+
+[buildfix]
+# Enable to auto-apply eligible fixes from artifacts/<sensor>/plan.json.
+auto_apply = false
+# Safety gate: safe | guarded | unsafe
+max_auto_apply_safety = "safe"
+# When true, only fixes matched to surfaced findings are eligible.
+require_matched_finding = true
+
+#[buildfix.actuator]
+#command = "buildfix-actuator --apply"
+#timeout_ms = 30000
+
+[policy_signing]
+# Enable to attach signed policy snapshot evidence to cockpit outputs.
+enabled = false
+#algorithm = "hmac_sha256"
+#key_path = ".secrets/cockpit-policy.key"
+#key_env = "COCKPITCTL_POLICY_SIGNING_KEY"
+#key_id = "ci-key"

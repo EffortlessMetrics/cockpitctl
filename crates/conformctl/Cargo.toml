@@ -7,9 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-readme.workspace = true
-description = "Standalone conformance checker for cockpitctl sensor receipts and cockpit outputs."
-keywords = ["ci", "cd", "sensors", "conformance"]
+readme = "README.md"
+description = "CLI for conformance checking cockpitctl receipts and aggregated cockpit reports."
+keywords = ["ci", "conformance", "cli", "schema", "validation"]
 categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]

@@ -201,6 +201,8 @@ fn generate_report(
             schema_validation: SchemaValidation::Strict,
             max_receipt_size_bytes: 2 * 1024 * 1024,
         },
+        buildfix: Default::default(),
+        policy_signing: Default::default(),
         sensors: sensors_map.clone(),
         hooks: vec![],
     };

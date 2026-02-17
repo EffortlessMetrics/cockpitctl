@@ -32,6 +32,14 @@ cockpitctl ingest [OPTIONS]
 | `--github-annotations` | `false` | Emit GitHub Actions workflow command annotations to stdout |
 | `--format <FORMAT>` | `cockpit` | Output format: `cockpit` or `sarif` |
 | `--baseline <PATH>` | (none) | Path to a previous `cockpit.report.v1` file for trend comparison |
+| `--buildfix-auto-apply` | `false` | Enable buildfix auto-apply for this run |
+| `--buildfix-max-auto-apply-safety <LEVEL>` | (unset) | Override safety gate: `safe`, `guarded`, or `unsafe` |
+| `--buildfix-actuator <COMMAND>` | (unset) | Override actuator command used for auto-apply |
+| `--buildfix-actuator-timeout-ms <MS>` | (unset) | Override actuator timeout in milliseconds |
+| `--policy-sign` | `false` | Enable policy snapshot signing for this run |
+| `--policy-sign-key-path <PATH>` | (unset) | Override signing key file path |
+| `--policy-sign-key-env <VAR>` | (unset) | Override signing key env var name |
+| `--policy-sign-key-id <ID>` | (unset) | Override signing key identifier |
 
 **Schema Validation Modes:**
 
@@ -39,12 +47,15 @@ cockpitctl ingest [OPTIONS]
 - **`strict`:** Validate against embedded `sensor.report.v1` schema bytes. Schema violations surface as `cockpit.schema_violation` findings.
 
 > **Note:** Config is the default. CLI only overrides when explicitly passed.
+> This includes buildfix apply controls and policy signing controls.
 
 **Outputs:**
 
 - `<artifacts>/cockpit/report.json` - Aggregate report (`cockpit.report.v1`)
 - `<artifacts>/cockpit/comment.md` - Deterministic PR comment
 - `<artifacts>/cockpit/sarif.json` - SARIF output (only when `--format sarif`)
+- `<artifacts>/cockpit/buildfix.apply.json` - Buildfix auto-apply evidence (when buildfix apply is evaluated)
+- `<artifacts>/cockpit/policy.signature.json` - Policy signature evidence (when policy signing is enabled)
 
 **Exit Codes:**
 
@@ -71,6 +82,12 @@ cockpitctl ingest --github-annotations --format sarif
 
 # Compute trend output against a baseline report
 cockpitctl ingest --baseline artifacts-prev/cockpit/report.json
+
+# Auto-apply safe buildfix plans with an explicit actuator command
+cockpitctl ingest --buildfix-auto-apply --buildfix-actuator "buildfix-actuator --apply"
+
+# Sign the policy snapshot using a key from environment
+cockpitctl ingest --policy-sign --policy-sign-key-env COCKPITCTL_POLICY_SIGNING_KEY --policy-sign-key-id ci-key
 ```
 
 ### init
