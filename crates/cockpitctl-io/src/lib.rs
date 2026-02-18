@@ -1685,9 +1685,20 @@ missing = "warn"
         let response =
             r#"{"applied_fix_ids":["fix_b","fix_a"],"skipped_fix_ids":["fix_c"],"errors":[]}"#;
         let script = write_actuator_script(&temp, response, 0);
+        let command = {
+            #[cfg(unix)]
+            {
+                format!("sh {}", script.display())
+            }
+
+            #[cfg(windows)]
+            {
+                format!("cmd /c {}", script.display())
+            }
+        };
 
         let actuator = BuildfixActuatorConfig {
-            command: script.to_string_lossy().to_string(),
+            command,
             timeout_ms: 5_000,
         };
         let request = BuildfixApplyRequest {
@@ -1707,9 +1718,20 @@ missing = "warn"
     fn run_buildfix_actuator_nonzero_exit_is_error() {
         let temp = TempDir::new().expect("tempdir");
         let script = write_actuator_script(&temp, "{}", 9);
+        let command = {
+            #[cfg(unix)]
+            {
+                format!("sh {}", script.display())
+            }
+
+            #[cfg(windows)]
+            {
+                format!("cmd /c {}", script.display())
+            }
+        };
 
         let actuator = BuildfixActuatorConfig {
-            command: script.to_string_lossy().to_string(),
+            command,
             timeout_ms: 5_000,
         };
         let request = BuildfixApplyRequest {
