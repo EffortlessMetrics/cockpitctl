@@ -500,8 +500,11 @@ cargo search cockpitctl
 # If version exists, yank it
 cargo yank --vers 0.3.0 cockpitctl
 
+# Ensure you have a token configured locally
+cargo login
+
 # Retry publish (may need to wait for index update)
-cargo publish -p cockpitctl --token $CRATES_IO_TOKEN
+cargo publish -p cockpitctl
 ```
 
 ### Binary Build Failures

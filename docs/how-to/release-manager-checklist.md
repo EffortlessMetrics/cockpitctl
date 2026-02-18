@@ -191,7 +191,7 @@ This comprehensive checklist guides release managers through preparing, executin
 - [ ] **Verify GitHub Actions workflows**
   - [ ] [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) is up to date
   - [ ] [`.github/workflows/release.yml`](../../.github/workflows/release.yml) is up to date
-  - [ ] Secrets are configured (CRATES_IO_TOKEN)
+  - [ ] Secrets are configured (CARGO_REGISTRY_TOKEN)
 
 - [ ] **Verify composite action** (if applicable)
   - [ ] [`action.yml`](../../action.yml) version references are correct
