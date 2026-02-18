@@ -6,6 +6,38 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+No changes yet.
+
+## [0.3.0] - 2026-02-17
+
+### Added
+
+- Buildfix auto-apply safety gating:
+  - `buildfix.auto_apply`
+  - `buildfix.max_auto_apply_safety`
+  - `buildfix.require_matched_finding`
+  - optional `buildfix.actuator` command + timeout
+- Actuator integration for buildfix apply:
+  - `cockpitctl ingest` can execute an external actuator with
+    `buildfix.apply.request.v1` on stdin
+  - writes `artifacts/cockpit/buildfix.apply.json`
+  - surfaces apply evidence under `data._buildfix_apply` in `cockpit.report.v1`
+- CLI overrides for buildfix apply controls:
+  - `--buildfix-auto-apply`
+  - `--buildfix-max-auto-apply-safety`
+  - `--buildfix-actuator`
+  - `--buildfix-actuator-timeout-ms`
+- Policy snapshot signing:
+  - `[policy_signing]` config (`enabled`, `algorithm`, `key_path`, `key_env`, `key_id`)
+  - deterministic HMAC-SHA256 signature over canonical `report.policy` snapshot bytes
+  - evidence in `cockpit.report.v1` under `data._policy_signature`
+  - sidecar output `artifacts/cockpit/policy.signature.json`
+- CLI overrides for policy signing:
+  - `--policy-sign`
+  - `--policy-sign-key-path`
+  - `--policy-sign-key-env`
+  - `--policy-sign-key-id`
+
 ## [0.2.1] - 2026-02-14
 
 ### Fixed

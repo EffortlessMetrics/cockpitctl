@@ -6,11 +6,11 @@ The `toolpack.json` manifest provides a declarative way to specify tools and the
 
 ```json
 {
-  "version": "0.2.1",
+  "version": "0.3.0",
   "train": "nightly",
   "tools": {
     "<tool-name>": {
-      "version": "0.2.1",
+      "version": "0.3.0",
       "assets": {
         "<platform>": {
           "url": "https://github.com/<org>/<repo>/releases/download/vX.Y.Z/<asset>",
@@ -39,7 +39,7 @@ The `toolpack.json` manifest provides a declarative way to specify tools and the
 ### ✅ Correct (uses version tag)
 ```json
 {
-  "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64"
+  "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-linux-x64"
 }
 ```
 

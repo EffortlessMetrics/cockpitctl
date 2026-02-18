@@ -7,7 +7,10 @@ use cockpitctl_ingest::{
     CommentRead, DiscoveredSensors, OutputSink, PlanRead, PolicySource, ReceiptSource, ReportRead,
     SchemaValidationResult, SchemaValidator,
 };
-use cockpitctl_types::{CockpitConfig, is_valid_sensor_id};
+use cockpitctl_types::{
+    BuildfixActuatorConfig, BuildfixActuatorResult, BuildfixApplyRequest, CockpitConfig,
+    PolicySigningConfig, is_valid_sensor_id,
+};
 use jsonschema::Validator;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -479,6 +482,144 @@ fn run_single_hook(
     Ok(result)
 }
 
+/// Run the configured buildfix actuator command.
+///
+/// The request is written as JSON to stdin. The command may emit JSON on stdout
+/// matching `BuildfixActuatorResult`. Empty stdout is treated as a successful
+/// no-op with empty result arrays.
+pub fn run_buildfix_actuator(
+    actuator: &BuildfixActuatorConfig,
+    request: &BuildfixApplyRequest,
+) -> Result<BuildfixActuatorResult> {
+    use std::io::{Read, Write};
+    use std::process::{Command, Stdio};
+    use std::time::Duration;
+    use wait_timeout::ChildExt;
+
+    let parts: Vec<&str> = actuator.command.split_whitespace().collect();
+    if parts.is_empty() {
+        anyhow::bail!("buildfix actuator command is empty");
+    }
+
+    let payload =
+        serde_json::to_vec(request).context("serialize buildfix apply request for actuator")?;
+
+    let mut child = Command::new(parts[0])
+        .args(&parts[1..])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("spawn buildfix actuator `{}`", actuator.command))?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(&payload)
+            .context("write buildfix apply request to actuator stdin")?;
+    }
+
+    let mut stdout_handle = child.stdout.take();
+    let mut stderr_handle = child.stderr.take();
+
+    let stdout_thread = std::thread::spawn(move || -> Vec<u8> {
+        let mut buf = Vec::new();
+        if let Some(ref mut h) = stdout_handle {
+            let _ = h.read_to_end(&mut buf);
+        }
+        buf
+    });
+
+    let stderr_thread = std::thread::spawn(move || -> Vec<u8> {
+        let mut buf = Vec::new();
+        if let Some(ref mut h) = stderr_handle {
+            let _ = h.read_to_end(&mut buf);
+        }
+        buf
+    });
+
+    let timeout = Duration::from_millis(actuator.timeout_ms);
+    let status = match child
+        .wait_timeout(timeout)
+        .context("wait for buildfix actuator")?
+    {
+        Some(status) => status,
+        None => {
+            let _ = child.kill();
+            let _ = child.wait();
+            anyhow::bail!(
+                "buildfix actuator timed out after {}ms",
+                actuator.timeout_ms
+            );
+        }
+    };
+
+    let stdout_bytes = stdout_thread.join().unwrap_or_default();
+    let stderr_bytes = stderr_thread.join().unwrap_or_default();
+    let stderr = String::from_utf8_lossy(&stderr_bytes);
+
+    if !stderr.is_empty() {
+        eprintln!("cockpitctl: buildfix actuator stderr: {}", stderr.trim());
+    }
+
+    if !status.success() {
+        anyhow::bail!("buildfix actuator exited with status {}", status);
+    }
+
+    if stdout_bytes.is_empty() {
+        return Ok(BuildfixActuatorResult::default());
+    }
+
+    let mut result: BuildfixActuatorResult =
+        serde_json::from_slice(&stdout_bytes).context("parse buildfix actuator output JSON")?;
+
+    result.applied_fix_ids.sort();
+    result.applied_fix_ids.dedup();
+    result.skipped_fix_ids.sort();
+    result.skipped_fix_ids.dedup();
+    result.errors.sort();
+    result.errors.dedup();
+
+    Ok(result)
+}
+
+/// Load policy signing key bytes from config.
+///
+/// Resolution order:
+/// 1. `key_path` (file bytes)
+/// 2. `key_env` (environment variable UTF-8 bytes)
+///
+/// If neither is configured, returns `Ok(None)`.
+pub fn load_policy_signing_key(cfg: &PolicySigningConfig) -> Result<Option<Vec<u8>>> {
+    if let Some(path) = cfg.key_path.as_deref() {
+        if path.trim().is_empty() {
+            anyhow::bail!("policy signing key_path is empty");
+        }
+        let bytes = fs::read(path).with_context(|| format!("read policy signing key {}", path))?;
+        return Ok(Some(normalize_signing_key_bytes(bytes)?));
+    }
+
+    if let Some(env_name) = cfg.key_env.as_deref() {
+        if env_name.trim().is_empty() {
+            anyhow::bail!("policy signing key_env is empty");
+        }
+        let value = std::env::var(env_name)
+            .with_context(|| format!("read policy signing key from env {}", env_name))?;
+        return Ok(Some(normalize_signing_key_bytes(value.into_bytes())?));
+    }
+
+    Ok(None)
+}
+
+fn normalize_signing_key_bytes(mut bytes: Vec<u8>) -> Result<Vec<u8>> {
+    while matches!(bytes.last(), Some(b'\n' | b'\r')) {
+        bytes.pop();
+    }
+    if bytes.is_empty() {
+        anyhow::bail!("policy signing key is empty");
+    }
+    Ok(bytes)
+}
+
 /// JSON Schema validator for sensor reports.
 ///
 /// Validates receipts against the `sensor.report.v1` JSON schema.
@@ -566,6 +707,8 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
     use tempfile::TempDir;
+
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     /// Minimal valid sensor report for testing.
     fn minimal_report() -> &'static str {
@@ -1503,6 +1646,172 @@ missing = "warn"
             .err()
             .expect("expected read error");
         assert!(format!("{:#}", err).contains("read receipt"));
+    }
+
+    fn write_actuator_script(temp: &TempDir, response_json: &str, exit_code: i32) -> PathBuf {
+        #[cfg(windows)]
+        {
+            let script_path = temp.path().join("actuator.cmd");
+            let script = format!(
+                "@echo off\r\necho {}\r\nexit /b {}\r\n",
+                response_json, exit_code
+            );
+            fs::write(&script_path, script).expect("write actuator script");
+            script_path
+        }
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            let script_path = temp.path().join("actuator.sh");
+            let script = format!(
+                "#!/bin/sh\ncat >/dev/null\nprintf '%s\\n' '{}'\nexit {}\n",
+                response_json, exit_code
+            );
+            fs::write(&script_path, script).expect("write actuator script");
+            let mut perms = fs::metadata(&script_path)
+                .expect("script metadata")
+                .permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&script_path, perms).expect("set executable bit");
+            script_path
+        }
+    }
+
+    #[test]
+    fn run_buildfix_actuator_parses_json_response() {
+        let temp = TempDir::new().expect("tempdir");
+        let response =
+            r#"{"applied_fix_ids":["fix_b","fix_a"],"skipped_fix_ids":["fix_c"],"errors":[]}"#;
+        let script = write_actuator_script(&temp, response, 0);
+        let command = {
+            #[cfg(unix)]
+            {
+                format!("sh {}", script.display())
+            }
+
+            #[cfg(windows)]
+            {
+                format!("cmd /c {}", script.display())
+            }
+        };
+
+        let actuator = BuildfixActuatorConfig {
+            command,
+            timeout_ms: 5_000,
+        };
+        let request = BuildfixApplyRequest {
+            schema: cockpitctl_types::BUILDFIX_APPLY_REQUEST_SCHEMA_ID.to_string(),
+            max_auto_apply_safety: cockpitctl_types::SafetyLevel::Safe,
+            require_matched_finding: true,
+            fixes: vec![],
+        };
+
+        let out = run_buildfix_actuator(&actuator, &request).expect("run actuator");
+        assert_eq!(out.applied_fix_ids, vec!["fix_a", "fix_b"]);
+        assert_eq!(out.skipped_fix_ids, vec!["fix_c"]);
+        assert!(out.errors.is_empty());
+    }
+
+    #[test]
+    fn run_buildfix_actuator_nonzero_exit_is_error() {
+        let temp = TempDir::new().expect("tempdir");
+        let script = write_actuator_script(&temp, "{}", 9);
+        let command = {
+            #[cfg(unix)]
+            {
+                format!("sh {}", script.display())
+            }
+
+            #[cfg(windows)]
+            {
+                format!("cmd /c {}", script.display())
+            }
+        };
+
+        let actuator = BuildfixActuatorConfig {
+            command,
+            timeout_ms: 5_000,
+        };
+        let request = BuildfixApplyRequest {
+            schema: cockpitctl_types::BUILDFIX_APPLY_REQUEST_SCHEMA_ID.to_string(),
+            max_auto_apply_safety: cockpitctl_types::SafetyLevel::Safe,
+            require_matched_finding: true,
+            fixes: vec![],
+        };
+
+        let err =
+            run_buildfix_actuator(&actuator, &request).expect_err("expected nonzero exit error");
+        assert!(format!("{:#}", err).contains("buildfix actuator exited"));
+    }
+
+    #[test]
+    fn load_policy_signing_key_reads_path_bytes() {
+        let temp = TempDir::new().expect("tempdir");
+        let key_path = temp.path().join("policy.key");
+        fs::write(&key_path, b"file-secret\n").expect("write key");
+
+        let cfg = PolicySigningConfig {
+            enabled: true,
+            algorithm: cockpitctl_types::PolicySignatureAlgorithm::HmacSha256,
+            key_path: Some(key_path.to_string_lossy().to_string()),
+            key_env: None,
+            key_id: None,
+        };
+
+        let key = load_policy_signing_key(&cfg)
+            .expect("load key")
+            .expect("key present");
+        assert_eq!(key, b"file-secret");
+    }
+
+    #[test]
+    fn load_policy_signing_key_reads_env_when_path_unset() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+        unsafe {
+            std::env::set_var("COCKPITCTL_POLICY_KEY_TEST", "env-secret\r\n");
+        }
+        let cfg = PolicySigningConfig {
+            enabled: true,
+            algorithm: cockpitctl_types::PolicySignatureAlgorithm::HmacSha256,
+            key_path: None,
+            key_env: Some("COCKPITCTL_POLICY_KEY_TEST".to_string()),
+            key_id: None,
+        };
+
+        let key = load_policy_signing_key(&cfg)
+            .expect("load key")
+            .expect("key present");
+        unsafe {
+            std::env::remove_var("COCKPITCTL_POLICY_KEY_TEST");
+        }
+        assert_eq!(key, b"env-secret");
+    }
+
+    #[test]
+    fn load_policy_signing_key_returns_none_when_unconfigured() {
+        let cfg = PolicySigningConfig::default();
+        let key = load_policy_signing_key(&cfg).expect("load key");
+        assert!(key.is_none());
+    }
+
+    #[test]
+    fn load_policy_signing_key_rejects_empty_key_material() {
+        let temp = TempDir::new().expect("tempdir");
+        let key_path = temp.path().join("policy.key");
+        fs::write(&key_path, b"\n").expect("write key");
+
+        let cfg = PolicySigningConfig {
+            enabled: true,
+            algorithm: cockpitctl_types::PolicySignatureAlgorithm::HmacSha256,
+            key_path: Some(key_path.to_string_lossy().to_string()),
+            key_env: None,
+            key_id: None,
+        };
+
+        let err = load_policy_signing_key(&cfg).expect_err("expected empty key error");
+        assert!(format!("{:#}", err).contains("policy signing key is empty"));
     }
 
     // -------------------------------------------------------------------------

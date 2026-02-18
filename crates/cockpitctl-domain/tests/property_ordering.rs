@@ -183,6 +183,8 @@ fn any_cockpit_config() -> impl Strategy<Value = CockpitConfig> {
                         schema_validation: Default::default(),
                         max_receipt_size_bytes: 2 * 1024 * 1024,
                     },
+                    buildfix: Default::default(),
+                    policy_signing: Default::default(),
                     sensors,
                     hooks: vec![],
                 }

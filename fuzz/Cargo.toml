@@ -8,8 +8,10 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-keywords.workspace = true
-categories.workspace = true
+description = "Fuzzing harness for cockpitctl parsing and conformance inputs."
+readme = "README.md"
+keywords = ["fuzzing", "security", "ci", "receipts", "parser"]
+categories = ["development-tools"]
 
 [package.metadata]
 cargo-fuzz = true

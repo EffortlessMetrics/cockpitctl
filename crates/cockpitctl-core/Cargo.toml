@@ -7,15 +7,15 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "cockpitctl compiler library — portable, no CLI dependencies"
-readme.workspace = true
-keywords = ["ci", "cd", "compiler", "aggregation", "sensors"]
+description = "Facade crate that re-exports cockpitctl microcrates as one dependency."
+readme = "README.md"
+keywords = ["ci", "cockpit", "facade", "receipts", "policy"]
 categories = ["development-tools"]
 
 [dependencies]
-cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.1" }
-cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.2.1" }
-cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.2.1" }
-cockpitctl-render = { path = "../cockpitctl-render", version = "0.2.1" }
-cockpitctl-io = { path = "../cockpitctl-io", version = "0.2.1" }
-cockpitctl-sarif = { path = "../cockpitctl-sarif", version = "0.2.1" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
+cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.3.0" }
+cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
+cockpitctl-render = { path = "../cockpitctl-render", version = "0.3.0" }
+cockpitctl-io = { path = "../cockpitctl-io", version = "0.3.0" }
+cockpitctl-sarif = { path = "../cockpitctl-sarif", version = "0.3.0" }

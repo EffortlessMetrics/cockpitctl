@@ -1,5 +1,6 @@
 use cockpitctl_types::{
-    CockpitConfig, Policy, SchemaValidation, VerdictCounts, is_valid_sensor_id,
+    BuildfixPolicy, CockpitConfig, Policy, PolicySignatureAlgorithm, PolicySigningConfig,
+    SafetyLevel, SchemaValidation, VerdictCounts, is_valid_sensor_id,
 };
 
 #[test]
@@ -58,6 +59,20 @@ fn cockpit_config_defaults_include_empty_sensors() {
     let cfg = CockpitConfig::default();
     assert!(cfg.sensors.is_empty());
     assert_eq!(cfg.policy.schema_validation, SchemaValidation::Lax);
+    assert_eq!(cfg.buildfix, BuildfixPolicy::default());
+    assert!(!cfg.buildfix.auto_apply);
+    assert_eq!(cfg.buildfix.max_auto_apply_safety, SafetyLevel::Safe);
+    assert!(cfg.buildfix.require_matched_finding);
+    assert!(cfg.buildfix.actuator.is_none());
+    assert_eq!(cfg.policy_signing, PolicySigningConfig::default());
+    assert!(!cfg.policy_signing.enabled);
+    assert_eq!(
+        cfg.policy_signing.algorithm,
+        PolicySignatureAlgorithm::HmacSha256
+    );
+    assert!(cfg.policy_signing.key_path.is_none());
+    assert!(cfg.policy_signing.key_env.is_none());
+    assert!(cfg.policy_signing.key_id.is_none());
 }
 
 #[test]

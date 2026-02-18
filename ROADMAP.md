@@ -27,66 +27,61 @@ These milestones from the original implementation plan are done:
 
 ---
 
-## Near-term
+## Recently completed roadmap items
 
 ### Configurable receipt size limit
 
-`max_receipt_size_bytes` in `cockpit.toml` so teams can raise or lower the 2 MB
-default per-pipeline without rebuilding.
+Implemented as `policy.max_receipt_size_bytes` in `cockpit.toml`, wired through
+filesystem adapters so teams can raise/lower the default cap per pipeline.
 
 ### `cockpitctl explain` command
 
-A diagnostic command that, given a finding code (e.g. `cockpit.missing_receipt`),
-prints what it means, why it fires, and how to fix it. Useful for onboarding
-sensor authors and debugging CI failures.
+Implemented as `cockpitctl explain <CODE|all>` with cockpit finding-code
+explanations sourced from `cockpitctl-domain`.
 
 ### Annotation output
 
-Emit GitHub Actions `::warning` / `::error` workflow commands (or a SARIF file)
-so findings appear as inline annotations on the PR diff, not just in the
-comment. Controlled by `max_annotations` in policy.
-
----
-
-## Mid-term
+Implemented via `--github-annotations` and deterministic capping through
+`policy.max_annotations`.
 
 ### SARIF export
 
-Optional `--format sarif` flag on `ingest` that writes a SARIF log alongside the
-cockpit report. Enables integration with GitHub Code Scanning, VS Code SARIF
-Viewer, and other static-analysis dashboards.
-
-### Buildfix plan integration
-
-The `buildfix.plan.v1` schema is already defined. Future work:
-- Ingest fix plans alongside sensor receipts.
-- Surface fix suggestions (with safety levels: `safe`, `guarded`, `unsafe`) in
-  the PR comment.
-- Gate auto-apply on the safety level.
+Implemented via `cockpitctl ingest --format sarif`, writing
+`artifacts/cockpit/sarif.json`.
 
 ### Trend tracking
 
-Compare the current cockpit report against a baseline (e.g. from the base
-branch) to surface regressions and improvements:
-- "Coverage dropped from 85 % → 82 %"
-- "3 new findings since base"
-
-Requires a baseline store or artifact download step.
+Implemented via `--baseline <path>` plus deterministic diffing/rendering for
+verdict/count/finding deltas.
 
 ### Plugin / extension hooks
 
-Allow external tools to contribute post-processing steps (e.g. custom comment
-sections, badge generation) without forking the director. Likely implemented as
-a trait in `cockpitctl-core` that downstream crates can implement.
+Implemented through `[[hooks]]` post-processors that can emit extra files and
+comment sections (now appended before cockpit sticky end markers).
+
+### Buildfix plan integration
+
+Implemented:
+- Ingest `plan.json` alongside receipts.
+- Match fixes to surfaced findings.
+- Surface buildfix summaries in `cockpit.report.v1` data and the PR comment.
+- Gate auto-apply on safety levels (`safe`, `guarded`, `unsafe`) and matched
+  findings policy.
+- Integrate external actuator execution with deterministic evidence output in
+  `artifacts/cockpit/buildfix.apply.json` and `cockpit.report.v1` data.
+
+### Policy snapshot signing
+
+Implemented:
+- Configurable signing policy via `[policy_signing]` in `cockpit.toml`.
+- HMAC-SHA256 signing over canonical `report.policy` snapshot bytes.
+- Signature evidence in `cockpit.report.v1` data (`_policy_signature`) and
+  deterministic sidecar output in `artifacts/cockpit/policy.signature.json`.
+- Optional CLI overrides for enabling signing and selecting key source/ID.
 
 ---
 
 ## Long-term / exploratory
-
-### Policy snapshot signing
-
-Cryptographic signature over the policy snapshot embedded in the cockpit report,
-providing tamper evidence that the verdict was computed under a known policy.
 
 ### Receipt streaming
 

@@ -67,13 +67,13 @@ grep "version = " Cargo.toml
 ```
 
 **Verify**:
-- The version matches your intended release (e.g., `0.2.1`)
+- The version matches your intended release (e.g., `0.3.0`)
 - The version follows semantic versioning
 
 **Example output**:
 ```
 [workspace.package]
-version = "0.2.1"
+version = "0.3.0"
 ```
 
 ### Step 3: Update CHANGELOG.md
@@ -88,7 +88,7 @@ Edit [`CHANGELOG.md`](../../CHANGELOG.md):
 ```markdown
 ## [Unreleased]
 
-## [0.2.1] - 2026-02-15
+## [0.3.0] - 2026-02-15
 
 ### Added
 - New feature description
@@ -122,24 +122,34 @@ cargo test -p cockpitctl --test ingest_golden
 
 **Expected output**: All tests pass
 
-### Step 6: Dry-Run Publish Validation
+### Step 6: Package Validation + Dry-Run Strategy
 
-Run dry-run publishes in dependency order:
+Validate package contents locally:
+
+```bash
+cargo package --list -p cockpitctl-types
+cargo package --list -p cockpitctl-conform
+cargo package --list -p cockpitctl-domain
+cargo package --list -p cockpitctl-render
+cargo package --list -p cockpitctl-ingest
+cargo package --list -p cockpitctl-io
+cargo package --list -p cockpitctl-sarif
+cargo package --list -p cockpitctl-core
+cargo package --list -p cockpitctl
+cargo package --list -p conformctl
+```
+
+Optional local check:
 
 ```bash
 cargo publish --dry-run -p cockpitctl-types
-cargo publish --dry-run -p cockpitctl-conform
-cargo publish --dry-run -p cockpitctl-domain
-cargo publish --dry-run -p cockpitctl-render
-cargo publish --dry-run -p cockpitctl-ingest
-cargo publish --dry-run -p cockpitctl-io
-cargo publish --dry-run -p cockpitctl-sarif
-cargo publish --dry-run -p cockpitctl-core
-cargo publish --dry-run -p cockpitctl
-cargo publish --dry-run -p conformctl
 ```
 
-**Expected output**: All dry-runs complete successfully
+Dependent crate dry-runs can fail locally before release if the new dependency
+versions are not yet in crates.io. The release workflow runs dry-run + publish
+in dependency tiers to avoid this.
+
+**Expected output**: Package listing succeeds locally; release-workflow dry-runs succeed in CI
 
 ### Step 7: Build and Test Locally
 
@@ -178,7 +188,7 @@ cargo audit
 git add CHANGELOG.md Cargo.toml
 
 # Commit with descriptive message
-git commit -m "Prepare release v0.2.1"
+git commit -m "Prepare release v0.3.0"
 ```
 
 **Commit message format**:
@@ -202,19 +212,19 @@ git push origin main
 
 ```bash
 # Create the tag
-git tag v0.2.1
+git tag v0.3.0
 
 # Verify the tag
 git tag -l v*
-git show v0.2.1
+git show v0.3.0
 ```
 
-**Tag format**: Must be `v*` (e.g., `v0.2.1`, `v1.0.0`)
+**Tag format**: Must be `v*` (e.g., `v0.3.0`, `v1.0.0`)
 
 ### Step 2: Push Tag to Trigger Release
 
 ```bash
-git push origin v0.2.1
+git push origin v0.3.0
 ```
 
 **This action triggers**:
@@ -308,7 +318,7 @@ gh repo view --web
 
 ```bash
 # Open the release page
-gh release view v0.2.1 --web
+gh release view v0.3.0 --web
 ```
 
 **Verify**:
@@ -330,12 +340,12 @@ gh release view v0.2.1 --web
 
 **Unix/Linux/macOS**:
 ```bash
-./scripts/smoke-test-release.sh v0.2.1
+./scripts/smoke-test-release.sh v0.3.0
 ```
 
 **Windows PowerShell**:
 ```powershell
-./scripts/smoke-test-release.ps1 v0.2.1
+./scripts/smoke-test-release.ps1 v0.3.0
 ```
 
 **Expected output**: All smoke tests pass
@@ -344,10 +354,10 @@ gh release view v0.2.1 --web
 
 ```bash
 # Download checksums
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/SHA256SUMS.txt -o SHA256SUMS.txt
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/SHA256SUMS.txt -o SHA256SUMS.txt
 
 # Download a binary
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64 -o cockpitctl-linux-x64
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-linux-x64 -o cockpitctl-linux-x64
 chmod +x cockpitctl-linux-x64
 
 # Verify checksum
@@ -382,7 +392,7 @@ If you have access to multiple platforms, test each binary:
 
 **Linux x64**:
 ```bash
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64 -o cockpitctl
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-linux-x64 -o cockpitctl
 chmod +x cockpitctl
 ./cockpitctl --version
 ./cockpitctl ingest --artifacts fixtures/happy_path/artifacts --config fixtures/happy_path/cockpit.toml
@@ -390,21 +400,21 @@ chmod +x cockpitctl
 
 **macOS x64**:
 ```bash
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-darwin-x64 -o cockpitctl
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-darwin-x64 -o cockpitctl
 chmod +x cockpitctl
 ./cockpitctl --version
 ```
 
 **macOS ARM64**:
 ```bash
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-darwin-arm64 -o cockpitctl
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-darwin-arm64 -o cockpitctl
 chmod +x cockpitctl
 ./cockpitctl --version
 ```
 
 **Windows x64**:
 ```powershell
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-windows-x64.exe -o cockpitctl.exe
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-windows-x64.exe -o cockpitctl.exe
 .\cockpitctl.exe --version
 ```
 
@@ -449,10 +459,10 @@ git commit -m "Fix quality gate issues"
 git push origin main
 
 # Delete and recreate tag
-git tag -d v0.2.1
-git push origin :refs/tags/v0.2.1
-git tag v0.2.1
-git push origin v0.2.1
+git tag -d v0.3.0
+git push origin :refs/tags/v0.3.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 ### Version Mismatch
@@ -467,10 +477,10 @@ grep "version = " Cargo.toml
 
 # Update Cargo.toml if needed
 # Then delete and recreate tag
-git tag -d v0.2.1
-git push origin :refs/tags/v0.2.1
-git tag v0.2.1
-git push origin v0.2.1
+git tag -d v0.3.0
+git push origin :refs/tags/v0.3.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 ### Publish Failures
@@ -488,7 +498,7 @@ git push origin v0.2.1
 cargo search cockpitctl
 
 # If version exists, yank it
-cargo yank --vers 0.2.1 cockpitctl
+cargo yank --vers 0.3.0 cockpitctl
 
 # Retry publish (may need to wait for index update)
 cargo publish -p cockpitctl --token $CRATES_IO_TOKEN
@@ -516,7 +526,7 @@ cargo publish -p cockpitctl --token $CRATES_IO_TOKEN
 **Solution**:
 ```bash
 # Download the binary locally
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64 -o cockpitctl
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-linux-x64 -o cockpitctl
 chmod +x cockpitctl
 
 # Test manually
@@ -556,21 +566,21 @@ Before rolling back, assess:
 
 ```bash
 # Yank in reverse dependency order
-cargo yank --vers 0.2.1 conformctl
-cargo yank --vers 0.2.1 cockpitctl
-cargo yank --vers 0.2.1 cockpitctl-core
-cargo yank --vers 0.2.1 cockpitctl-io
-cargo yank --vers 0.2.1 cockpitctl-ingest
-cargo yank --vers 0.2.1 cockpitctl-render
-cargo yank --vers 0.2.1 cockpitctl-domain
-cargo yank --vers 0.2.1 cockpitctl-conform
-cargo yank --vers 0.2.1 cockpitctl-types
+cargo yank --vers 0.3.0 conformctl
+cargo yank --vers 0.3.0 cockpitctl
+cargo yank --vers 0.3.0 cockpitctl-core
+cargo yank --vers 0.3.0 cockpitctl-io
+cargo yank --vers 0.3.0 cockpitctl-ingest
+cargo yank --vers 0.3.0 cockpitctl-render
+cargo yank --vers 0.3.0 cockpitctl-domain
+cargo yank --vers 0.3.0 cockpitctl-conform
+cargo yank --vers 0.3.0 cockpitctl-types
 ```
 
 ### Step 3: Delete GitHub Release
 
 ```bash
-gh release delete v0.2.1 --yes
+gh release delete v0.3.0 --yes
 ```
 
 ### Step 4: Delete Tag (Optional)
@@ -578,15 +588,15 @@ gh release delete v0.2.1 --yes
 **Only delete the tag if no one has pulled it**:
 
 ```bash
-git tag -d v0.2.1
-git push origin :refs/tags/v0.2.1
+git tag -d v0.3.0
+git push origin :refs/tags/v0.3.0
 ```
 
 ### Step 5: Prepare Patch Release
 
 1. **Fix the critical issue**
 2. **Update CHANGELOG** with patch notes
-3. **Bump patch version** (e.g., `0.2.1` → `0.2.2`)
+3. **Bump patch version** (e.g., `0.3.0` → `0.3.1`)
 4. **Create new tag**
 5. **Execute normal release process**
 
@@ -596,12 +606,12 @@ git push origin :refs/tags/v0.2.1
 
 # Commit changes
 git add -A
-git commit -m "Prepare patch release v0.2.1"
+git commit -m "Prepare patch release v0.3.1"
 
 # Create and push tag
-git tag v0.2.1
+git tag v0.3.1
 git push origin main
-git push origin v0.2.1
+git push origin v0.3.1
 ```
 
 ### Step 6: Announce Patch Release
@@ -626,19 +636,19 @@ cargo test -p cockpitctl --test ingest_golden
 cargo publish --dry-run -p <crate-name>
 
 # Create release
-git tag v0.2.1
-git push origin v0.2.1
+git tag v0.3.0
+git push origin v0.3.0
 
 # Monitor workflow
 gh run list --workflow=release.yml
 gh run view --workflow=release.yml
 
 # Smoke test
-./scripts/smoke-test-release.sh v0.2.1
+./scripts/smoke-test-release.sh v0.3.0
 
 # Rollback
-cargo yank --vers 0.2.1 cockpitctl
-gh release delete v0.2.1 --yes
+cargo yank --vers 0.3.0 cockpitctl
+gh release delete v0.3.0 --yes
 ```
 
 ### Release Timeline

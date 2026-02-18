@@ -39,6 +39,18 @@ pub struct IngestWorld {
     captured_report: Option<String>,
     /// Extra CLI arguments to pass.
     extra_args: Vec<String>,
+    /// Captured stdout from the last command execution.
+    stdout: String,
+    /// Captured stderr from the last command execution.
+    stderr: String,
+    /// Path to a baseline report used for trend comparisons.
+    baseline_report_path: Option<PathBuf>,
+    /// Path to a generated hook script for the current scenario.
+    hook_script_path: Option<PathBuf>,
+    /// Path to a generated buildfix actuator script for the current scenario.
+    actuator_script_path: Option<PathBuf>,
+    /// Path to generated policy-signing key material.
+    policy_sign_key_path: Option<PathBuf>,
 }
 
 impl IngestWorld {
@@ -60,6 +72,12 @@ impl IngestWorld {
             comment_path: None,
             captured_report: None,
             extra_args: Vec::new(),
+            stdout: String::new(),
+            stderr: String::new(),
+            baseline_report_path: None,
+            hook_script_path: None,
+            actuator_script_path: None,
+            policy_sign_key_path: None,
         }
     }
 
@@ -89,6 +107,43 @@ impl IngestWorld {
         let path = self.comment_path.as_ref().expect("comment path not set");
         fs::read_to_string(path).expect("failed to read comment")
     }
+
+    fn resolve_arg_placeholder(&self, arg: &str) -> String {
+        match arg {
+            "{baseline_report}" => self
+                .baseline_report_path
+                .as_ref()
+                .expect("baseline report not set")
+                .to_string_lossy()
+                .to_string(),
+            "{actuator_script}" => self
+                .actuator_script_path
+                .as_ref()
+                .expect("actuator script not set")
+                .to_string_lossy()
+                .to_string(),
+            "{hook_script}" => self
+                .hook_script_path
+                .as_ref()
+                .expect("hook script not set")
+                .to_string_lossy()
+                .to_string(),
+            "{policy_sign_key}" => self
+                .policy_sign_key_path
+                .as_ref()
+                .expect("policy signing key path not set")
+                .to_string_lossy()
+                .to_string(),
+            _ => arg.to_string(),
+        }
+    }
+
+    fn fixture_file_path(&self, rel: &str) -> PathBuf {
+        self.fixture_path
+            .as_ref()
+            .expect("fixture path not set")
+            .join(rel)
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -104,6 +159,12 @@ fn clean_output_directory(_world: &mut IngestWorld) {
 fn given_fixture(world: &mut IngestWorld, fixture_name: String) {
     world.fixture_name = fixture_name.clone();
     world.extra_args.clear();
+    world.stdout.clear();
+    world.stderr.clear();
+    world.baseline_report_path = None;
+    world.hook_script_path = None;
+    world.actuator_script_path = None;
+    world.policy_sign_key_path = None;
 
     let fixture_src = world.workspace.join("fixtures").join(&fixture_name);
     assert!(
@@ -126,6 +187,147 @@ fn given_fixture(world: &mut IngestWorld, fixture_name: String) {
     world.temp_dir = Some(temp_dir);
 }
 
+fn toml_escape_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "\\\\")
+}
+
+#[cfg(windows)]
+fn write_hook_script(dir: &Path) -> PathBuf {
+    let script_path = dir.join("hook.cmd");
+    let script = "@echo off\r\nmore > nul\r\necho {\"comment_sections\":[{\"name\":\"Hook Notes\",\"content\":\"From hook\",\"order\":1}]}\r\n";
+    fs::write(&script_path, script).expect("failed to write hook script");
+    script_path
+}
+
+#[cfg(unix)]
+fn write_hook_script(dir: &Path) -> PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+
+    let script_path = dir.join("hook.sh");
+    let script = "#!/bin/sh\ncat >/dev/null\nprintf '%s\\n' '{\"comment_sections\":[{\"name\":\"Hook Notes\",\"content\":\"From hook\",\"order\":1}]}'\n";
+    fs::write(&script_path, script).expect("failed to write hook script");
+    let mut perms = fs::metadata(&script_path)
+        .expect("hook script metadata")
+        .permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(&script_path, perms).expect("set hook script executable");
+    script_path
+}
+
+#[cfg(windows)]
+fn write_actuator_script(dir: &Path) -> PathBuf {
+    let script_path = dir.join("actuator.cmd");
+    let script = "@echo off\r\nmore > nul\r\necho {\"applied_fix_ids\":[\"remove_unused_import\"],\"skipped_fix_ids\":[],\"errors\":[]}\r\n";
+    fs::write(&script_path, script).expect("failed to write actuator script");
+    script_path
+}
+
+#[cfg(unix)]
+fn write_actuator_script(dir: &Path) -> PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+
+    let script_path = dir.join("actuator.sh");
+    let script = "#!/bin/sh\ncat >/dev/null\nprintf '%s\\n' '{\"applied_fix_ids\":[\"remove_unused_import\"],\"skipped_fix_ids\":[],\"errors\":[]}'\n";
+    fs::write(&script_path, script).expect("failed to write actuator script");
+    let mut perms = fs::metadata(&script_path)
+        .expect("actuator script metadata")
+        .permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(&script_path, perms).expect("set actuator script executable");
+    script_path
+}
+
+fn json_value_at_path<'a>(value: &'a Value, dotted_path: &str) -> Option<&'a Value> {
+    let mut current = value;
+    for segment in dotted_path.split('.') {
+        if segment.is_empty() {
+            continue;
+        }
+        if let Ok(idx) = segment.parse::<usize>() {
+            current = current.as_array()?.get(idx)?;
+        } else {
+            current = current.get(segment)?;
+        }
+    }
+    Some(current)
+}
+
+#[given(expr = "a baseline report from fixture {string}")]
+fn given_baseline_report_from_fixture(world: &mut IngestWorld, fixture_name: String) {
+    let dst = world
+        .fixture_path
+        .as_ref()
+        .expect("fixture path not set; load a fixture first")
+        .join("baseline.report.json");
+    let src_root = world.workspace.join("fixtures").join(&fixture_name);
+    let expected = src_root.join("expected").join("report.json");
+    let fallback = src_root
+        .join("artifacts")
+        .join("cockpit")
+        .join("report.json");
+
+    let src = if expected.exists() {
+        expected
+    } else if fallback.exists() {
+        fallback
+    } else {
+        panic!(
+            "baseline fixture '{}' has no expected/report.json or artifacts/cockpit/report.json",
+            fixture_name
+        );
+    };
+
+    fs::copy(&src, &dst).unwrap_or_else(|e| {
+        panic!(
+            "failed to copy baseline report from {:?} to {:?}: {}",
+            src, dst, e
+        )
+    });
+    world.baseline_report_path = Some(dst);
+}
+
+#[given("a hook script is configured")]
+fn given_hook_script_configured(world: &mut IngestWorld) {
+    let fixture_root = world
+        .fixture_path
+        .as_ref()
+        .expect("fixture path not set; load a fixture first");
+    let script_path = write_hook_script(fixture_root);
+    let escaped = toml_escape_path(&script_path);
+
+    let config_path = fixture_root.join("cockpit.toml");
+    let mut config = fs::read_to_string(&config_path).expect("failed to read cockpit.toml");
+    if !config.ends_with('\n') {
+        config.push('\n');
+    }
+    config.push_str(&format!(
+        "\n[[hooks]]\nname = \"hook-notes\"\ncommand = \"{}\"\ntimeout_ms = 5000\n",
+        escaped
+    ));
+    fs::write(&config_path, config).expect("failed to write cockpit.toml hook config");
+    world.hook_script_path = Some(script_path);
+}
+
+#[given("a successful buildfix actuator script")]
+fn given_successful_buildfix_actuator_script(world: &mut IngestWorld) {
+    let fixture_root = world
+        .fixture_path
+        .as_ref()
+        .expect("fixture path not set; load a fixture first");
+    world.actuator_script_path = Some(write_actuator_script(fixture_root));
+}
+
+#[given("a policy signing key file")]
+fn given_policy_signing_key_file(world: &mut IngestWorld) {
+    let fixture_root = world
+        .fixture_path
+        .as_ref()
+        .expect("fixture path not set; load a fixture first");
+    let key_path = fixture_root.join("policy-signing.key");
+    fs::write(&key_path, b"shared-signing-secret\n").expect("failed to write policy key file");
+    world.policy_sign_key_path = Some(key_path);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // When steps
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,7 +339,10 @@ fn run_ingest(world: &mut IngestWorld, _command: String) {
 
 #[when(expr = "I run {string} on the fixture with {string}")]
 fn run_ingest_with_args(world: &mut IngestWorld, _command: String, args: String) {
-    world.extra_args = args.split_whitespace().map(String::from).collect();
+    world.extra_args = args
+        .split_whitespace()
+        .map(|arg| world.resolve_arg_placeholder(arg))
+        .collect();
     run_ingest_impl(world);
 }
 
@@ -178,6 +383,8 @@ fn run_ingest_impl(world: &mut IngestWorld) {
 
     let output = cmd.output().expect("failed to execute command");
     world.exit_code = Some(output.status.code().unwrap_or(-1));
+    world.stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    world.stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
     let out_dir = artifacts.join("cockpit");
     world.report_path = Some(out_dir.join("report.json"));
@@ -192,6 +399,40 @@ fn run_ingest_impl(world: &mut IngestWorld) {
 fn check_exit_code(world: &mut IngestWorld, expected: i32) {
     let actual = world.exit_code.expect("command not run");
     assert_eq!(actual, expected, "exit code mismatch");
+}
+
+#[then(expr = "stdout contains {string}")]
+fn stdout_contains(world: &mut IngestWorld, expected: String) {
+    assert!(
+        world.stdout.contains(&expected),
+        "stdout does not contain '{}'\n\nActual stdout:\n{}",
+        expected,
+        world.stdout
+    );
+}
+
+#[then(expr = "stderr contains {string}")]
+fn stderr_contains(world: &mut IngestWorld, expected: String) {
+    assert!(
+        world.stderr.contains(&expected),
+        "stderr does not contain '{}'\n\nActual stderr:\n{}",
+        expected,
+        world.stderr
+    );
+}
+
+#[then(expr = "stdout has exactly {int} lines starting with {string}")]
+fn stdout_line_prefix_count(world: &mut IngestWorld, expected: usize, prefix: String) {
+    let count = world
+        .stdout
+        .lines()
+        .filter(|line| line.starts_with(&prefix))
+        .count();
+    assert_eq!(
+        count, expected,
+        "expected {} stdout lines starting with '{}', got {}\n\nActual stdout:\n{}",
+        expected, prefix, count, world.stdout
+    );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -411,6 +652,48 @@ fn report_is_valid_json(world: &mut IngestWorld) {
     let _ = world.read_report();
 }
 
+#[then(expr = "the report data contains key {string}")]
+fn report_data_contains_key(world: &mut IngestWorld, key: String) {
+    let report = world.read_report();
+    let data = report
+        .get("data")
+        .and_then(|v| v.as_object())
+        .expect("report.data object not found");
+    assert!(
+        data.contains_key(&key),
+        "report.data does not contain key '{}'. Keys: {:?}",
+        key,
+        data.keys().collect::<Vec<_>>()
+    );
+}
+
+#[then(expr = "the report field {string} equals {string}")]
+fn report_field_equals_string(world: &mut IngestWorld, path: String, expected: String) {
+    let report = world.read_report();
+    let actual = json_value_at_path(&report, &path)
+        .unwrap_or_else(|| panic!("report field path '{}' not found", path));
+    let actual_str = actual
+        .as_str()
+        .unwrap_or_else(|| panic!("report field '{}' is not a string: {}", path, actual));
+    assert_eq!(actual_str, expected, "report field '{}' mismatch", path);
+}
+
+#[then(expr = "the report field {string} equals {int}")]
+fn report_field_equals_int(world: &mut IngestWorld, path: String, expected: i32) {
+    let report = world.read_report();
+    let actual = json_value_at_path(&report, &path)
+        .unwrap_or_else(|| panic!("report field path '{}' not found", path));
+    let actual_int = actual
+        .as_i64()
+        .unwrap_or_else(|| panic!("report field '{}' is not an integer: {}", path, actual));
+    assert_eq!(
+        actual_int,
+        i64::from(expected),
+        "report field '{}' mismatch",
+        path
+    );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Then steps - Comment assertions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -422,6 +705,24 @@ fn comment_contains(world: &mut IngestWorld, expected: String) {
         comment.contains(&expected),
         "comment does not contain '{}'\n\nActual comment:\n{}",
         expected,
+        comment
+    );
+}
+
+#[then(expr = "in the comment {string} appears before {string}")]
+fn comment_contains_in_order(world: &mut IngestWorld, first: String, second: String) {
+    let comment = world.read_comment();
+    let first_idx = comment
+        .find(&first)
+        .unwrap_or_else(|| panic!("'{}' not found in comment", first));
+    let second_idx = comment
+        .find(&second)
+        .unwrap_or_else(|| panic!("'{}' not found in comment", second));
+    assert!(
+        first_idx < second_idx,
+        "'{}' should appear before '{}' in comment\n\n{}",
+        first,
+        second,
         comment
     );
 }
@@ -479,6 +780,12 @@ fn given_temp_directory(world: &mut IngestWorld) {
     let temp_dir = TempDir::new().expect("failed to create temp dir");
     world.fixture_path = Some(temp_dir.path().to_path_buf());
     world.temp_dir = Some(temp_dir);
+    world.stdout.clear();
+    world.stderr.clear();
+    world.baseline_report_path = None;
+    world.hook_script_path = None;
+    world.actuator_script_path = None;
+    world.policy_sign_key_path = None;
 }
 
 #[given(expr = "a file {string} with content {string}")]
@@ -504,11 +811,13 @@ fn run_cli_command(world: &mut IngestWorld, command: String) {
 
     // Add remaining args
     for arg in &parts[2..] {
-        cmd.arg(arg);
+        cmd.arg(world.resolve_arg_placeholder(arg));
     }
 
     let output = cmd.output().expect("failed to execute command");
     world.exit_code = Some(output.status.code().unwrap_or(-1));
+    world.stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    world.stderr = String::from_utf8_lossy(&output.stderr).to_string();
 }
 
 #[when(expr = "I run {string} with input {string}")]
@@ -529,6 +838,8 @@ fn run_cli_with_input(world: &mut IngestWorld, command: String, input_path: Stri
 
     let output = cmd.output().expect("failed to execute command");
     world.exit_code = Some(output.status.code().unwrap_or(-1));
+    world.stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    world.stderr = String::from_utf8_lossy(&output.stderr).to_string();
 }
 
 #[then(expr = "the file {string} exists")]
@@ -554,6 +865,31 @@ fn file_contains(world: &mut IngestWorld, filename: String, expected: String) {
         filename,
         expected,
         content
+    );
+}
+
+#[then(expr = "the JSON file {string} field {string} equals {string}")]
+fn json_file_field_equals_string(
+    world: &mut IngestWorld,
+    filename: String,
+    field_path: String,
+    expected: String,
+) {
+    let path = world.fixture_file_path(&filename);
+    let content = fs::read_to_string(&path).expect("failed to read JSON file");
+    let json: Value = serde_json::from_str(&content).expect("failed to parse JSON file");
+    let actual = json_value_at_path(&json, &field_path)
+        .unwrap_or_else(|| panic!("JSON field '{}' not found in {:?}", field_path, path));
+    let actual_str = actual.as_str().unwrap_or_else(|| {
+        panic!(
+            "JSON field '{}' in {:?} is not a string: {}",
+            field_path, path, actual
+        )
+    });
+    assert_eq!(
+        actual_str, expected,
+        "JSON field '{}' mismatch in {:?}",
+        field_path, path
     );
 }
 

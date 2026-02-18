@@ -37,7 +37,7 @@ Error: Failed to write report: artifacts/cockpit/report.json
 **Solutions:**
 - Ensure `artifacts/cockpit/` directory exists or can be created
 - Check write permissions
-- Use `--output` to specify different location
+- Use `--artifacts` to point to a writable artifacts root
 
 ## Exit Code 2: Policy Failure
 
@@ -124,16 +124,16 @@ warn_is_fail = true  # Warnings from blocking sensors cause failure
 ```json
 {
   "finding": {
-    "code": "cockpit.invalid_receipt",
-    "message": "Missing required field 'verdict'"
+    "code": "cockpit.schema_violation",
+    "message": "schema violation: /verdict is required"
   }
 }
 ```
 
 **Solutions:**
-- Check receipt against schema: `contracts/schemas/sensor.report.v1.json`
+- Run strict validation directly: `cockpitctl validate --input artifacts/builddiag/report.json --strict`
 - Ensure sensor version matches expected schema
-- Use `cockpitctl validate` to check individual receipts
+- Fix the sensor output shape, then re-run ingest
 
 ## Path Traversal Errors
 
@@ -165,22 +165,25 @@ warn_is_fail = true  # Warnings from blocking sensors cause failure
 
 **Solutions:**
 - Reduce receipt size (remove verbose data payloads)
-- Increase size limit (if configurable)
+- Increase size limit in policy when needed:
+  ```toml
+  [policy]
+  max_receipt_size_bytes = 5242880 # 5 MB
+  ```
 - Check for runaway data generation in sensor
 
-## Verbose Mode
+## Collect Debug Signals
 
-Run with `--verbose` for detailed logging:
+Use strict validate and inspect cockpit outputs:
 
 ```bash
-cockpitctl ingest --verbose
-```
+# Validate one receipt in strict mode
+cockpitctl validate --input artifacts/builddiag/report.json --strict
 
-This shows:
-- Discovery results
-- Parse errors with details
-- Policy decisions (blocking/missing/warn-as-fail)
-- Highlight selection and truncation
+# Run ingest and inspect generated highlights
+cockpitctl ingest --artifacts artifacts --config cockpit.toml
+jq '.highlights[]?.finding.code' artifacts/cockpit/report.json
+```
 
 ## Validate Individual Receipts
 

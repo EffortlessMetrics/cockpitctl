@@ -1,0 +1,12 @@
+[policy]
+warn_is_fail = false
+max_highlights = 3
+max_per_sensor_findings = 20
+max_annotations = 2
+section_order = ["Highlights", "Policy", "Other"]
+
+[sensors.manychecker]
+blocking = true
+missing = "fail"
+section = "Policy"
+repro = "manychecker check"

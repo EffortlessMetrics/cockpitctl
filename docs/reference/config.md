@@ -16,6 +16,21 @@ max_per_sensor_findings = 20
 max_annotations = 25
 section_order = ["Highlights", "Repo contract", "Dependencies", "Policy", "Tests", "Diagnostics", "Performance", "Environment", "Other"]
 
+[buildfix]
+auto_apply = false
+max_auto_apply_safety = "safe"
+require_matched_finding = true
+
+[buildfix.actuator]
+command = "buildfix-actuator --apply"
+timeout_ms = 30000
+
+[policy_signing]
+enabled = false
+algorithm = "hmac_sha256"
+key_env = "COCKPITCTL_POLICY_SIGNING_KEY"
+key_id = "ci-key"
+
 [sensors.builddiag]
 blocking = true
 missing = "fail"
@@ -82,6 +97,42 @@ section_order = [
   "Other"
 ]
 ```
+
+### [buildfix]
+
+Buildfix auto-apply settings.
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `auto_apply` | bool | `false` | Enable auto-apply execution after ingest |
+| `max_auto_apply_safety` | string | `"safe"` | Maximum safety level allowed: `safe`, `guarded`, `unsafe` |
+| `require_matched_finding` | bool | `true` | When true, only fixes matched to surfaced findings are eligible |
+
+### [buildfix.actuator]
+
+External actuator command configuration (required when `auto_apply = true` and you want fixes applied).
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `command` | string | (none) | Command to execute; receives `buildfix.apply.request.v1` JSON on stdin |
+| `timeout_ms` | int | `30000` | Actuator timeout in milliseconds |
+
+### [policy_signing]
+
+Policy snapshot signing controls. When enabled, cockpitctl signs the canonical `report.policy` snapshot and emits:
+
+- `data._policy_signature` in `cockpit.report.v1`
+- `artifacts/cockpit/policy.signature.json`
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `enabled` | bool | `false` | Enable policy snapshot signing |
+| `algorithm` | string | `"hmac_sha256"` | Signature algorithm (currently only `hmac_sha256`) |
+| `key_path` | string | (none) | Path to signing key bytes |
+| `key_env` | string | (none) | Environment variable name containing signing key bytes |
+| `key_id` | string | (none) | Optional key identifier included in signature evidence |
+
+`key_path` takes precedence over `key_env` when both are set.
 
 ### [sensors.<id>]
 

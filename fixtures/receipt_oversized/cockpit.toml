@@ -1,0 +1,12 @@
+[policy]
+warn_is_fail = false
+max_highlights = 7
+max_per_sensor_findings = 20
+max_annotations = 25
+max_receipt_size_bytes = 64
+section_order = ["Highlights", "Diagnostics", "Other"]
+
+[sensors.bigsensor]
+blocking = true
+missing = "fail"
+section = "Diagnostics"

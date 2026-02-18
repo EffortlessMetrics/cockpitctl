@@ -7,9 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-readme.workspace = true
-description = "Standalone conformance checker for cockpitctl sensor receipts"
-keywords = ["ci", "cd", "sensors", "conformance"]
+readme = "README.md"
+description = "CLI for conformance checking cockpitctl receipts and aggregated cockpit reports."
+keywords = ["ci", "conformance", "cli", "schema", "validation"]
 categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
@@ -17,8 +17,8 @@ name = "conformctl"
 path = "src/main.rs"
 
 [dependencies]
-cockpitctl-conform = { path = "../cockpitctl-conform", version = "0.2.1" }
-cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.1" }
+cockpitctl-conform = { path = "../cockpitctl-conform", version = "0.3.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 anyhow.workspace = true
 clap.workspace = true
 serde_json.workspace = true

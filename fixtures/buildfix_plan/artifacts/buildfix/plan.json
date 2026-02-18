@@ -1,0 +1,26 @@
+{
+  "schema": "buildfix.plan.v1",
+  "tool": {
+    "name": "buildfix",
+    "version": "1.0.0"
+  },
+  "fixes": [
+    {
+      "id": "remove_unused_import",
+      "safety": "safe",
+      "description": "Remove the unused import",
+      "finding_refs": [
+        {
+          "sensor_id": "buildfix",
+          "code": "buildfix.unused_import",
+          "fingerprint": "fp_buildfix_1"
+        }
+      ]
+    },
+    {
+      "id": "rewrite_module",
+      "safety": "guarded",
+      "description": "Rewrite module boundaries"
+    }
+  ]
+}

@@ -7,16 +7,17 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "Domain logic: policy evaluation, highlight selection, deterministic ordering"
-readme.workspace = true
-keywords = ["ci", "policy", "domain", "evaluation", "ordering"]
+description = "Pure domain logic for deterministic ordering, policy evaluation, and report synthesis."
+readme = "README.md"
+keywords = ["ci", "policy", "deterministic", "findings", "receipts"]
 categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true
 sha2.workspace = true
 hex.workspace = true
-cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.1" }
+serde_json.workspace = true
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 
 [dev-dependencies]
 pretty_assertions.workspace = true

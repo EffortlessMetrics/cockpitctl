@@ -1,23 +1,23 @@
 {
-  "version": "0.2.1",
+  "version": "0.3.0",
   "train": "nightly",
   "tools": {
     "cockpitctl": {
-      "version": "0.2.1",
+      "version": "0.3.0",
       "assets": {
-        "linux-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64", "sha256": "" },
-        "darwin-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-darwin-x64", "sha256": "" },
-        "darwin-arm64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-darwin-arm64", "sha256": "" },
-        "windows-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-windows-x64.exe", "sha256": "" }
+        "linux-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-linux-x64", "sha256": "" },
+        "darwin-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-darwin-x64", "sha256": "" },
+        "darwin-arm64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-darwin-arm64", "sha256": "" },
+        "windows-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-windows-x64.exe", "sha256": "" }
       }
     },
     "conformctl": {
-      "version": "0.2.1",
+      "version": "0.3.0",
       "assets": {
-        "linux-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/conformctl-linux-x64", "sha256": "" },
-        "darwin-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/conformctl-darwin-x64", "sha256": "" },
-        "darwin-arm64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/conformctl-darwin-arm64", "sha256": "" },
-        "windows-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/conformctl-windows-x64.exe", "sha256": "" }
+        "linux-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/conformctl-linux-x64", "sha256": "" },
+        "darwin-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/conformctl-darwin-x64", "sha256": "" },
+        "darwin-arm64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/conformctl-darwin-arm64", "sha256": "" },
+        "windows-x64": { "url": "https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/conformctl-windows-x64.exe", "sha256": "" }
       }
     }
   },

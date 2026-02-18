@@ -36,7 +36,7 @@ Requires `quality-gate` to pass first.
 | Publish in dependency order | crates.io dependency resolution | ✅ |
 | 30s waits between tiers | crates.io index propagation | ✅ |
 
-**Publish order:** types → conform → domain → render → ingest → io → core → cockpitctl → conformctl
+**Publish order:** types → conform → domain → render → ingest → io → sarif → core → cockpitctl → conformctl
 
 ### 3. Build Binaries Job (`build-binaries`)
 
@@ -126,9 +126,9 @@ The release process is fully automated and triggered by version tags:
 1. Ensure all changes are merged to `main`
 2. Update `CHANGELOG.md` — move items from `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`
 3. Bump version in workspace `Cargo.toml` if needed
-4. Tag: `git tag v0.2.1 && git push origin v0.2.1`
+4. Tag: `git tag v0.3.0 && git push origin v0.3.0`
 5. Monitor the release workflow in GitHub Actions
-6. After release, run `scripts/smoke-test-release.sh v0.2.1` (or `.ps1` on Windows) to validate published artifacts
+6. After release, run `scripts/smoke-test-release.sh v0.3.0` (or `.ps1` on Windows) to validate published artifacts
 
 ## Comprehensive Release Documentation
 
@@ -159,16 +159,16 @@ If a critical issue is discovered after release:
 
 1. **Yank the crates** from crates.io:
    ```bash
-   cargo yank --vers 0.2.1 cockpitctl
+   cargo yank --vers 0.3.0 cockpitctl
    # Repeat for all published crates
    ```
 
 2. **Delete the GitHub release** (if necessary):
    ```bash
-   gh release delete v0.2.1 --yes
+   gh release delete v0.3.0 --yes
    ```
 
-3. **Prepare a patch release** (e.g., `v0.2.1`):
+3. **Prepare a patch release** (e.g., `v0.3.1`):
    - Fix the issue
    - Update CHANGELOG
    - Create new tag
@@ -180,13 +180,14 @@ See the [Release Manager Checklist](docs/how-to/release-manager-checklist.md#rol
 
 Each release produces:
 
-**Crates.io packages (9 crates):**
+**Crates.io packages (10 crates):**
 - `cockpitctl-types` — Core DTOs and embedded schemas
 - `cockpitctl-conform` — Conformance checking library
 - `cockpitctl-domain` — Pure determinism and selection logic
 - `cockpitctl-render` — Markdown renderer
 - `cockpitctl-ingest` — Orchestration and ports
 - `cockpitctl-io` — Filesystem adapters
+- `cockpitctl-sarif` — SARIF exporter
 - `cockpitctl-core` — Facade crate
 - `cockpitctl` — CLI binary
 - `conformctl` — Standalone conformance checker
@@ -233,14 +234,14 @@ Before creating a release tag, ensure:
 - [ ] Documentation is current and accurate
 - [ ] Schema sync check passes: `cargo run -p xtask -- schema-sync-check`
 - [ ] Golden tests pass: `cargo test -p cockpitctl --test ingest_golden`
-- [ ] Dry-run publishes succeed for all crates
+- [ ] Local package listing passes for all crates; release-workflow dry-runs succeed in CI
 - [ ] Security audit passes: `cargo audit`
 
 ### Post-Release Validation Summary
 
 After the release is complete:
 
-- [ ] Run smoke test script: `./scripts/smoke-test-release.sh v0.2.1`
+- [ ] Run smoke test script: `./scripts/smoke-test-release.sh v0.3.0`
 - [ ] Verify checksums match downloaded binaries
 - [ ] Test crates.io installation: `cargo add cockpitctl`
 - [ ] Test binaries on available platforms

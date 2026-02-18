@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(name = "conformctl")]
+#[command(version)]
 #[command(about = "Standalone conformance checker for cockpitctl sensor receipts")]
 struct Cli {
     #[command(subcommand)]
@@ -921,6 +922,13 @@ mod tests {
             },
         });
         assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn clap_supports_version_flag() {
+        let err = Cli::try_parse_from(["conformctl", "--version"])
+            .expect_err("version flag should short-circuit parse");
+        assert_eq!(err.kind(), clap::error::ErrorKind::DisplayVersion);
     }
 
     #[cfg(coverage)]

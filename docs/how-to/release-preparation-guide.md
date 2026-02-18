@@ -12,7 +12,7 @@ This guide provides comprehensive instructions for preparing and executing a coc
 
 ## Overview
 
-The cockpitctl release process is automated via GitHub Actions and triggered by pushing a version tag (e.g., `v0.2.1`). The workflow consists of five jobs:
+The cockpitctl release process is automated via GitHub Actions and triggered by pushing a version tag (e.g., `v0.3.0`). The workflow consists of five jobs:
 
 1. **Quality Gate** — Code formatting and linting checks
 2. **Publish** — Publishes crates to crates.io in dependency order
@@ -24,13 +24,14 @@ The cockpitctl release process is automated via GitHub Actions and triggered by 
 
 Each release produces:
 
-- **Crates.io packages**: 9 crates published to crates.io
+- **Crates.io packages**: 10 crates published to crates.io
   - `cockpitctl-types`
   - `cockpitctl-conform`
   - `cockpitctl-domain`
   - `cockpitctl-render`
   - `cockpitctl-ingest`
   - `cockpitctl-io`
+  - `cockpitctl-sarif`
   - `cockpitctl-core`
   - `cockpitctl`
   - `conformctl`
@@ -75,7 +76,7 @@ Verify version consistency across all files:
 # Check workspace Cargo.toml version
 grep "version = " Cargo.toml
 
-# The version should match the tag you plan to create (e.g., 0.2.1 for v0.2.1)
+# The version should match the tag you plan to create (e.g., 0.3.0 for v0.3.0)
 ```
 
 Files to verify:
@@ -124,7 +125,7 @@ Ensure embedded schemas are synchronized with source schemas:
 cargo run -p xtask -- schema-sync-check
 ```
 
-**Expected result**: No output (exit code 0) indicates schemas are in sync.
+**Expected result**: Command exits 0 and reports schemas are in sync.
 
 ### 6. Golden Tests Verification
 
@@ -136,24 +137,34 @@ cargo test -p cockpitctl --test ingest_golden
 
 **Expected result**: All golden tests pass.
 
-### 7. Dry-Run Publish Validation
+### 7. Package Validation + Dry-Run Strategy
 
-Perform dry-run publishes to catch packaging errors:
+Validate package contents locally before tagging:
 
 ```bash
-# For each crate in dependency order:
-cargo publish --dry-run -p cockpitctl-types
-cargo publish --dry-run -p cockpitctl-conform
-cargo publish --dry-run -p cockpitctl-domain
-cargo publish --dry-run -p cockpitctl-render
-cargo publish --dry-run -p cockpitctl-ingest
-cargo publish --dry-run -p cockpitctl-io
-cargo publish --dry-run -p cockpitctl-core
-cargo publish --dry-run -p cockpitctl
-cargo publish --dry-run -p conformctl
+cargo package --list -p cockpitctl-types
+cargo package --list -p cockpitctl-conform
+cargo package --list -p cockpitctl-domain
+cargo package --list -p cockpitctl-render
+cargo package --list -p cockpitctl-ingest
+cargo package --list -p cockpitctl-io
+cargo package --list -p cockpitctl-sarif
+cargo package --list -p cockpitctl-core
+cargo package --list -p cockpitctl
+cargo package --list -p conformctl
 ```
 
-**Expected result**: All dry-runs complete successfully with no warnings or errors.
+Optional local publish dry-run:
+
+```bash
+cargo publish --dry-run -p cockpitctl-types
+```
+
+`cargo publish --dry-run` for dependent crates can fail locally before release
+because the new dependency versions are not on crates.io yet. The release
+workflow handles this by running dry-run + publish in dependency tiers.
+
+**Expected result**: `cargo package --list` succeeds for all crates, and CI dry-runs pass during the release workflow.
 
 ### 8. Binary Build Verification
 
@@ -195,13 +206,13 @@ Once all pre-release verification steps pass, execute the release.
 
 ```bash
 # Create the version tag
-git tag v0.2.1
+git tag v0.3.0
 
 # Push the tag to trigger the release workflow
-git push origin v0.2.1
+git push origin v0.3.0
 ```
 
-**Note**: The tag format must be `v*` (e.g., `v0.2.1`, `v1.0.0`). The workflow will verify that the tag version matches the version in [`Cargo.toml`](../../Cargo.toml:17).
+**Note**: The tag format must be `v*` (e.g., `v0.3.0`, `v1.0.0`). The workflow will verify that the tag version matches the version in [`Cargo.toml`](../../Cargo.toml:17).
 
 ### 2. Monitor Release Workflow
 
@@ -221,7 +232,7 @@ git push origin v0.2.1
 Ensure all jobs complete successfully:
 
 - ✅ Quality Gate: `cargo fmt` and `cargo clippy` pass
-- ✅ Publish: All 9 crates published to crates.io
+- ✅ Publish: All 10 crates published to crates.io
 - ✅ Build Binaries: All 8 binaries built successfully
 - ✅ Test Binaries: All binaries pass smoke tests
 - ✅ GitHub Release: Release created with all assets
@@ -236,6 +247,7 @@ Visit crates.io to verify all packages are published:
 - https://crates.io/crates/cockpitctl-render
 - https://crates.io/crates/cockpitctl-ingest
 - https://crates.io/crates/cockpitctl-io
+- https://crates.io/crates/cockpitctl-sarif
 - https://crates.io/crates/cockpitctl-core
 - https://crates.io/crates/cockpitctl
 - https://crates.io/crates/conformctl
@@ -245,7 +257,7 @@ Visit crates.io to verify all packages are published:
 Visit the GitHub release page:
 
 ```
-https://github.com/EffortlessMetrics/cockpitctl/releases/tag/v0.2.1
+https://github.com/EffortlessMetrics/cockpitctl/releases/tag/v0.3.0
 ```
 
 Verify:
@@ -264,10 +276,10 @@ Run the smoke test script to validate published artifacts:
 
 ```bash
 # Unix/Linux/macOS
-./scripts/smoke-test-release.sh v0.2.1
+./scripts/smoke-test-release.sh v0.3.0
 
 # Windows PowerShell
-./scripts/smoke-test-release.ps1 v0.2.1
+./scripts/smoke-test-release.ps1 v0.3.0
 ```
 
 The smoke test validates:
@@ -284,10 +296,10 @@ Download and verify checksums:
 
 ```bash
 # Download checksums
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/SHA256SUMS.txt -o SHA256SUMS.txt
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/SHA256SUMS.txt -o SHA256SUMS.txt
 
 # Download a binary
-curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.2.1/cockpitctl-linux-x64 -o cockpitctl-linux-x64
+curl -fsSL https://github.com/EffortlessMetrics/cockpitctl/releases/download/v0.3.0/cockpitctl-linux-x64 -o cockpitctl-linux-x64
 chmod +x cockpitctl-linux-x64
 
 # Verify checksum
@@ -374,10 +386,10 @@ Commit fixes and create a new tag.
 ```bash
 # Update version in Cargo.toml
 # Then delete and recreate the tag
-git tag -d v0.2.1
-git push origin :refs/tags/v0.2.1
-git tag v0.2.1
-git push origin v0.2.1
+git tag -d v0.3.0
+git push origin :refs/tags/v0.3.0
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
 ### Publish Failures
@@ -416,17 +428,17 @@ If a critical issue is discovered after release:
 
 1. **Yank the crates** (if necessary):
    ```bash
-   cargo yank --vers 0.2.1 cockpitctl
-   cargo yank --vers 0.2.1 cockpitctl-core
+   cargo yank --vers 0.3.0 cockpitctl
+   cargo yank --vers 0.3.0 cockpitctl-core
    # ... repeat for all crates
    ```
 
 2. **Delete the GitHub release** (if necessary):
    ```bash
-   gh release delete v0.2.1 --yes
+   gh release delete v0.3.0 --yes
    ```
 
-3. **Prepare a patch release** (e.g., `v0.2.1`):
+3. **Prepare a patch release** (e.g., `v0.3.1`):
    - Fix the issue
    - Update CHANGELOG
    - Create new tag

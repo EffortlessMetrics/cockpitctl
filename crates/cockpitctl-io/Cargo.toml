@@ -7,9 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "Filesystem adapters implementing cockpitctl ports"
-readme.workspace = true
-keywords = ["ci", "filesystem", "adapters", "io"]
+description = "Filesystem adapters for cockpitctl ingest ports with path and size safety limits."
+readme = "README.md"
+keywords = ["ci", "filesystem", "adapters", "receipts", "security"]
 categories = ["development-tools", "filesystem"]
 
 [dependencies]
@@ -21,8 +21,8 @@ serde_json.workspace = true
 jsonschema.workspace = true
 wait-timeout.workspace = true
 base64.workspace = true
-cockpitctl-types = { path = "../cockpitctl-types", version = "0.2.1" }
-cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.2.1" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
+cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -19,15 +19,21 @@ pub use cockpitctl_ingest::{
 
 // Flatten the most-used types.
 pub use cockpitctl_types::{
-    ArtifactPointer, CockpitConfig, CockpitReport, PolicyOutcome, Presence, SensorReport, ToolInfo,
+    ArtifactPointer, BuildfixApplySummary, BuildfixPolicy, CockpitConfig, CockpitReport,
+    PolicyOutcome, PolicySignatureEvidence, PolicySigningConfig, Presence, SensorReport, ToolInfo,
     VerdictStatus,
 };
 
 // Flatten domain helpers.
-pub use cockpitctl_domain::{CodeExplanation, all_codes, explain_code};
+pub use cockpitctl_domain::{
+    CodeExplanation, all_codes, explain_code, policy_snapshot_sha256_hex, select_auto_apply_fixes,
+    sign_policy_snapshot, sign_policy_snapshot_hmac_sha256,
+};
 
 // Flatten SARIF export.
 pub use cockpitctl_sarif::{cockpit_report_to_sarif, cockpit_report_to_sarif_json};
 
 // Flatten the renderer.
-pub use cockpitctl_render::{GitHubAnnotationResult, render_comment, render_github_annotations};
+pub use cockpitctl_render::{
+    GitHubAnnotationResult, append_comment_sections, render_comment, render_github_annotations,
+};

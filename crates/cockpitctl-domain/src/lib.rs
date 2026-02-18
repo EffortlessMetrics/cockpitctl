@@ -5,6 +5,7 @@
 //!
 //! No filesystem, no clap, no network.
 
+use anyhow::Context;
 use cockpitctl_types::{
     CockpitConfig, CockpitReport, CountDeltas, Finding, FindingSortKey, Highlight, MissingPolicy,
     PolicyOutcome, PolicySensorSnapshot, PolicySnapshot, Presence, RunInfo, SensorPolicy,
@@ -929,15 +930,13 @@ pub fn compute_trend(baseline: &CockpitReport, current: &CockpitReport) -> Trend
 // Buildfix plan matching
 // ============================================================================
 
-use cockpitctl_types::{BuildfixPlan, BuildfixSummary, FixSummary, MatchedFinding, SafetyLevel};
+use cockpitctl_types::{
+    BuildfixPlan, BuildfixSummary, FixSummary, MatchedFinding, SafetyLevel, safety_level_rank,
+};
 
 /// Rank a safety level for sorting: safe=0, guarded=1, unsafe=2.
 fn safety_rank(s: &SafetyLevel) -> u8 {
-    match s {
-        SafetyLevel::Safe => 0,
-        SafetyLevel::Guarded => 1,
-        SafetyLevel::Unsafe => 2,
-    }
+    safety_level_rank(s)
 }
 
 /// Match fixes from a buildfix plan to findings in the report.
@@ -1012,4 +1011,116 @@ pub fn match_buildfix_plan(
         matched_count,
         unmatched_count,
     }
+}
+
+/// Select fixes eligible for auto-apply under the configured safety gate.
+///
+/// Selection is deterministic and preserves the existing sorted order from
+/// `BuildfixSummary` (`safe` -> `guarded` -> `unsafe`, then sensor/fix id).
+pub fn select_auto_apply_fixes(
+    summary: &BuildfixSummary,
+    max_auto_apply_safety: SafetyLevel,
+    require_matched_finding: bool,
+) -> Vec<FixSummary> {
+    let max_rank = safety_rank(&max_auto_apply_safety);
+    summary
+        .fixes
+        .iter()
+        .filter(|fix| {
+            safety_rank(&fix.safety) <= max_rank && (!require_matched_finding || !fix.unmatched)
+        })
+        .cloned()
+        .collect()
+}
+
+// ============================================================================
+// Policy snapshot signing
+// ============================================================================
+
+use cockpitctl_types::{
+    POLICY_SIGNATURE_SCHEMA_ID, PolicySignatureAlgorithm, PolicySignatureEvidence,
+};
+
+/// Canonical policy snapshot bytes used for hashing/signing.
+///
+/// Canonicalization is the compact serde JSON encoding of `PolicySnapshot`.
+/// Determinism relies on stable field ordering and pre-sorted vectors.
+pub fn canonical_policy_snapshot_bytes(policy: &PolicySnapshot) -> Result<Vec<u8>, anyhow::Error> {
+    serde_json::to_vec(policy).context("serialize policy snapshot for signing")
+}
+
+/// Compute SHA-256 digest (hex) of the canonical policy snapshot bytes.
+pub fn policy_snapshot_sha256_hex(policy: &PolicySnapshot) -> Result<String, anyhow::Error> {
+    let payload = canonical_policy_snapshot_bytes(policy)?;
+    Ok(hex::encode(Sha256::digest(payload)))
+}
+
+/// Sign the policy snapshot with the configured algorithm.
+pub fn sign_policy_snapshot(
+    policy: &PolicySnapshot,
+    algorithm: PolicySignatureAlgorithm,
+    key: &[u8],
+    key_id: Option<String>,
+) -> Result<PolicySignatureEvidence, anyhow::Error> {
+    match algorithm {
+        PolicySignatureAlgorithm::HmacSha256 => {
+            sign_policy_snapshot_hmac_sha256(policy, key, key_id)
+        }
+    }
+}
+
+/// Sign the policy snapshot using HMAC-SHA256.
+pub fn sign_policy_snapshot_hmac_sha256(
+    policy: &PolicySnapshot,
+    key: &[u8],
+    key_id: Option<String>,
+) -> Result<PolicySignatureEvidence, anyhow::Error> {
+    if key.is_empty() {
+        anyhow::bail!("policy signing key is empty");
+    }
+
+    let payload = canonical_policy_snapshot_bytes(policy)?;
+    let policy_sha256 = hex::encode(Sha256::digest(&payload));
+    let signature = hex::encode(hmac_sha256(key, &payload));
+
+    Ok(PolicySignatureEvidence {
+        schema: POLICY_SIGNATURE_SCHEMA_ID.to_string(),
+        algorithm: PolicySignatureAlgorithm::HmacSha256,
+        policy_sha256,
+        signature,
+        key_id,
+    })
+}
+
+fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
+    const BLOCK: usize = 64; // SHA-256 block size.
+    let mut key_block = [0u8; BLOCK];
+
+    if key.len() > BLOCK {
+        let hashed = Sha256::digest(key);
+        key_block[..32].copy_from_slice(&hashed);
+    } else {
+        key_block[..key.len()].copy_from_slice(key);
+    }
+
+    let mut ipad = [0x36u8; BLOCK];
+    let mut opad = [0x5cu8; BLOCK];
+    for i in 0..BLOCK {
+        ipad[i] ^= key_block[i];
+        opad[i] ^= key_block[i];
+    }
+
+    let mut inner = Sha256::new();
+    inner.update(ipad);
+    inner.update(message);
+    let inner_digest = inner.finalize();
+
+    let mut outer = Sha256::new();
+    outer.update(opad);
+    outer.update(inner_digest);
+    let digest = outer.finalize();
+
+    let mut out = [0u8; 32];
+    out.copy_from_slice(&digest);
+    out
 }

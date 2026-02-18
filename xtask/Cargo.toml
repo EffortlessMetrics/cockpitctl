@@ -5,6 +5,11 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 publish = false
+description = "Workspace task runner for schema sync, conformance checks, and fixture tooling."
+readme = "README.md"
+authors.workspace = true
+keywords = ["ci", "tooling", "schemas", "conformance", "fixtures"]
+categories = ["development-tools"]
 
 [[bin]]
 name = "xtask"

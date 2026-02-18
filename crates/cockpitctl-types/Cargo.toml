@@ -7,9 +7,9 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "DTOs and stable primitives for cockpitctl CI/CD aggregation"
-readme.workspace = true
-keywords = ["ci", "cd", "sensors", "receipts", "aggregation"]
+description = "Stable cockpitctl DTOs, enums, and embedded JSON schemas."
+readme = "README.md"
+keywords = ["ci", "types", "schema", "receipts", "deterministic"]
 categories = ["development-tools"]
 
 [dependencies]

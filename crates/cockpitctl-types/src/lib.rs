@@ -290,6 +290,42 @@ pub struct SensorPolicy {
     pub repro: Option<String>,
 }
 
+/// Buildfix auto-apply policy in cockpit.toml.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BuildfixPolicy {
+    /// Enable automatic fix application after ingest.
+    #[serde(default)]
+    pub auto_apply: bool,
+    /// Maximum safety level allowed for auto-apply.
+    #[serde(default = "default_buildfix_max_auto_apply_safety")]
+    pub max_auto_apply_safety: SafetyLevel,
+    /// Require each selected fix to match at least one surfaced finding.
+    #[serde(default = "default_buildfix_require_matched_finding")]
+    pub require_matched_finding: bool,
+    /// Optional external actuator command used to apply selected fixes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actuator: Option<BuildfixActuatorConfig>,
+}
+
+impl Default for BuildfixPolicy {
+    fn default() -> Self {
+        Self {
+            auto_apply: false,
+            max_auto_apply_safety: default_buildfix_max_auto_apply_safety(),
+            require_matched_finding: default_buildfix_require_matched_finding(),
+            actuator: None,
+        }
+    }
+}
+
+/// External command configuration for buildfix actuation.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BuildfixActuatorConfig {
+    pub command: String,
+    #[serde(default = "default_buildfix_actuator_timeout_ms")]
+    pub timeout_ms: u64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Policy {
     #[serde(default)]
@@ -324,6 +360,15 @@ fn default_max_annotations() -> usize {
 fn default_max_receipt_size_bytes() -> usize {
     2 * 1024 * 1024 // 2MB
 }
+fn default_buildfix_max_auto_apply_safety() -> SafetyLevel {
+    SafetyLevel::Safe
+}
+fn default_buildfix_require_matched_finding() -> bool {
+    true
+}
+fn default_buildfix_actuator_timeout_ms() -> u64 {
+    30_000 // 30 seconds
+}
 fn default_section_order() -> Vec<String> {
     vec![
         "Highlights".into(),
@@ -356,6 +401,10 @@ impl Default for Policy {
 pub struct CockpitConfig {
     #[serde(default)]
     pub policy: Policy,
+    #[serde(default)]
+    pub buildfix: BuildfixPolicy,
+    #[serde(default)]
+    pub policy_signing: PolicySigningConfig,
     #[serde(default)]
     pub sensors: std::collections::BTreeMap<String, SensorPolicy>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -479,6 +528,16 @@ pub enum SafetyLevel {
     Guarded,
     /// May break things; use with caution.
     Unsafe,
+}
+
+/// Rank a safety level for deterministic ordering and gating.
+/// Lower is safer.
+pub fn safety_level_rank(s: &SafetyLevel) -> u8 {
+    match s {
+        SafetyLevel::Safe => 0,
+        SafetyLevel::Guarded => 1,
+        SafetyLevel::Unsafe => 2,
+    }
 }
 
 /// Reference to a finding that a fix addresses.
@@ -611,6 +670,110 @@ pub struct BuildfixSummary {
     pub unmatched_count: usize,
 }
 
+/// Schema identifier for buildfix apply requests sent to actuator commands.
+pub const BUILDFIX_APPLY_REQUEST_SCHEMA_ID: &str = "buildfix.apply.request.v1";
+
+/// Structured request sent to a buildfix actuator command on stdin.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BuildfixApplyRequest {
+    pub schema: SchemaId,
+    pub max_auto_apply_safety: SafetyLevel,
+    pub require_matched_finding: bool,
+    pub fixes: Vec<FixSummary>,
+}
+
+/// Structured response returned by a buildfix actuator command on stdout.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BuildfixActuatorResult {
+    #[serde(default)]
+    pub applied_fix_ids: Vec<String>,
+    #[serde(default)]
+    pub skipped_fix_ids: Vec<String>,
+    #[serde(default)]
+    pub errors: Vec<String>,
+}
+
+/// Result status of buildfix auto-apply.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BuildfixApplyStatus {
+    Skipped,
+    Applied,
+    Failed,
+}
+
+/// Buildfix auto-apply evidence surfaced in `cockpit.report.v1` data.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BuildfixApplySummary {
+    pub status: BuildfixApplyStatus,
+    pub auto_apply_enabled: bool,
+    pub max_auto_apply_safety: SafetyLevel,
+    pub require_matched_finding: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub candidate_fix_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub selected_fix_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub applied_fix_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skipped_fix_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actuator_command: Option<String>,
+}
+
+// ============================================================================
+// Policy snapshot signing
+// ============================================================================
+
+/// Signature algorithm used for policy snapshot evidence.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum PolicySignatureAlgorithm {
+    /// HMAC-SHA256 over canonical policy snapshot JSON bytes.
+    #[default]
+    HmacSha256,
+}
+
+/// Policy snapshot signing config in cockpit.toml.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct PolicySigningConfig {
+    /// Enable policy snapshot signing.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Signature algorithm.
+    #[serde(default)]
+    pub algorithm: PolicySignatureAlgorithm,
+    /// Path to signing key bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_path: Option<String>,
+    /// Environment variable containing signing key bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_env: Option<String>,
+    /// Optional key identifier attached to produced evidence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_id: Option<String>,
+}
+
+/// Schema identifier for policy signature evidence.
+pub const POLICY_SIGNATURE_SCHEMA_ID: &str = "cockpit.policy_signature.v1";
+
+/// Signed evidence for the policy snapshot used to compute a cockpit verdict.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PolicySignatureEvidence {
+    pub schema: SchemaId,
+    pub algorithm: PolicySignatureAlgorithm,
+    /// SHA-256 digest (hex) of canonical policy snapshot JSON bytes.
+    pub policy_sha256: String,
+    /// Signature (hex) produced by the configured algorithm.
+    pub signature: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub key_id: Option<String>,
+}
+
 // ============================================================================
 // Hook config types
 // ============================================================================
@@ -636,5 +799,5 @@ pub struct HookConfig {
 }
 
 fn default_hook_timeout_ms() -> u64 {
-    30_000 // 30 seconds
+    default_buildfix_actuator_timeout_ms()
 }

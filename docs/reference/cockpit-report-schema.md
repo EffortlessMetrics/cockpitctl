@@ -42,7 +42,7 @@ cockpitctl version information.
 ```json
 "tool": {
   "name": "cockpitctl",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "commit": "abc1234"
 }
 ```
@@ -187,6 +187,20 @@ Director-specific payload for dashboards or downstream tools.
 }
 ```
 
+When policy signing is enabled, `data` also includes `_policy_signature`:
+
+```json
+"data": {
+  "_policy_signature": {
+    "schema": "cockpit.policy_signature.v1",
+    "algorithm": "hmac_sha256",
+    "policy_sha256": "<sha256-hex>",
+    "signature": "<hmac-hex>",
+    "key_id": "ci-key"
+  }
+}
+```
+
 ## Example Complete Report
 
 ```json
@@ -194,7 +208,7 @@ Director-specific payload for dashboards or downstream tools.
   "schema": "cockpit.report.v1",
   "tool": {
     "name": "cockpitctl",
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "run": {
     "started_at": "2024-01-15T10:35:00Z"
