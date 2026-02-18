@@ -166,7 +166,7 @@ jobs:
             binary_name: cockpitctl
             asset_name: cockpitctl-linux-x64
           - name: darwin-x64
-            os: macos-13
+            os: macos-latest
             target: x86_64-apple-darwin
             package: cockpitctl
             binary_name: cockpitctl
@@ -191,7 +191,7 @@ jobs:
             binary_name: conformctl
             asset_name: conformctl-linux-x64
           - name: darwin-x64
-            os: macos-13
+            os: macos-latest
             target: x86_64-apple-darwin
             package: conformctl
             binary_name: conformctl
@@ -264,7 +264,7 @@ jobs:
             binary_name: cockpitctl
             asset_name: cockpitctl-linux-x64
           - name: darwin-x64
-            os: macos-13
+            os: macos-latest
             target: x86_64-apple-darwin
             package: cockpitctl
             binary_name: cockpitctl
@@ -289,7 +289,7 @@ jobs:
             binary_name: conformctl
             asset_name: conformctl-linux-x64
           - name: darwin-x64
-            os: macos-13
+            os: macos-latest
             target: x86_64-apple-darwin
             package: conformctl
             binary_name: conformctl
