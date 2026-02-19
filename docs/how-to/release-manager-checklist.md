@@ -60,7 +60,7 @@ This comprehensive checklist guides release managers through preparing, executin
 
 ### Version Consistency Checks
 
-- [ ] **Verify workspace version in [`Cargo.toml`](../../Cargo.toml:17)**
+- [ ] **Verify workspace version in [`Cargo.toml`](../../Cargo.toml)**
   ```bash
   grep "version = " Cargo.toml
   ```

@@ -143,7 +143,7 @@ For detailed release procedures, refer to the following documentation:
 
 ### Version Management
 
-- All crates use the workspace version defined in `[workspace.package]` in [`Cargo.toml`](Cargo.toml:17)
+- All crates use the workspace version defined in `[workspace.package]` in [`Cargo.toml`](Cargo.toml)
 - Version consistency is verified by the release workflow before publishing
 - Follow Semantic Versioning (semver) for all releases
 
@@ -229,7 +229,7 @@ Typical workflow execution times:
 Before creating a release tag, ensure:
 
 - [ ] All quality checks pass locally (`cargo fmt`, `cargo clippy`, `cargo test`)
-- [ ] Version is consistent across [`Cargo.toml`](Cargo.toml:17) and intended tag
+- [ ] Version is consistent across [`Cargo.toml`](Cargo.toml) and intended tag
 - [ ] [`CHANGELOG.md`](CHANGELOG.md) is updated with release notes
 - [ ] Documentation is current and accurate
 - [ ] Schema sync check passes: `cargo run -p xtask -- schema-sync-check`
