@@ -26,13 +26,35 @@ clap.workspace = true
 serde_json.workspace = true
 toml.workspace = true
 time.workspace = true
+cockpitctl-domain-buildfix = { path = "../cockpitctl-domain-buildfix", version = "0.3.0", optional = true }
+cockpitctl-domain-signing = { path = "../cockpitctl-domain-signing", version = "0.3.0", optional = true }
 cockpitctl-core = { path = "../cockpitctl-core", version = "0.3.0" }
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.3.0" }
 cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
 cockpitctl-render = { path = "../cockpitctl-render", version = "0.3.0" }
+cockpitctl-feature-state = { path = "../cockpitctl-feature-state", version = "0.3.0" }
+cockpitctl-io-buildfix = { path = "../cockpitctl-io-buildfix", version = "0.3.0", optional = true }
 cockpitctl-io = { path = "../cockpitctl-io", version = "0.3.0" }
+cockpitctl-io-hooks = { path = "../cockpitctl-io-hooks", version = "0.3.0", optional = true }
+cockpitctl-io-policy-signing = { path = "../cockpitctl-io-policy-signing", version = "0.3.0", optional = true }
+cockpitctl-io-schema = { path = "../cockpitctl-io-schema", version = "0.3.0", optional = true }
 cockpitctl-sarif = { path = "../cockpitctl-sarif", version = "0.3.0" }
+
+[features]
+default = ["feature-hooks", "feature-buildfix", "feature-policy-signing", "feature-schema"]
+feature-hooks = [
+    "dep:cockpitctl-io-hooks",
+]
+feature-buildfix = [
+    "dep:cockpitctl-domain-buildfix",
+    "dep:cockpitctl-io-buildfix",
+]
+feature-policy-signing = [
+    "dep:cockpitctl-domain-signing",
+    "dep:cockpitctl-io-policy-signing",
+]
+feature-schema = ["dep:cockpitctl-io-schema"]
 
 [dev-dependencies]
 assert_cmd.workspace = true
@@ -40,6 +62,7 @@ predicates.workspace = true
 pretty_assertions.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+cockpitctl-feature-grid = { path = "../cockpitctl-feature-grid", version = "0.3.0" }
 cucumber.workspace = true
 futures.workspace = true
 toml.workspace = true

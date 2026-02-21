@@ -2,8 +2,21 @@ use std::collections::BTreeMap;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+#[cfg(feature = "feature-buildfix")]
+use cockpitctl_domain_buildfix as domain_buildfix;
+#[cfg(feature = "feature-policy-signing")]
+use cockpitctl_domain_signing as domain_signing;
+use cockpitctl_feature_state::{Feature, RuntimeFeatureState};
 use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator, SchemaValidator};
-use cockpitctl_io::{FsLayout, FsOutputSink, FsPolicySource, FsReceiptSource, JsonSchemaValidator};
+use cockpitctl_io::{FsLayout, FsOutputSink, FsPolicySource, FsReceiptSource};
+#[cfg(feature = "feature-buildfix")]
+use cockpitctl_io_buildfix as io_buildfix;
+#[cfg(feature = "feature-hooks")]
+use cockpitctl_io_hooks as io_hooks;
+#[cfg(feature = "feature-policy-signing")]
+use cockpitctl_io_policy_signing as io_policy_signing;
+#[cfg(feature = "feature-schema")]
+use cockpitctl_io_schema::JsonSchemaValidator;
 use cockpitctl_render::{append_comment_sections, render_comment, render_github_annotations};
 use cockpitctl_types::{
     BUILDFIX_APPLY_REQUEST_SCHEMA_ID, BuildfixActuatorConfig, BuildfixApplyRequest,
@@ -118,9 +131,21 @@ enum Commands {
         #[arg(long)]
         buildfix_actuator_timeout_ms: Option<u64>,
 
+        /// Disable hook execution for this run (explicit runtime capability toggle).
+        #[arg(long)]
+        disable_hooks: bool,
+
         /// Enable policy snapshot signing for this run.
         #[arg(long)]
         policy_sign: bool,
+
+        /// Disable buildfix orchestration and auto-apply for this run.
+        #[arg(long)]
+        disable_buildfix: bool,
+
+        /// Disable policy signing for this run.
+        #[arg(long)]
+        disable_policy_signing: bool,
 
         /// Override policy signing key path.
         #[arg(long, conflicts_with = "policy_sign_key_env")]
@@ -175,7 +200,10 @@ struct IngestOptions {
     buildfix_max_auto_apply_safety: Option<SafetyLevelMode>,
     buildfix_actuator: Option<String>,
     buildfix_actuator_timeout_ms: Option<u64>,
+    disable_hooks: bool,
     policy_sign: bool,
+    disable_buildfix: bool,
+    disable_policy_signing: bool,
     policy_sign_key_path: Option<String>,
     policy_sign_key_env: Option<String>,
     policy_sign_key_id: Option<String>,
@@ -213,6 +241,9 @@ fn run(cli: Cli) -> Result<i32> {
             buildfix_max_auto_apply_safety,
             buildfix_actuator,
             buildfix_actuator_timeout_ms,
+            disable_hooks,
+            disable_buildfix,
+            disable_policy_signing,
             policy_sign,
             policy_sign_key_path,
             policy_sign_key_env,
@@ -229,6 +260,9 @@ fn run(cli: Cli) -> Result<i32> {
             buildfix_max_auto_apply_safety,
             buildfix_actuator,
             buildfix_actuator_timeout_ms,
+            disable_hooks,
+            disable_buildfix,
+            disable_policy_signing,
             policy_sign,
             policy_sign_key_path,
             policy_sign_key_env,
@@ -269,11 +303,26 @@ fn cmd_ingest(opts: IngestOptions) -> Result<i32> {
         buildfix_max_auto_apply_safety,
         buildfix_actuator,
         buildfix_actuator_timeout_ms,
+        disable_hooks,
+        disable_buildfix,
+        disable_policy_signing,
         policy_sign,
         policy_sign_key_path,
         policy_sign_key_env,
         policy_sign_key_id,
     } = opts;
+
+    let feature_state = RuntimeFeatureState::from_disable_flags(
+        Feature::Hooks.is_available(),
+        disable_hooks,
+        Feature::Buildfix.is_available(),
+        disable_buildfix,
+        Feature::PolicySigning.is_available(),
+        disable_policy_signing,
+    );
+    let hooks_enabled = feature_state.hooks();
+    let buildfix_enabled = feature_state.buildfix();
+    let policy_signing_enabled = feature_state.policy_signing();
 
     // Two-phase config loading: read config first to extract operational limits,
     // then build adapters with those limits. Config is parsed again inside
@@ -375,12 +424,24 @@ fn cmd_ingest(opts: IngestOptions) -> Result<i32> {
             uc.execute(req).context("ingest")?
         }
         _ => {
-            let validator = JsonSchemaValidator::sensor_report_v1()
-                .context("load sensor.report.v1 JSON schema")?;
-            let uc = IngestUseCase::new(receipts, policy, output, validator, |r, cfg| {
-                render_comment(r, cfg)
-            });
-            uc.execute(req).context("ingest")?
+            #[cfg(feature = "feature-schema")]
+            {
+                let validator = JsonSchemaValidator::sensor_report_v1()
+                    .context("load sensor.report.v1 JSON schema")?;
+                let uc = IngestUseCase::new(receipts, policy, output, validator, |r, cfg| {
+                    render_comment(r, cfg)
+                });
+                uc.execute(req).context("ingest")?
+            }
+            #[cfg(not(feature = "feature-schema"))]
+            {
+                eprintln!("cockpitctl: schema feature disabled in this build; running in lax mode");
+                let uc =
+                    IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, |r, cfg| {
+                        render_comment(r, cfg)
+                    });
+                uc.execute(req).context("ingest")?
+            }
         }
     };
 
@@ -427,166 +488,264 @@ fn cmd_ingest(opts: IngestOptions) -> Result<i32> {
         || buildfix_max_auto_apply_safety.is_some()
         || buildfix_actuator_override.is_some()
         || buildfix_actuator_timeout_ms.is_some();
-    if result.buildfix.is_some() || buildfix_apply_requested {
-        let candidate_fix_ids: Vec<String> = result
-            .buildfix
-            .as_ref()
-            .map(|bf| bf.fixes.iter().map(|f| f.fix_id.clone()).collect())
-            .unwrap_or_default();
-        let selected_fixes = result
-            .buildfix
-            .as_ref()
-            .map(|bf| {
-                cockpitctl_domain::select_auto_apply_fixes(
-                    bf,
-                    effective_buildfix.max_auto_apply_safety,
-                    effective_buildfix.require_matched_finding,
-                )
-            })
-            .unwrap_or_default();
-        let selected_fix_ids: Vec<String> =
-            selected_fixes.iter().map(|f| f.fix_id.clone()).collect();
-
-        let mut apply_summary = BuildfixApplySummary {
-            status: BuildfixApplyStatus::Skipped,
-            auto_apply_enabled: effective_buildfix.auto_apply,
-            max_auto_apply_safety: effective_buildfix.max_auto_apply_safety,
-            require_matched_finding: effective_buildfix.require_matched_finding,
-            candidate_fix_ids,
-            selected_fix_ids,
-            applied_fix_ids: Vec::new(),
-            skipped_fix_ids: Vec::new(),
-            errors: Vec::new(),
-            reason: None,
-            actuator_command: effective_buildfix
-                .actuator
+    #[cfg(feature = "feature-buildfix")]
+    {
+        if buildfix_enabled && (result.buildfix.is_some() || buildfix_apply_requested) {
+            let candidate_fix_ids: Vec<String> = result
+                .buildfix
                 .as_ref()
-                .map(|a| a.command.clone()),
-        };
+                .map(|bf| bf.fixes.iter().map(|f| f.fix_id.clone()).collect())
+                .unwrap_or_default();
+            let selected_fixes = result
+                .buildfix
+                .as_ref()
+                .map(|bf| {
+                    domain_buildfix::select_auto_apply_fixes(
+                        bf,
+                        effective_buildfix.max_auto_apply_safety,
+                        effective_buildfix.require_matched_finding,
+                    )
+                })
+                .unwrap_or_default();
+            let selected_fix_ids: Vec<String> =
+                selected_fixes.iter().map(|f| f.fix_id.clone()).collect();
 
-        if result.buildfix.is_none() {
-            apply_summary.reason = Some("no_buildfix_plans".to_string());
-        } else if !effective_buildfix.auto_apply {
-            apply_summary.reason = Some("auto_apply_disabled".to_string());
-        } else if selected_fixes.is_empty() {
-            apply_summary.reason = Some("no_eligible_fixes".to_string());
-        } else if let Some(actuator) = &effective_buildfix.actuator {
-            let request = BuildfixApplyRequest {
-                schema: BUILDFIX_APPLY_REQUEST_SCHEMA_ID.to_string(),
+            let mut apply_summary = BuildfixApplySummary {
+                status: BuildfixApplyStatus::Skipped,
+                auto_apply_enabled: effective_buildfix.auto_apply,
                 max_auto_apply_safety: effective_buildfix.max_auto_apply_safety,
                 require_matched_finding: effective_buildfix.require_matched_finding,
-                fixes: selected_fixes,
+                candidate_fix_ids,
+                selected_fix_ids,
+                applied_fix_ids: Vec::new(),
+                skipped_fix_ids: Vec::new(),
+                errors: Vec::new(),
+                reason: None,
+                actuator_command: effective_buildfix
+                    .actuator
+                    .as_ref()
+                    .map(|a| a.command.clone()),
             };
 
-            match cockpitctl_io::run_buildfix_actuator(actuator, &request) {
-                Ok(out) => {
-                    apply_summary.applied_fix_ids = out.applied_fix_ids;
-                    apply_summary.skipped_fix_ids = out.skipped_fix_ids;
-                    apply_summary.errors = out.errors;
-                    if apply_summary.errors.is_empty() {
-                        apply_summary.status = BuildfixApplyStatus::Applied;
-                    } else {
+            if result.buildfix.is_none() {
+                apply_summary.reason = Some("no_buildfix_plans".to_string());
+            } else if !effective_buildfix.auto_apply {
+                apply_summary.reason = Some("auto_apply_disabled".to_string());
+            } else if selected_fixes.is_empty() {
+                apply_summary.reason = Some("no_eligible_fixes".to_string());
+            } else if let Some(actuator) = &effective_buildfix.actuator {
+                let request = BuildfixApplyRequest {
+                    schema: BUILDFIX_APPLY_REQUEST_SCHEMA_ID.to_string(),
+                    max_auto_apply_safety: effective_buildfix.max_auto_apply_safety,
+                    require_matched_finding: effective_buildfix.require_matched_finding,
+                    fixes: selected_fixes,
+                };
+
+                match io_buildfix::run_buildfix_actuator(actuator, &request) {
+                    Ok(out) => {
+                        apply_summary.applied_fix_ids = out.applied_fix_ids;
+                        apply_summary.skipped_fix_ids = out.skipped_fix_ids;
+                        apply_summary.errors = out.errors;
+                        if apply_summary.errors.is_empty() {
+                            apply_summary.status = BuildfixApplyStatus::Applied;
+                        } else {
+                            apply_summary.status = BuildfixApplyStatus::Failed;
+                            apply_summary.reason = Some("actuator_reported_errors".to_string());
+                        }
+                    }
+                    Err(e) => {
                         apply_summary.status = BuildfixApplyStatus::Failed;
-                        apply_summary.reason = Some("actuator_reported_errors".to_string());
+                        apply_summary.reason = Some("actuator_error".to_string());
+                        apply_summary.errors.push(format!("{:#}", e));
                     }
                 }
-                Err(e) => {
-                    apply_summary.status = BuildfixApplyStatus::Failed;
-                    apply_summary.reason = Some("actuator_error".to_string());
-                    apply_summary.errors.push(format!("{:#}", e));
-                }
+            } else {
+                apply_summary.reason = Some("no_actuator_configured".to_string());
             }
-        } else {
-            apply_summary.reason = Some("no_actuator_configured".to_string());
+
+            let summary_value =
+                serde_json::to_value(&apply_summary).context("serialize buildfix apply summary")?;
+            let data = result
+                .report
+                .data
+                .get_or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+            if let Some(obj) = data.as_object_mut() {
+                obj.insert("_buildfix_apply".to_string(), summary_value);
+            }
+
+            let mut sidecar = serde_json::to_string_pretty(&apply_summary)
+                .context("serialize buildfix sidecar")?;
+            sidecar.push('\n');
+            let post_output = FsOutputSink::new(layout.clone());
+            cockpitctl_ingest::OutputSink::write_extra_file(
+                &post_output,
+                "buildfix.apply.json",
+                sidecar.as_bytes(),
+            )
+            .context("write buildfix.apply.json")?;
+
+            result.comment_md = render_comment(&result.report, &pre_cfg);
+            let mut report_json = serde_json::to_string_pretty(&result.report)
+                .context("serialize cockpit report (buildfix apply)")?;
+            report_json.push('\n');
+            cockpitctl_ingest::OutputSink::write_cockpit_report(&post_output, &report_json)
+                .context("write cockpit report (buildfix apply)")?;
+            cockpitctl_ingest::OutputSink::write_cockpit_comment(&post_output, &result.comment_md)
+                .context("write cockpit comment (buildfix apply)")?;
         }
 
-        let summary_value =
-            serde_json::to_value(&apply_summary).context("serialize buildfix apply summary")?;
-        let data = result
+        if !buildfix_enabled && (result.buildfix.is_some() || buildfix_apply_requested) {
+            if let Some(data) = result
+                .report
+                .data
+                .as_mut()
+                .and_then(serde_json::Value::as_object_mut)
+            {
+                data.remove("_buildfix");
+                data.remove("_buildfix_apply");
+            }
+
+            let mut report_json =
+                serde_json::to_string_pretty(&result.report).context("serialize cockpit report")?;
+            report_json.push('\n');
+            let post_output = FsOutputSink::new(layout.clone());
+            result.comment_md = render_comment(&result.report, &pre_cfg);
+            cockpitctl_ingest::OutputSink::write_cockpit_report(&post_output, &report_json)
+                .context("write cockpit report (buildfix disabled)")?;
+            cockpitctl_ingest::OutputSink::write_cockpit_comment(&post_output, &result.comment_md)
+                .context("write cockpit comment (buildfix disabled)")?;
+            let _ = std::fs::remove_file(layout.out_dir.join("buildfix.apply.json"));
+        }
+    }
+    #[cfg(not(feature = "feature-buildfix"))]
+    if result.buildfix.is_some() || buildfix_apply_requested {
+        // Buildfix support is intentionally unavailable in this build.
+        if let Some(data) = result
             .report
             .data
-            .get_or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
-        if let Some(obj) = data.as_object_mut() {
-            obj.insert("_buildfix_apply".to_string(), summary_value);
+            .as_mut()
+            .and_then(serde_json::Value::as_object_mut)
+        {
+            data.remove("_buildfix");
+            data.remove("_buildfix_apply");
         }
 
-        let mut sidecar =
-            serde_json::to_string_pretty(&apply_summary).context("serialize buildfix sidecar")?;
-        sidecar.push('\n');
-        let post_output = FsOutputSink::new(layout.clone());
-        cockpitctl_ingest::OutputSink::write_extra_file(
-            &post_output,
-            "buildfix.apply.json",
-            sidecar.as_bytes(),
-        )
-        .context("write buildfix.apply.json")?;
-
-        result.comment_md = render_comment(&result.report, &pre_cfg);
-        let mut report_json = serde_json::to_string_pretty(&result.report)
-            .context("serialize cockpit report (buildfix apply)")?;
+        let mut report_json =
+            serde_json::to_string_pretty(&result.report).context("serialize cockpit report")?;
         report_json.push('\n');
+        let post_output = FsOutputSink::new(layout.clone());
+        result.comment_md = render_comment(&result.report, &pre_cfg);
         cockpitctl_ingest::OutputSink::write_cockpit_report(&post_output, &report_json)
-            .context("write cockpit report (buildfix apply)")?;
+            .context("write cockpit report (buildfix unavailable)")?;
         cockpitctl_ingest::OutputSink::write_cockpit_comment(&post_output, &result.comment_md)
-            .context("write cockpit comment (buildfix apply)")?;
+            .context("write cockpit comment (buildfix unavailable)")?;
+        let _ = std::fs::remove_file(layout.out_dir.join("buildfix.apply.json"));
     }
 
     // Policy snapshot signing (tamper-evident policy provenance).
-    if effective_policy_signing.enabled {
-        let key = cockpitctl_io::load_policy_signing_key(&effective_policy_signing)
-            .context("load policy signing key")?
-            .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "policy signing enabled but no key configured; set [policy_signing].key_path, [policy_signing].key_env, --policy-sign-key-path, or --policy-sign-key-env"
-                )
-            })?;
+    #[cfg(feature = "feature-policy-signing")]
+    {
+        if effective_policy_signing.enabled && policy_signing_enabled {
+            let key = io_policy_signing::load_policy_signing_key(&effective_policy_signing)
+                .context("load policy signing key")?
+                .ok_or_else(|| {
+                    anyhow::anyhow!(
+                        "policy signing enabled but no key configured; set [policy_signing].key_path, [policy_signing].key_env, --policy-sign-key-path, or --policy-sign-key-env"
+                    )
+                })?;
 
-        let signature = cockpitctl_domain::sign_policy_snapshot(
-            &result.report.policy,
-            effective_policy_signing.algorithm,
-            &key,
-            effective_policy_signing.key_id.clone(),
-        )
-        .context("sign policy snapshot")?;
+            let signature = domain_signing::sign_policy_snapshot(
+                &result.report.policy,
+                effective_policy_signing.algorithm,
+                &key,
+                effective_policy_signing.key_id.clone(),
+            )
+            .context("sign policy snapshot")?;
 
-        let signature_value =
-            serde_json::to_value(&signature).context("serialize policy signature evidence")?;
-        let data = result
-            .report
-            .data
-            .get_or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
-        if let Some(obj) = data.as_object_mut() {
-            obj.insert("_policy_signature".to_string(), signature_value);
+            let signature_value =
+                serde_json::to_value(&signature).context("serialize policy signature evidence")?;
+            let data = result
+                .report
+                .data
+                .get_or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+            if let Some(obj) = data.as_object_mut() {
+                obj.insert("_policy_signature".to_string(), signature_value);
+            }
+
+            let mut sidecar = serde_json::to_string_pretty(&signature)
+                .context("serialize policy signature sidecar")?;
+            sidecar.push('\n');
+            let post_output = FsOutputSink::new(layout.clone());
+            cockpitctl_ingest::OutputSink::write_extra_file(
+                &post_output,
+                "policy.signature.json",
+                sidecar.as_bytes(),
+            )
+            .context("write policy.signature.json")?;
+
+            result.comment_md = render_comment(&result.report, &pre_cfg);
+            let mut report_json = serde_json::to_string_pretty(&result.report)
+                .context("serialize cockpit report (policy signing)")?;
+            report_json.push('\n');
+            cockpitctl_ingest::OutputSink::write_cockpit_report(&post_output, &report_json)
+                .context("write cockpit report (policy signing)")?;
+            cockpitctl_ingest::OutputSink::write_cockpit_comment(&post_output, &result.comment_md)
+                .context("write cockpit comment (policy signing)")?;
         }
 
-        let mut sidecar = serde_json::to_string_pretty(&signature)
-            .context("serialize policy signature sidecar")?;
-        sidecar.push('\n');
-        let post_output = FsOutputSink::new(layout.clone());
-        cockpitctl_ingest::OutputSink::write_extra_file(
-            &post_output,
-            "policy.signature.json",
-            sidecar.as_bytes(),
-        )
-        .context("write policy.signature.json")?;
+        if effective_policy_signing.enabled && !policy_signing_enabled {
+            if let Some(data) = result
+                .report
+                .data
+                .as_mut()
+                .and_then(serde_json::Value::as_object_mut)
+            {
+                data.remove("_policy_signature");
+            }
 
-        result.comment_md = render_comment(&result.report, &pre_cfg);
-        let mut report_json = serde_json::to_string_pretty(&result.report)
-            .context("serialize cockpit report (policy signing)")?;
+            let mut report_json =
+                serde_json::to_string_pretty(&result.report).context("serialize cockpit report")?;
+            report_json.push('\n');
+            let post_output = FsOutputSink::new(layout.clone());
+            result.comment_md = render_comment(&result.report, &pre_cfg);
+            cockpitctl_ingest::OutputSink::write_cockpit_report(&post_output, &report_json)
+                .context("write cockpit report (policy signing disabled)")?;
+            cockpitctl_ingest::OutputSink::write_cockpit_comment(&post_output, &result.comment_md)
+                .context("write cockpit comment (policy signing disabled)")?;
+            let _ = std::fs::remove_file(layout.out_dir.join("policy.signature.json"));
+        }
+    }
+    #[cfg(not(feature = "feature-policy-signing"))]
+    if effective_policy_signing.enabled {
+        if let Some(data) = result
+            .report
+            .data
+            .as_mut()
+            .and_then(serde_json::Value::as_object_mut)
+        {
+            data.remove("_policy_signature");
+        }
+
+        let mut report_json =
+            serde_json::to_string_pretty(&result.report).context("serialize cockpit report")?;
         report_json.push('\n');
+        let post_output = FsOutputSink::new(layout.clone());
+        result.comment_md = render_comment(&result.report, &pre_cfg);
         cockpitctl_ingest::OutputSink::write_cockpit_report(&post_output, &report_json)
-            .context("write cockpit report (policy signing)")?;
+            .context("write cockpit report (policy signing unavailable)")?;
         cockpitctl_ingest::OutputSink::write_cockpit_comment(&post_output, &result.comment_md)
-            .context("write cockpit comment (policy signing)")?;
+            .context("write cockpit comment (policy signing unavailable)")?;
+        let _ = std::fs::remove_file(layout.out_dir.join("policy.signature.json"));
     }
 
     // Run post-processor hooks if configured.
-    if !pre_cfg.hooks.is_empty() {
+    #[cfg(feature = "feature-hooks")]
+    if hooks_enabled && !pre_cfg.hooks.is_empty() {
         let report_json =
             serde_json::to_string_pretty(&result.report).context("serialize report for hooks")?;
         let hook_output = FsOutputSink::new(layout);
-        let sections = cockpitctl_io::run_hooks(&pre_cfg.hooks, &report_json, &hook_output)
-            .context("run hooks")?;
+        let sections =
+            io_hooks::run_hooks(&pre_cfg.hooks, &report_json, &hook_output).context("run hooks")?;
         if !sections.is_empty() {
             let pairs: Vec<(String, String)> = sections
                 .iter()
@@ -597,6 +756,10 @@ fn cmd_ingest(opts: IngestOptions) -> Result<i32> {
                 .context("write augmented cockpit comment")?;
             eprintln!("cockpitctl: {} hook section(s) appended", sections.len());
         }
+    }
+    #[cfg(not(feature = "feature-hooks"))]
+    if !pre_cfg.hooks.is_empty() {
+        eprintln!("cockpitctl: hook execution disabled in this build");
     }
 
     Ok(result.exit_code)
@@ -668,50 +831,66 @@ fn cmd_validate(input: &str, _strict: bool, lax: bool) -> Result<i32> {
             anyhow::bail!("input did not parse as SensorReport or CockpitReport")
         }
         SchemaValidation::Strict => {
+            #[cfg(feature = "feature-schema")]
             let value: serde_json::Value =
                 serde_json::from_slice(&bytes).context("parse JSON input")?;
-            let schema_hint = value.get("schema").and_then(|s| s.as_str());
+            #[cfg(feature = "feature-schema")]
+            {
+                let schema_hint = value.get("schema").and_then(|s| s.as_str());
 
-            let mut candidates = Vec::new();
-            if schema_hint == Some("cockpit.report.v1") {
-                candidates.push((
-                    "cockpit.report.v1",
-                    JsonSchemaValidator::cockpit_report_v1()
-                        .context("load cockpit.report.v1 JSON schema")?,
-                ));
-            } else if schema_hint.is_some() {
-                candidates.push((
-                    "sensor.report.v1",
-                    JsonSchemaValidator::sensor_report_v1()
-                        .context("load sensor.report.v1 JSON schema")?,
-                ));
-            } else {
-                candidates.push((
-                    "sensor.report.v1",
-                    JsonSchemaValidator::sensor_report_v1()
-                        .context("load sensor.report.v1 JSON schema")?,
-                ));
-                candidates.push((
-                    "cockpit.report.v1",
-                    JsonSchemaValidator::cockpit_report_v1()
-                        .context("load cockpit.report.v1 JSON schema")?,
-                ));
-            }
+                let mut candidates = Vec::new();
+                if schema_hint == Some("cockpit.report.v1") {
+                    candidates.push((
+                        "cockpit.report.v1",
+                        JsonSchemaValidator::cockpit_report_v1()
+                            .context("load cockpit.report.v1 JSON schema")?,
+                    ));
+                } else if schema_hint.is_some() {
+                    candidates.push((
+                        "sensor.report.v1",
+                        JsonSchemaValidator::sensor_report_v1()
+                            .context("load sensor.report.v1 JSON schema")?,
+                    ));
+                } else {
+                    candidates.push((
+                        "sensor.report.v1",
+                        JsonSchemaValidator::sensor_report_v1()
+                            .context("load sensor.report.v1 JSON schema")?,
+                    ));
+                    candidates.push((
+                        "cockpit.report.v1",
+                        JsonSchemaValidator::cockpit_report_v1()
+                            .context("load cockpit.report.v1 JSON schema")?,
+                    ));
+                }
 
-            let mut errors = Vec::new();
-            for (label, validator) in candidates {
-                match validator.validate_receipt(&bytes)? {
-                    cockpitctl_ingest::SchemaValidationResult::Valid => {
-                        eprintln!("ok: validated as {}", label);
-                        return Ok(0);
-                    }
-                    cockpitctl_ingest::SchemaValidationResult::Invalid(errs) => {
-                        errors.push(format_schema_errors(label, &errs));
+                let mut errors = Vec::new();
+                for (label, validator) in candidates {
+                    match validator.validate_receipt(&bytes)? {
+                        cockpitctl_ingest::SchemaValidationResult::Valid => {
+                            eprintln!("ok: validated as {}", label);
+                            return Ok(0);
+                        }
+                        cockpitctl_ingest::SchemaValidationResult::Invalid(errs) => {
+                            errors.push(format_schema_errors(label, &errs));
+                        }
                     }
                 }
-            }
 
-            anyhow::bail!("strict validation failed:\n{}", errors.join("\n"))
+                anyhow::bail!("strict validation failed:\n{}", errors.join("\n"))
+            }
+            #[cfg(not(feature = "feature-schema"))]
+            {
+                eprintln!(
+                    "cockpitctl: schema feature disabled in this build; validating with parse checks"
+                );
+                if serde_json::from_slice::<cockpitctl_types::SensorReport>(&bytes).is_ok()
+                    || serde_json::from_slice::<cockpitctl_types::CockpitReport>(&bytes).is_ok()
+                {
+                    return Ok(0);
+                }
+                anyhow::bail!("input did not parse as known cockpit report type")
+            }
         }
     }
 }
@@ -827,6 +1006,9 @@ mod tests {
             buildfix_max_auto_apply_safety: None,
             buildfix_actuator: None,
             buildfix_actuator_timeout_ms: None,
+            disable_hooks: false,
+            disable_buildfix: false,
+            disable_policy_signing: false,
             policy_sign: false,
             policy_sign_key_path: None,
             policy_sign_key_env: None,
@@ -1124,6 +1306,9 @@ mod tests {
                 buildfix_max_auto_apply_safety: None,
                 buildfix_actuator: None,
                 buildfix_actuator_timeout_ms: None,
+                disable_hooks: false,
+                disable_buildfix: false,
+                disable_policy_signing: false,
                 policy_sign: false,
                 policy_sign_key_path: None,
                 policy_sign_key_env: None,

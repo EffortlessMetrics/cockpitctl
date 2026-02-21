@@ -1,0 +1,16 @@
+[package]
+name = "cockpitctl-domain-trend"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Trend computation domain boundary extracted from cockpitctl-domain."
+
+[dependencies]
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
+
+[dev-dependencies]
+pretty_assertions.workspace = true

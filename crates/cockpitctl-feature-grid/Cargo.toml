@@ -1,0 +1,16 @@
+[package]
+name = "cockpitctl-feature-grid"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Shared BDD feature-toggle grid and runtime state helpers."
+readme = "README.md"
+keywords = ["ci", "feature-flags", "bdd", "interop", "ingest"]
+categories = ["development-tools"]
+
+[dependencies]
+cockpitctl-feature-state = { path = "../cockpitctl-feature-state", version = "0.3.0" }

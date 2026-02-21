@@ -251,6 +251,45 @@ Feature: cockpitctl ingest
     And the report field "data._policy_signature.key_id" equals "ci-key"
     And the comment contains "### Policy Signature"
 
+  # --------------------------------------------------------------------------
+  # Feature Gate Matrix
+  # --------------------------------------------------------------------------
+
+  Scenario Outline: hook feature is runtime-gated
+    Given a fixture "happy_path"
+    And a hook script is configured
+    When I run "cockpitctl ingest" on the fixture with "<args>"
+    Then the exit code is 0
+    And the feature "hooks" is "<state>"
+
+    Examples:
+      | args                                     | state   |
+      | --format cockpit                         | present |
+      | --disable-hooks --format cockpit         | absent  |
+
+  Scenario Outline: buildfix feature is runtime-gated
+    Given a fixture "buildfix_plan"
+    When I run "cockpitctl ingest" on the fixture with "<args>"
+    Then the exit code is 0
+    And the feature "buildfix" is "<state>"
+
+    Examples:
+      | args                                        | state   |
+      | --format cockpit                            | present |
+      | --disable-buildfix --format cockpit         | absent  |
+
+  Scenario Outline: policy-signing feature is runtime-gated
+    Given a fixture "happy_path"
+    And a policy signing key file
+    When I run "cockpitctl ingest" on the fixture with "<args>"
+    Then the exit code is 0
+    And the feature "policy-signing" is "<state>"
+
+    Examples:
+      | args                                                                                                         | state   |
+      | --policy-sign --policy-sign-key-path {policy_sign_key} --policy-sign-key-id ci-key --format cockpit          | present |
+      | --disable-policy-signing --policy-sign --policy-sign-key-path {policy_sign_key} --policy-sign-key-id ci-key --format cockpit | absent  |
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Determinism
   # ─────────────────────────────────────────────────────────────────────────────

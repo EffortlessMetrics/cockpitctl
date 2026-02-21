@@ -2,6 +2,8 @@
 //!
 //! Runs feature files from `features/` directory using proper Gherkin syntax.
 
+use cockpitctl_feature_grid::{feature_runtime_present, parse_feature_state};
+use cockpitctl_feature_state::Feature;
 use cucumber::{World, given, then, when};
 use serde_json::Value;
 use std::fs;
@@ -852,6 +854,79 @@ fn file_exists(world: &mut IngestWorld, filename: String) {
         filename,
         path
     );
+}
+
+#[then(expr = "the feature {string} is {string}")]
+fn feature_gate_assertion(world: &mut IngestWorld, feature: String, state: String) {
+    let feature =
+        Feature::from_name(&feature).unwrap_or_else(|| panic!("unknown feature '{}'", feature));
+    let expected_present =
+        parse_feature_state(&state).unwrap_or_else(|| panic!("unknown feature state '{}'", state));
+    let feature_present = feature_runtime_present(feature, &world.extra_args);
+    let comment = world.read_comment();
+    let contract = feature.contract();
+    let report = world.read_report();
+    let report_data = report.get("data").and_then(|v| v.as_object());
+    let artifact_dir = world
+        .fixture_path
+        .as_ref()
+        .expect("fixture path not set")
+        .join("artifacts")
+        .join("cockpit");
+    let mut had_assertion = false;
+    if let Some(marker) = contract.comment_marker {
+        had_assertion = true;
+        let seen = comment.contains(marker);
+        assert_eq!(
+            seen,
+            feature_present,
+            "{} feature expected comment marker '{}' {} but was {}",
+            feature.as_str(),
+            marker,
+            expected_present,
+            seen
+        );
+    }
+    if let Some(data_key) = contract.report_data_key {
+        had_assertion = true;
+        let seen = report_data
+            .map(|data| data.contains_key(data_key))
+            .unwrap_or(false);
+        assert_eq!(
+            seen,
+            feature_present,
+            "{} feature expected report key '{}' {} but was {}",
+            feature.as_str(),
+            data_key,
+            expected_present,
+            seen
+        );
+    }
+    if let Some(sidecar_file) = contract.sidecar_file {
+        had_assertion = true;
+        let seen = artifact_dir.join(sidecar_file).exists();
+        assert_eq!(
+            seen,
+            feature_present,
+            "{} feature expected sidecar '{}' {} but was {}",
+            feature.as_str(),
+            sidecar_file,
+            expected_present,
+            seen
+        );
+    }
+    assert!(
+        had_assertion,
+        "feature '{}' does not define observable contract fields for BDD assertions",
+        feature.as_str()
+    );
+    if feature_present != expected_present {
+        panic!(
+            "feature '{}' expected state '{}' but was disabled by runtime flags",
+            feature.as_str(),
+            state
+        );
+    }
 }
 
 #[then(expr = "the file {string} contains {string}")]

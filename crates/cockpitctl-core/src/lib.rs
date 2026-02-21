@@ -5,8 +5,16 @@
 //! `cockpitctl-core` crate instead of wiring individual microcrates.
 
 pub use cockpitctl_domain as domain;
+pub use cockpitctl_domain_buildfix as domain_buildfix;
+pub use cockpitctl_domain_signing as domain_signing;
+pub use cockpitctl_feature_grid as feature_grid;
+pub use cockpitctl_feature_state as feature_state;
 pub use cockpitctl_ingest as ingest;
 pub use cockpitctl_io as io;
+pub use cockpitctl_io_buildfix as io_buildfix;
+pub use cockpitctl_io_hooks as io_hooks;
+pub use cockpitctl_io_policy_signing as io_policy_signing;
+pub use cockpitctl_io_schema as io_schema;
 pub use cockpitctl_render as render;
 pub use cockpitctl_sarif as sarif;
 pub use cockpitctl_types as types;
@@ -25,10 +33,10 @@ pub use cockpitctl_types::{
 };
 
 // Flatten domain helpers.
-pub use cockpitctl_domain::{
-    CodeExplanation, all_codes, explain_code, policy_snapshot_sha256_hex, select_auto_apply_fixes,
-    sign_policy_snapshot, sign_policy_snapshot_hmac_sha256,
-};
+pub use cockpitctl_domain::{CodeExplanation, all_codes, explain_code, policy_snapshot_sha256_hex};
+pub use cockpitctl_domain_buildfix::{match_buildfix_plan, select_auto_apply_fixes};
+pub use cockpitctl_domain_signing::{sign_policy_snapshot, sign_policy_snapshot_hmac_sha256};
+pub use cockpitctl_domain_trend::compute_trend;
 
 // Flatten SARIF export.
 pub use cockpitctl_sarif::{cockpit_report_to_sarif, cockpit_report_to_sarif_json};

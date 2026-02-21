@@ -1,0 +1,19 @@
+[package]
+name = "cockpitctl-feature-state"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Shared feature-state helpers for cockpitctl runtime and test feature gating."
+readme = "README.md"
+keywords = ["ci", "feature-flags", "interop", "testing", "ingest"]
+categories = ["development-tools", "filesystem"]
+
+[features]
+default = ["feature-hooks", "feature-buildfix", "feature-policy-signing"]
+feature-hooks = []
+feature-buildfix = []
+feature-policy-signing = []
