@@ -1,0 +1,8 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: "SensorPolicy::default()"
+---
+{
+  "blocking": false,
+  "missing": "skip"
+}

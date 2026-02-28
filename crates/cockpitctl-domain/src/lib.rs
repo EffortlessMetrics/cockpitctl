@@ -22,6 +22,22 @@ use sha2::{Digest, Sha256};
 pub const COCKPIT_SCHEMA_ID: &str = "cockpit.report.v1";
 
 /// Derive the policy outcome for a sensor given its blocking flag and verdict status.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::compute_policy_outcome;
+/// use cockpitctl_types::{PolicyOutcome, VerdictStatus};
+///
+/// // Non-blocking sensors are always informational.
+/// assert_eq!(compute_policy_outcome(false, &VerdictStatus::Fail), PolicyOutcome::Informational);
+///
+/// // Blocking sensor with fail → blocked.
+/// assert_eq!(compute_policy_outcome(true, &VerdictStatus::Fail), PolicyOutcome::Blocked);
+///
+/// // Blocking sensor with pass → allowed.
+/// assert_eq!(compute_policy_outcome(true, &VerdictStatus::Pass), PolicyOutcome::Allowed);
+/// ```
 pub fn compute_policy_outcome(blocking: bool, status: &VerdictStatus) -> PolicyOutcome {
     if !blocking {
         PolicyOutcome::Informational
@@ -58,6 +74,17 @@ pub struct CodeExplanation {
 }
 
 /// Look up an explanation for a cockpit finding code.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::explain_code;
+///
+/// let explanation = explain_code("cockpit.missing_receipt").unwrap();
+/// assert_eq!(explanation.title, "Missing Receipt");
+///
+/// assert!(explain_code("nonexistent.code").is_none());
+/// ```
 pub fn explain_code(code: &str) -> Option<CodeExplanation> {
     all_codes().into_iter().find(|e| e.code == code)
 }
@@ -129,6 +156,42 @@ pub fn cap_findings(mut findings: Vec<Finding>, max: usize) -> (Vec<Finding>, bo
 }
 
 /// Compute counts from findings.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::compute_counts;
+/// use cockpitctl_types::{Finding, Severity};
+///
+/// let findings = vec![
+///     Finding {
+///         severity: Severity::Error,
+///         check_id: None,
+///         code: "E1".to_string(),
+///         message: "err".to_string(),
+///         location: None,
+///         help: None,
+///         url: None,
+///         fingerprint: None,
+///         data: None,
+///     },
+///     Finding {
+///         severity: Severity::Warn,
+///         check_id: None,
+///         code: "W1".to_string(),
+///         message: "warn".to_string(),
+///         location: None,
+///         help: None,
+///         url: None,
+///         fingerprint: None,
+///         data: None,
+///     },
+/// ];
+/// let counts = compute_counts(&findings);
+/// assert_eq!(counts.error, 1);
+/// assert_eq!(counts.warn, 1);
+/// assert_eq!(counts.info, 0);
+/// ```
 pub fn compute_counts(findings: &[Finding]) -> VerdictCounts {
     let mut c = VerdictCounts::default();
     for f in findings {

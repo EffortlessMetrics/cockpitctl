@@ -212,4 +212,282 @@ mod tests {
         // Different keys → different signatures.
         assert_ne!(sig_a.signature, sig_b.signature);
     }
+
+    // -- Edge case: empty policy (no sensors, no sections) --
+
+    fn empty_policy() -> PolicySnapshot {
+        PolicySnapshot {
+            warn_is_fail: false,
+            max_highlights: 0,
+            max_per_sensor_findings: 0,
+            max_annotations: 0,
+            section_order: vec![],
+            sensors: vec![],
+        }
+    }
+
+    #[test]
+    fn sign_empty_policy_succeeds() {
+        let policy = empty_policy();
+        let evidence = sign_policy_snapshot_hmac_sha256(&policy, b"key", None).unwrap();
+        assert_eq!(evidence.signature.len(), 64);
+        assert_eq!(evidence.policy_sha256.len(), 64);
+    }
+
+    #[test]
+    fn empty_policy_canonical_bytes_are_valid_compact_json() {
+        let policy = empty_policy();
+        let bytes = canonical_policy_snapshot_bytes(&policy).unwrap();
+        let json_str = std::str::from_utf8(&bytes).unwrap();
+        // Compact JSON has no newlines or indentation.
+        assert!(!json_str.contains('\n'));
+        // Round-trip parse.
+        let _: serde_json::Value = serde_json::from_str(json_str).unwrap();
+    }
+
+    #[test]
+    fn empty_policy_sha256_is_deterministic() {
+        let h1 = policy_snapshot_sha256_hex(&empty_policy()).unwrap();
+        let h2 = policy_snapshot_sha256_hex(&empty_policy()).unwrap();
+        assert_eq!(h1, h2);
+    }
+
+    // -- Edge case: minimal policy (single sensor, defaults) --
+
+    fn minimal_policy() -> PolicySnapshot {
+        PolicySnapshot {
+            warn_is_fail: true,
+            max_highlights: 1,
+            max_per_sensor_findings: 1,
+            max_annotations: 0,
+            section_order: vec![],
+            sensors: vec![PolicySensorSnapshot {
+                id: "s".to_string(),
+                blocking: false,
+                missing: MissingPolicy::Skip,
+                section: None,
+                require_label: None,
+                repro: None,
+            }],
+        }
+    }
+
+    #[test]
+    fn minimal_policy_signs_correctly() {
+        let evidence = sign_policy_snapshot_hmac_sha256(&minimal_policy(), b"k", None).unwrap();
+        assert_eq!(evidence.algorithm, PolicySignatureAlgorithm::HmacSha256);
+        assert_eq!(evidence.signature.len(), 64);
+    }
+
+    // -- Edge case: large policy (many sensors) --
+
+    #[test]
+    fn large_policy_signs_correctly() {
+        let sensors: Vec<PolicySensorSnapshot> = (0..200)
+            .map(|i| PolicySensorSnapshot {
+                id: format!("sensor-{i:04}"),
+                blocking: i % 2 == 0,
+                missing: MissingPolicy::Warn,
+                section: Some("sec".to_string()),
+                require_label: None,
+                repro: Some(format!("repro-{i}")),
+            })
+            .collect();
+        let policy = PolicySnapshot {
+            warn_is_fail: true,
+            max_highlights: 100,
+            max_per_sensor_findings: 500,
+            max_annotations: 50,
+            section_order: vec!["sec".to_string()],
+            sensors,
+        };
+        let evidence = sign_policy_snapshot_hmac_sha256(&policy, b"big-key", None).unwrap();
+        assert_eq!(evidence.signature.len(), 64);
+        // Deterministic: re-sign produces the same result.
+        let evidence2 = sign_policy_snapshot_hmac_sha256(&policy, b"big-key", None).unwrap();
+        assert_eq!(evidence.signature, evidence2.signature);
+    }
+
+    // -- Tampered data detection --
+
+    #[test]
+    fn tampered_policy_produces_different_signature() {
+        let key = b"tamper-key";
+        let mut policy = sample_policy();
+        let original = sign_policy_snapshot_hmac_sha256(&policy, key, None).unwrap();
+
+        // Flip a boolean field.
+        policy.warn_is_fail = !policy.warn_is_fail;
+        let tampered = sign_policy_snapshot_hmac_sha256(&policy, key, None).unwrap();
+
+        assert_ne!(original.signature, tampered.signature);
+        assert_ne!(original.policy_sha256, tampered.policy_sha256);
+    }
+
+    #[test]
+    fn tampered_sensor_id_changes_signature() {
+        let key = b"sensor-tamper";
+        let policy = sample_policy();
+        let original = sign_policy_snapshot_hmac_sha256(&policy, key, None).unwrap();
+
+        let mut tampered_policy = sample_policy();
+        tampered_policy.sensors[0].id = "rustfmt".to_string();
+        let tampered = sign_policy_snapshot_hmac_sha256(&tampered_policy, key, None).unwrap();
+
+        assert_ne!(original.signature, tampered.signature);
+    }
+
+    // -- HMAC-SHA256 correctness: RFC 4231 test vector 2 --
+
+    #[test]
+    fn hmac_sha256_rfc4231_test_case_2() {
+        // Key = "Jefe", Data = "what do ya want for nothing?"
+        let key = b"Jefe";
+        let data = b"what do ya want for nothing?";
+        let expected = "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843";
+        let result = hex::encode(hmac_sha256(key, data));
+        assert_eq!(result, expected);
+    }
+
+    // -- Key format handling: key > 64 bytes triggers pre-hashing --
+
+    #[test]
+    fn long_key_produces_valid_signature() {
+        let policy = sample_policy();
+        let long_key = vec![0xABu8; 128]; // longer than SHA-256 block size (64)
+        let evidence = sign_policy_snapshot_hmac_sha256(&policy, &long_key, None).unwrap();
+        assert_eq!(evidence.signature.len(), 64);
+    }
+
+    #[test]
+    fn long_key_is_deterministic() {
+        let policy = sample_policy();
+        let long_key = vec![0xCDu8; 100];
+        let sig1 = sign_policy_snapshot_hmac_sha256(&policy, &long_key, None).unwrap();
+        let sig2 = sign_policy_snapshot_hmac_sha256(&policy, &long_key, None).unwrap();
+        assert_eq!(sig1.signature, sig2.signature);
+    }
+
+    #[test]
+    fn exact_block_size_key_works() {
+        let policy = sample_policy();
+        let key = vec![0x42u8; 64]; // exactly SHA-256 block size
+        let evidence = sign_policy_snapshot_hmac_sha256(&policy, &key, None).unwrap();
+        assert_eq!(evidence.signature.len(), 64);
+    }
+
+    #[test]
+    fn short_vs_long_key_differ() {
+        let policy = sample_policy();
+        let short = vec![0xAAu8; 32];
+        let long = vec![0xAAu8; 128];
+        let sig_short = sign_policy_snapshot_hmac_sha256(&policy, &short, None).unwrap();
+        let sig_long = sign_policy_snapshot_hmac_sha256(&policy, &long, None).unwrap();
+        assert_ne!(sig_short.signature, sig_long.signature);
+    }
+
+    // -- Single-byte key (minimum valid key) --
+
+    #[test]
+    fn single_byte_key_works() {
+        let policy = sample_policy();
+        let evidence = sign_policy_snapshot_hmac_sha256(&policy, &[0x01], None).unwrap();
+        assert_eq!(evidence.signature.len(), 64);
+    }
+
+    // -- key_id propagation --
+
+    #[test]
+    fn key_id_none_propagated() {
+        let evidence = sign_policy_snapshot_hmac_sha256(&sample_policy(), b"k", None).unwrap();
+        assert_eq!(evidence.key_id, None);
+    }
+
+    #[test]
+    fn key_id_some_propagated() {
+        let kid = Some("prod/hmac/v2".to_string());
+        let evidence =
+            sign_policy_snapshot_hmac_sha256(&sample_policy(), b"k", kid.clone()).unwrap();
+        assert_eq!(evidence.key_id, kid);
+    }
+
+    #[test]
+    fn key_id_does_not_affect_signature() {
+        let policy = sample_policy();
+        let key = b"same-key";
+        let sig_none = sign_policy_snapshot_hmac_sha256(&policy, key, None).unwrap();
+        let sig_some =
+            sign_policy_snapshot_hmac_sha256(&policy, key, Some("my-id".to_string())).unwrap();
+        assert_eq!(sig_none.signature, sig_some.signature);
+        assert_eq!(sig_none.policy_sha256, sig_some.policy_sha256);
+    }
+
+    // -- Schema ID is always correct --
+
+    #[test]
+    fn schema_id_matches_constant() {
+        let evidence = sign_policy_snapshot_hmac_sha256(&sample_policy(), b"k", None).unwrap();
+        assert_eq!(evidence.schema, "cockpit.policy_signature.v1");
+    }
+
+    // -- Different policies produce different hashes --
+
+    #[test]
+    fn different_policies_different_sha256() {
+        let h1 = policy_snapshot_sha256_hex(&sample_policy()).unwrap();
+        let h2 = policy_snapshot_sha256_hex(&empty_policy()).unwrap();
+        assert_ne!(h1, h2);
+    }
+
+    #[test]
+    fn different_policies_different_signatures_same_key() {
+        let key = b"shared";
+        let sig1 = sign_policy_snapshot_hmac_sha256(&sample_policy(), key, None).unwrap();
+        let sig2 = sign_policy_snapshot_hmac_sha256(&empty_policy(), key, None).unwrap();
+        assert_ne!(sig1.signature, sig2.signature);
+    }
+
+    // -- policy_sha256 in evidence matches standalone sha256_hex --
+
+    #[test]
+    fn evidence_sha256_matches_standalone_digest() {
+        let policy = sample_policy();
+        let evidence = sign_policy_snapshot_hmac_sha256(&policy, b"key", None).unwrap();
+        let standalone = policy_snapshot_sha256_hex(&policy).unwrap();
+        assert_eq!(evidence.policy_sha256, standalone);
+    }
+
+    // -- Canonical bytes are compact (no whitespace formatting) --
+
+    #[test]
+    fn canonical_bytes_are_compact_json() {
+        let policy = sample_policy();
+        let bytes = canonical_policy_snapshot_bytes(&policy).unwrap();
+        let s = std::str::from_utf8(&bytes).unwrap();
+        // serde_json::to_vec produces compact JSON — no indentation.
+        assert!(!s.contains("  "), "canonical JSON should be compact");
+    }
+
+    // -- Raw HMAC-SHA256: empty message --
+
+    #[test]
+    fn hmac_sha256_empty_message() {
+        let result = hmac_sha256(b"key", b"");
+        // Must produce a valid 32-byte MAC, not panic.
+        assert_eq!(result.len(), 32);
+        // Deterministic.
+        assert_eq!(result, hmac_sha256(b"key", b""));
+    }
+
+    // -- Raw HMAC-SHA256: RFC 4231 test case 1 --
+
+    #[test]
+    fn hmac_sha256_rfc4231_test_case_1() {
+        // Key = 20 bytes of 0x0b, Data = "Hi There"
+        let key = vec![0x0bu8; 20];
+        let data = b"Hi There";
+        let expected = "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7";
+        let result = hex::encode(hmac_sha256(&key, data));
+        assert_eq!(result, expected);
+    }
 }

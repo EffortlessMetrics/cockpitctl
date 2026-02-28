@@ -1,0 +1,9 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: f
+---
+{
+  "severity": "info",
+  "code": "note",
+  "message": "Just a note"
+}

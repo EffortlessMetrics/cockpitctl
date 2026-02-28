@@ -580,6 +580,72 @@ fn highlights_ordered_by_severity(world: &mut IngestWorld) {
     }
 }
 
+#[then(expr = "the cockpit report does not contain a highlight {string}")]
+fn report_does_not_contain_highlight(world: &mut IngestWorld, code: String) {
+    let report = world.read_report();
+    let highlights = report
+        .get("highlights")
+        .and_then(|h| h.as_array())
+        .expect("highlights array not found");
+
+    let found = highlights.iter().any(|h| {
+        h.get("finding")
+            .and_then(|f| f.get("code"))
+            .and_then(|c| c.as_str())
+            == Some(&code)
+    });
+
+    assert!(
+        !found,
+        "highlight with code '{}' should NOT be present but was found",
+        code
+    );
+}
+
+#[then(expr = "the sensors count is exactly {int}")]
+fn sensors_count_exactly(world: &mut IngestWorld, expected: usize) {
+    let report = world.read_report();
+    let sensors = report
+        .get("sensors")
+        .and_then(|s| s.as_array())
+        .expect("sensors array not found");
+
+    assert_eq!(
+        sensors.len(),
+        expected,
+        "expected {} sensors, got {}",
+        expected,
+        sensors.len()
+    );
+}
+
+#[then(expr = "the highlights count is at least {int}")]
+fn highlights_count_at_least(world: &mut IngestWorld, minimum: usize) {
+    let report = world.read_report();
+    let highlights = report
+        .get("highlights")
+        .and_then(|h| h.as_array())
+        .expect("highlights array not found");
+
+    assert!(
+        highlights.len() >= minimum,
+        "expected at least {} highlights, got {}",
+        minimum,
+        highlights.len()
+    );
+}
+
+#[then(expr = "the comment does not contain {string}")]
+fn comment_does_not_contain(world: &mut IngestWorld, unexpected: String) {
+    let comment = world.read_comment();
+    assert!(
+        !comment.contains(&unexpected),
+        "comment should NOT contain '{}'\n\nActual comment:\n{}",
+        unexpected,
+        comment
+    );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Then steps - Report structure
 // ─────────────────────────────────────────────────────────────────────────────

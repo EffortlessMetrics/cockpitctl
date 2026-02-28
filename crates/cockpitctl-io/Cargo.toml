@@ -21,3 +21,7 @@ cockpitctl-io-buildfix = { path = "../cockpitctl-io-buildfix", version = "0.3.0"
 cockpitctl-io-hooks = { path = "../cockpitctl-io-hooks", version = "0.3.0" }
 cockpitctl-io-policy-signing = { path = "../cockpitctl-io-policy-signing", version = "0.3.0" }
 cockpitctl-io-schema = { path = "../cockpitctl-io-schema", version = "0.3.0" }
+
+[dev-dependencies]
+tempfile.workspace = true
+serde_json.workspace = true

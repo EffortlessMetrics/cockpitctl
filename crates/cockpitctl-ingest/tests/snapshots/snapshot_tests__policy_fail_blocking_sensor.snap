@@ -1,0 +1,114 @@
+---
+source: crates/cockpitctl-ingest/tests/snapshot_tests.rs
+assertion_line: 293
+expression: result.report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 1,
+      "error": 2
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "linter",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/linter/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 1,
+          "error": 2
+        },
+        "reasons": [
+          "receipt_inconsistent"
+        ]
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "linter",
+      "finding": {
+        "severity": "error",
+        "check_id": "E002",
+        "code": "lint/missing-return",
+        "message": "Missing return statement",
+        "fingerprint": "1288227a75a38a9c49cbcf416cc5ed2d50652ed0903cf8742fe7e04c496c4106"
+      }
+    },
+    {
+      "sensor_id": "linter",
+      "finding": {
+        "severity": "error",
+        "check_id": "E001",
+        "code": "lint/unused-var",
+        "message": "Unused variable `x`",
+        "help": "Remove or use the variable",
+        "fingerprint": "e10778077a376b1e83b2bff935cbc95a973ed9b81841a4b45e64043dc1a7abd8"
+      }
+    },
+    {
+      "sensor_id": "linter",
+      "finding": {
+        "severity": "warn",
+        "code": "lint/complexity",
+        "message": "Function is too complex",
+        "fingerprint": "717676340d8c4fa77204fce6bfbb7993a6d18e07f36dff0fbdaaf2075b4bcb98"
+      }
+    },
+    {
+      "sensor_id": "linter",
+      "finding": {
+        "severity": "info",
+        "check_id": "cockpit.receipt_inconsistent",
+        "code": "cockpit.receipt_inconsistent",
+        "message": "Receipt counts for sensor `linter` did not match findings: reported info=0, warn=1, error=3, computed info=0, warn=1, error=2.",
+        "help": "Ensure receipt verdict counts match the findings array.",
+        "fingerprint": "cockpit.receipt_inconsistent:linter:0:1:3:0:1:2"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "linter",
+        "blocking": true,
+        "missing": "fail"
+      }
+    ]
+  }
+}

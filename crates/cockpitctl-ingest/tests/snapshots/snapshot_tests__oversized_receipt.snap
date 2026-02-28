@@ -1,0 +1,86 @@
+---
+source: crates/cockpitctl-ingest/tests/snapshot_tests.rs
+assertion_line: 507
+expression: result.report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "big-sensor",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "invalid",
+      "report_path": "artifacts/big-sensor/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": [
+          "receipt_oversized"
+        ]
+      },
+      "truncated": false,
+      "errors": [
+        "receipt too large: 5000000 bytes (cap 2097152)"
+      ],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "_cockpit",
+      "finding": {
+        "severity": "error",
+        "check_id": "cockpit.receipt_oversized",
+        "code": "cockpit.receipt_oversized",
+        "message": "Receipt for sensor `big-sensor` exceeds size limit (5000000 bytes > 2097152 bytes) at `artifacts/big-sensor/report.json`.",
+        "help": "Reduce receipt size or increase the max receipt size limit.",
+        "fingerprint": "cockpit.receipt_oversized:big-sensor:5000000"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "big-sensor",
+        "blocking": true,
+        "missing": "fail"
+      }
+    ]
+  }
+}

@@ -20,6 +20,14 @@ serde_json.workspace = true
 
 [dev-dependencies]
 serde.workspace = true
+proptest.workspace = true
+criterion.workspace = true
+rand.workspace = true
+insta.workspace = true
+
+[[bench]]
+name = "conform_benches"
+harness = false
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }

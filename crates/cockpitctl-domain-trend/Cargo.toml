@@ -13,4 +13,5 @@ description = "Trend computation domain boundary extracted from cockpitctl-domai
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 
 [dev-dependencies]
+insta = { workspace = true }
 pretty_assertions.workspace = true

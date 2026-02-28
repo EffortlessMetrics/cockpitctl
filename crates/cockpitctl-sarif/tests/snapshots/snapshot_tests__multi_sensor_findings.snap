@@ -1,0 +1,120 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_tests.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "E0308",
+              "shortDescription": {
+                "text": "[builddiag] E0308"
+              }
+            },
+            {
+              "id": "clippy::todo",
+              "shortDescription": {
+                "text": "[clippy] clippy::todo"
+              }
+            },
+            {
+              "id": "clippy::unwrap_used",
+              "shortDescription": {
+                "text": "[clippy] clippy::unwrap_used"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "clippy::unwrap_used",
+          "level": "error",
+          "message": {
+            "text": "unwrap in main"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/main.rs"
+                },
+                "region": {
+                  "startLine": 10
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "clippy::todo",
+          "level": "warning",
+          "message": {
+            "text": "todo in lib"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/lib.rs"
+                },
+                "region": {
+                  "startLine": 20
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "E0308",
+          "level": "error",
+          "message": {
+            "text": "mismatched types"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/utils.rs"
+                },
+                "region": {
+                  "startLine": 5,
+                  "startColumn": 12
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_build"
+          }
+        },
+        {
+          "ruleId": "E0308",
+          "level": "note",
+          "message": {
+            "text": "expected bool, found i32"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/utils.rs"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

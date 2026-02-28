@@ -1,0 +1,32 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: plan
+---
+{
+  "schema": "buildfix.plan.v1",
+  "tool": {
+    "name": "builddiag",
+    "version": "1.2.3",
+    "commit": "abc1234"
+  },
+  "fixes": [
+    {
+      "id": "fix-1",
+      "safety": "safe",
+      "description": "Add missing import",
+      "finding_refs": [
+        {
+          "sensor_id": "builddiag",
+          "fingerprint": "fp-abc123",
+          "code": "E0432"
+        }
+      ],
+      "preconditions": {
+        "repo_head": "abc1234",
+        "receipt_digests": [
+          "sha256:deadbeef"
+        ]
+      }
+    }
+  ]
+}

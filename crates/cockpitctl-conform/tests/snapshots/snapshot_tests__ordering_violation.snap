@@ -1,0 +1,12 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_tests.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "ordering",
+            message: "finding[1] is out of order (severity_rank=0, code=E1) < finding[0] (severity_rank=2, code=I1)",
+        },
+    ],
+}

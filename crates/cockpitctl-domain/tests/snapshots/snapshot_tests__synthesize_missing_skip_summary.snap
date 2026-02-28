@@ -1,0 +1,24 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: summary
+---
+{
+  "id": "coverage",
+  "blocking": true,
+  "missing": "skip",
+  "presence": "missing",
+  "report_path": "artifacts/coverage/report.json",
+  "verdict": {
+    "status": "skip",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "truncated": false,
+  "errors": [],
+  "missing_policy_applied": "skip",
+  "policy_outcome": "allowed"
+}

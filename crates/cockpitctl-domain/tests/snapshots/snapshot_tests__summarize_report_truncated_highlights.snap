@@ -1,0 +1,53 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: highlights
+---
+[
+  {
+    "sensor_id": "builddiag",
+    "finding": {
+      "severity": "info",
+      "check_id": "cockpit.receipt_inconsistent",
+      "code": "cockpit.receipt_inconsistent",
+      "message": "Receipt counts for sensor `builddiag` did not match findings: reported info=1, warn=1, error=2, computed info=0, warn=1, error=2.",
+      "help": "Ensure receipt verdict counts match the findings array.",
+      "fingerprint": "cockpit.receipt_inconsistent:builddiag:1:1:2:0:1:2"
+    }
+  },
+  {
+    "sensor_id": "builddiag",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "Message for E1",
+      "location": {
+        "path": "src/main.rs",
+        "line": 10
+      }
+    }
+  },
+  {
+    "sensor_id": "builddiag",
+    "finding": {
+      "severity": "error",
+      "code": "E2",
+      "message": "Message for E2",
+      "location": {
+        "path": "src/main.rs",
+        "line": 30
+      }
+    }
+  },
+  {
+    "sensor_id": "builddiag",
+    "finding": {
+      "severity": "warn",
+      "code": "W1",
+      "message": "Message for W1",
+      "location": {
+        "path": "src/lib.rs",
+        "line": 20
+      }
+    }
+  }
+]

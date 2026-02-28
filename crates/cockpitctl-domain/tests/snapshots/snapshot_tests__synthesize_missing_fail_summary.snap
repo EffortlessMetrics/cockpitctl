@@ -1,0 +1,26 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: summary
+---
+{
+  "id": "coverage",
+  "blocking": true,
+  "missing": "fail",
+  "presence": "missing",
+  "report_path": "artifacts/coverage/report.json",
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": [
+      "missing_receipt"
+    ]
+  },
+  "truncated": false,
+  "errors": [],
+  "missing_policy_applied": "fail",
+  "policy_outcome": "blocked"
+}

@@ -9,6 +9,7 @@ use cockpitctl_domain::{
 use cockpitctl_types::{
     CockpitConfig, Finding, Highlight, Location, MissingPolicy, Policy, Presence, SensorPolicy,
     SensorSummary, Severity, Verdict, VerdictCounts, VerdictStatus, severity_rank,
+    verdict_status_rank,
 };
 use proptest::prelude::*;
 use std::collections::BTreeMap;
@@ -792,5 +793,149 @@ proptest! {
         sort_findings(&sensor_id, &mut findings);
         let counts_after = compute_counts(&findings);
         prop_assert_eq!(counts_before, counts_after, "counts must not change after sort");
+    }
+}
+
+// ============================================================================
+// Normalization idempotent (select_highlights applied twice)
+// ============================================================================
+
+proptest! {
+    /// Normalizing highlights twice equals normalizing once:
+    /// select_highlights(select_highlights(h)) == select_highlights(h).
+    #[test]
+    fn select_highlights_normalization_idempotent(
+        highlights in any_highlights(20),
+        cfg in any_cockpit_config()
+    ) {
+        let sensor_blocking = BTreeMap::new();
+        let first = select_highlights(highlights, &cfg, &sensor_blocking);
+        let second = select_highlights(first.clone(), &cfg, &sensor_blocking);
+        prop_assert_eq!(first, second, "normalization must be idempotent");
+    }
+}
+
+// ============================================================================
+// Dedup reduces count
+// ============================================================================
+
+proptest! {
+    /// Deduplication (via select_highlights) always produces ≤ input count.
+    #[test]
+    fn select_highlights_dedup_reduces_count(
+        highlights in any_highlights(30),
+        cfg in any_cockpit_config()
+    ) {
+        let input_count = highlights.len();
+        let sensor_blocking = BTreeMap::new();
+        let selected = select_highlights(highlights, &cfg, &sensor_blocking);
+        prop_assert!(
+            selected.len() <= input_count,
+            "dedup must not produce more highlights than input: {} > {}",
+            selected.len(),
+            input_count
+        );
+    }
+}
+
+// ============================================================================
+// Capping respects limit (cross-function: sort + cap)
+// ============================================================================
+
+proptest! {
+    /// sort + cap always produces output ≤ cap value.
+    #[test]
+    fn sort_then_cap_respects_limit(
+        sensor_id in "[a-z_]{1,10}",
+        mut findings in any_findings(50),
+        max in 0usize..60
+    ) {
+        sort_findings(&sensor_id, &mut findings);
+        let (capped, _) = cap_findings(findings, max);
+        prop_assert!(
+            capped.len() <= max,
+            "sort + cap must respect limit: {} > {}",
+            capped.len(),
+            max
+        );
+    }
+}
+
+// ============================================================================
+// Composite verdict monotonic
+// ============================================================================
+
+proptest! {
+    /// Adding a failing blocking sensor can only worsen (or maintain) the overall verdict.
+    #[test]
+    fn overall_verdict_monotonic_adding_fail(
+        summaries in any_sensor_summaries(5),
+        cfg in any_cockpit_config()
+    ) {
+        let verdict_before = overall_verdict(&summaries, &cfg);
+        let rank_before = verdict_status_rank(&verdict_before.status);
+
+        let mut with_fail = summaries;
+        with_fail.push(SensorSummary {
+            id: "injected_fail".to_string(),
+            blocking: true,
+            missing: MissingPolicy::Skip,
+            presence: Presence::Present,
+            report_path: "artifacts/injected_fail/report.json".to_string(),
+            comment_path: None,
+            verdict: Verdict {
+                status: VerdictStatus::Fail,
+                counts: VerdictCounts::default(),
+                reasons: vec!["injected".to_string()],
+            },
+            truncated: false,
+            errors: vec![],
+            missing_policy_applied: None,
+            policy_outcome: None,
+        });
+
+        let verdict_after = overall_verdict(&with_fail, &cfg);
+        let rank_after = verdict_status_rank(&verdict_after.status);
+
+        // Worse = lower rank (Fail=0 < Warn=1 < Pass=2 < Skip=3).
+        prop_assert!(
+            rank_after <= rank_before,
+            "adding a failing sensor must not improve the verdict: rank {} -> {}",
+            rank_before,
+            rank_after
+        );
+        // With at least one blocking Fail, overall must be Fail.
+        prop_assert_eq!(
+            verdict_after.status,
+            VerdictStatus::Fail,
+            "a blocking Fail sensor must produce Fail overall"
+        );
+    }
+
+    /// Adding a non-blocking sensor never worsens the overall verdict.
+    #[test]
+    fn overall_verdict_non_blocking_never_worsens(
+        summaries in any_sensor_summaries(5),
+        extra in any_sensor_summary(),
+        cfg in any_cockpit_config()
+    ) {
+        let verdict_before = overall_verdict(&summaries, &cfg);
+        let rank_before = verdict_status_rank(&verdict_before.status);
+
+        let mut with_extra = summaries;
+        let mut non_blocking = extra;
+        non_blocking.blocking = false;
+        with_extra.push(non_blocking);
+
+        let verdict_after = overall_verdict(&with_extra, &cfg);
+        let rank_after = verdict_status_rank(&verdict_after.status);
+
+        // Non-blocking sensors don't affect the verdict status.
+        prop_assert!(
+            rank_after >= rank_before,
+            "adding a non-blocking sensor must not worsen the verdict: rank {} -> {}",
+            rank_before,
+            rank_after
+        );
     }
 }

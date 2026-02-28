@@ -1,0 +1,15 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: highlight
+---
+{
+  "sensor_id": "_cockpit",
+  "finding": {
+    "severity": "warn",
+    "check_id": "cockpit.sensors_truncated",
+    "code": "cockpit.sensors_truncated",
+    "message": "Sensor discovery was truncated: processed 100 of 250 sensors found. Increase max_receipts limit if needed.",
+    "help": "This is a safety limit to prevent DoS. Consider reviewing why so many sensors exist.",
+    "fingerprint": "cockpit.sensors_truncated:100:250"
+  }
+}

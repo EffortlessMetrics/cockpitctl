@@ -1,0 +1,28 @@
+---
+source: crates/cockpitctl-domain-trend/tests/snapshot_tests.rs
+expression: trend
+---
+{
+  "verdict_change": null,
+  "count_deltas": {
+    "info_delta": -1,
+    "warn_delta": 0,
+    "error_delta": 0
+  },
+  "new_findings": [],
+  "fixed_findings": [
+    {
+      "sensor_id": "coverage",
+      "code": "COV01",
+      "message": "COV01 message",
+      "path": "src/lib.rs",
+      "line": 100,
+      "fingerprint": "fp-cov1",
+      "severity": "info"
+    }
+  ],
+  "sensors_added": [],
+  "sensors_removed": [
+    "coverage"
+  ]
+}

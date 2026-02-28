@@ -1,0 +1,9 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: "VerdictCounts::default()"
+---
+{
+  "info": 0,
+  "warn": 0,
+  "error": 0
+}

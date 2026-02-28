@@ -1,0 +1,28 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: summary
+---
+{
+  "id": "lint",
+  "blocking": true,
+  "missing": "fail",
+  "presence": "invalid",
+  "report_path": "artifacts/lint/report.json",
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": [
+      "schema_violation"
+    ]
+  },
+  "truncated": false,
+  "errors": [
+    "missing required field: verdict",
+    "invalid type for findings"
+  ],
+  "policy_outcome": "blocked"
+}

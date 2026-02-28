@@ -1,0 +1,14 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: highlight
+---
+{
+  "sensor_id": "lint",
+  "finding": {
+    "severity": "error",
+    "check_id": "cockpit.schema_violation",
+    "code": "cockpit.schema_violation",
+    "message": "Receipt for sensor `lint` at `artifacts/lint/report.json` does not conform to sensor.report.v1 schema: 2 schema violations: missing required field: verdict; invalid type for findings",
+    "help": "Ensure the sensor output matches the JSON schema at contracts/schemas/sensor.report.v1.json."
+  }
+}

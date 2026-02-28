@@ -1,0 +1,5 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: fp
+---
+0e110a4dff8ddb40c11c96f35704442041cb13f2b7e92081d0aca406f9e840a1

@@ -1,0 +1,15 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: highlight
+---
+{
+  "sensor_id": "_cockpit",
+  "finding": {
+    "severity": "error",
+    "check_id": "cockpit.path_traversal",
+    "code": "cockpit.path_traversal",
+    "message": "Rejected unsafe path for sensor `../escape` at `artifacts/../escape/report.json` (unsafe report.json).",
+    "help": "Ensure sensor IDs and artifact paths do not contain path traversal or escape the artifacts root.",
+    "fingerprint": "cockpit.path_traversal:../escape:artifacts/../escape/report.json"
+  }
+}

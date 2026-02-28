@@ -1,0 +1,5 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: "Severity::Error"
+---
+Error

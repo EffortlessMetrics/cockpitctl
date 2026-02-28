@@ -1,0 +1,31 @@
+---
+source: crates/cockpitctl-domain-trend/tests/snapshot_tests.rs
+expression: trend
+---
+{
+  "verdict_change": {
+    "before": "pass",
+    "after": "warn"
+  },
+  "count_deltas": {
+    "info_delta": 0,
+    "warn_delta": 0,
+    "error_delta": 1
+  },
+  "new_findings": [
+    {
+      "sensor_id": "security",
+      "code": "SEC01",
+      "message": "SEC01 message",
+      "path": "src/auth.rs",
+      "line": 42,
+      "fingerprint": "fp-sec1",
+      "severity": "error"
+    }
+  ],
+  "fixed_findings": [],
+  "sensors_added": [
+    "security"
+  ],
+  "sensors_removed": []
+}

@@ -1,0 +1,86 @@
+---
+source: crates/cockpitctl-ingest/tests/snapshot_tests.rs
+assertion_line: 475
+expression: result.report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "broken",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "invalid",
+      "report_path": "artifacts/broken/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": [
+          "invalid_receipt"
+        ]
+      },
+      "truncated": false,
+      "errors": [
+        "key must be a string at line 1 column 3"
+      ],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "broken",
+      "finding": {
+        "severity": "error",
+        "check_id": "cockpit.invalid_receipt",
+        "code": "cockpit.invalid_receipt",
+        "message": "Invalid receipt for sensor `broken` at `artifacts/broken/report.json`: key must be a string at line 1 column 3",
+        "help": "Validate that the sensor wrote JSON matching sensor.report.v1.",
+        "fingerprint": "0f9d9fd6c6c806776b0613338606c5612f5610d6f8d19abb45e23f1b0757e3fb"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "broken",
+        "blocking": true,
+        "missing": "fail"
+      }
+    ]
+  }
+}

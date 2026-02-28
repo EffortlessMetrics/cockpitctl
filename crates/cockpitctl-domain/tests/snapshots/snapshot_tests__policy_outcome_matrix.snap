@@ -1,0 +1,22 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: results
+---
+[
+    (
+        "blocking_fail",
+        Blocked,
+    ),
+    (
+        "blocking_warn",
+        Allowed,
+    ),
+    (
+        "blocking_pass",
+        Allowed,
+    ),
+    (
+        "nonblocking_fail",
+        Informational,
+    ),
+]

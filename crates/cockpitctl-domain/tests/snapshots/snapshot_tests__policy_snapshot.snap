@@ -1,0 +1,36 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: snap
+---
+{
+  "warn_is_fail": true,
+  "max_highlights": 5,
+  "max_per_sensor_findings": 20,
+  "max_annotations": 25,
+  "section_order": [
+    "Highlights",
+    "Repo contract",
+    "Dependencies",
+    "Policy",
+    "Tests",
+    "Diagnostics",
+    "Performance",
+    "Environment",
+    "Other"
+  ],
+  "sensors": [
+    {
+      "id": "clippy",
+      "blocking": true,
+      "missing": "fail",
+      "section": "Diagnostics",
+      "repro": "cargo clippy"
+    },
+    {
+      "id": "tests",
+      "blocking": true,
+      "missing": "warn",
+      "section": "Tests"
+    }
+  ]
+}

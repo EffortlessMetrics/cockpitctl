@@ -1,0 +1,147 @@
+---
+source: crates/cockpitctl-ingest/tests/snapshot_tests.rs
+assertion_line: 424
+expression: result.report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 2,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "build",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/build/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "allowed"
+    },
+    {
+      "id": "coverage",
+      "blocking": false,
+      "missing": "warn",
+      "presence": "present",
+      "report_path": "artifacts/coverage/report.json",
+      "verdict": {
+        "status": "warn",
+        "counts": {
+          "info": 0,
+          "warn": 2,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    },
+    {
+      "id": "security",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/security/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "security",
+      "finding": {
+        "severity": "error",
+        "code": "sec/vuln",
+        "message": "Critical vulnerability found",
+        "url": "https://example.com/cve-123",
+        "fingerprint": "d75349f12f92656da4831c62044f54631452e9f4003599bb87262cb72889f339"
+      }
+    },
+    {
+      "sensor_id": "coverage",
+      "finding": {
+        "severity": "warn",
+        "code": "coverage/low",
+        "message": "Coverage below 80%",
+        "fingerprint": "fc9dcf649b7d49dd2f01082eb69ebe03b572e36cd623198109f8e0368ee60f46"
+      }
+    },
+    {
+      "sensor_id": "coverage",
+      "finding": {
+        "severity": "warn",
+        "code": "coverage/uncovered-fn",
+        "message": "Function `foo` has no tests",
+        "fingerprint": "c070498f98e2edc5d5346478b2762b76ccd54c5560cb105b1b579e2400084ed0"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "build",
+        "blocking": true,
+        "missing": "fail"
+      },
+      {
+        "id": "coverage",
+        "blocking": false,
+        "missing": "warn"
+      },
+      {
+        "id": "security",
+        "blocking": true,
+        "missing": "fail"
+      }
+    ]
+  }
+}
