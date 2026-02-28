@@ -75,24 +75,67 @@ jobs:
       - name: Run tests
         run: cargo test --workspace --all-targets
 
+      # ── Tier 1: leaf crates (no workspace deps) ──
       - name: Dry-run publish cockpitctl-types
         run: cargo publish --dry-run -p cockpitctl-types
       - name: Publish cockpitctl-types
         run: cargo publish -p cockpitctl-types
-      - name: Wait for crates.io index update
+      - name: Dry-run publish cockpitctl-feature-state
+        run: cargo publish --dry-run -p cockpitctl-feature-state
+      - name: Publish cockpitctl-feature-state
+        run: cargo publish -p cockpitctl-feature-state
+      - name: Wait for crates.io index update (tier 1)
         run: sleep 30
 
+      # ── Tier 2: depends on types and/or feature-state ──
       - name: Dry-run publish cockpitctl-conform
         run: cargo publish --dry-run -p cockpitctl-conform
       - name: Publish cockpitctl-conform
         run: cargo publish -p cockpitctl-conform
+      - name: Dry-run publish cockpitctl-domain-buildfix
+        run: cargo publish --dry-run -p cockpitctl-domain-buildfix
+      - name: Publish cockpitctl-domain-buildfix
+        run: cargo publish -p cockpitctl-domain-buildfix
+      - name: Dry-run publish cockpitctl-domain-signing
+        run: cargo publish --dry-run -p cockpitctl-domain-signing
+      - name: Publish cockpitctl-domain-signing
+        run: cargo publish -p cockpitctl-domain-signing
+      - name: Dry-run publish cockpitctl-domain-trend
+        run: cargo publish --dry-run -p cockpitctl-domain-trend
+      - name: Publish cockpitctl-domain-trend
+        run: cargo publish -p cockpitctl-domain-trend
+      - name: Dry-run publish cockpitctl-feature-grid
+        run: cargo publish --dry-run -p cockpitctl-feature-grid
+      - name: Publish cockpitctl-feature-grid
+        run: cargo publish -p cockpitctl-feature-grid
+      - name: Dry-run publish cockpitctl-io-schema
+        run: cargo publish --dry-run -p cockpitctl-io-schema
+      - name: Publish cockpitctl-io-schema
+        run: cargo publish -p cockpitctl-io-schema
+      - name: Wait for crates.io index update (tier 2)
+        run: sleep 30
+
+      # ── Tier 3: depends on tier-2 crates ──
       - name: Dry-run publish cockpitctl-domain
         run: cargo publish --dry-run -p cockpitctl-domain
       - name: Publish cockpitctl-domain
         run: cargo publish -p cockpitctl-domain
-      - name: Wait for crates.io index update
+      - name: Dry-run publish cockpitctl-io-buildfix
+        run: cargo publish --dry-run -p cockpitctl-io-buildfix
+      - name: Publish cockpitctl-io-buildfix
+        run: cargo publish -p cockpitctl-io-buildfix
+      - name: Dry-run publish cockpitctl-io-hooks
+        run: cargo publish --dry-run -p cockpitctl-io-hooks
+      - name: Publish cockpitctl-io-hooks
+        run: cargo publish -p cockpitctl-io-hooks
+      - name: Dry-run publish cockpitctl-io-policy-signing
+        run: cargo publish --dry-run -p cockpitctl-io-policy-signing
+      - name: Publish cockpitctl-io-policy-signing
+        run: cargo publish -p cockpitctl-io-policy-signing
+      - name: Wait for crates.io index update (tier 3)
         run: sleep 30
 
+      # ── Tier 4: render & ingest ──
       - name: Dry-run publish cockpitctl-render
         run: cargo publish --dry-run -p cockpitctl-render
       - name: Publish cockpitctl-render
@@ -101,31 +144,42 @@ jobs:
         run: cargo publish --dry-run -p cockpitctl-ingest
       - name: Publish cockpitctl-ingest
         run: cargo publish -p cockpitctl-ingest
-      - name: Wait for crates.io index update
+      - name: Wait for crates.io index update (tier 4)
         run: sleep 30
 
+      # ── Tier 5: io (depends on ingest ports) ──
       - name: Dry-run publish cockpitctl-io
         run: cargo publish --dry-run -p cockpitctl-io
       - name: Publish cockpitctl-io
         run: cargo publish -p cockpitctl-io
+      - name: Wait for crates.io index update (tier 5)
+        run: sleep 30
+
+      # ── Tier 6: sarif ──
       - name: Dry-run publish cockpitctl-sarif
         run: cargo publish --dry-run -p cockpitctl-sarif
       - name: Publish cockpitctl-sarif
         run: cargo publish -p cockpitctl-sarif
-      - name: Wait for crates.io index update
+      - name: Wait for crates.io index update (tier 6)
         run: sleep 30
 
+      # ── Tier 7: core facade ──
       - name: Dry-run publish cockpitctl-core
         run: cargo publish --dry-run -p cockpitctl-core
       - name: Publish cockpitctl-core
         run: cargo publish -p cockpitctl-core
-      - name: Wait for crates.io index update
+      - name: Wait for crates.io index update (tier 7)
         run: sleep 30
 
+      # ── Tier 8: CLI binary ──
       - name: Dry-run publish cockpitctl
         run: cargo publish --dry-run -p cockpitctl
       - name: Publish cockpitctl
         run: cargo publish -p cockpitctl
+      - name: Wait for crates.io index update (tier 8)
+        run: sleep 30
+
+      # ── Tier 9: conformctl binary ──
       - name: Dry-run publish conformctl
         run: cargo publish --dry-run -p conformctl
       - name: Publish conformctl

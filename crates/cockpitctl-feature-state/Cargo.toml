@@ -13,7 +13,7 @@ keywords = ["ci", "feature-flags", "interop", "testing", "ingest"]
 categories = ["development-tools", "filesystem"]
 
 [features]
-default = ["feature-hooks", "feature-buildfix", "feature-policy-signing"]
+default = []
 feature-hooks = []
 feature-buildfix = []
 feature-policy-signing = []

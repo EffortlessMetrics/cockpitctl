@@ -33,7 +33,7 @@ cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.3.0" }
 cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
 cockpitctl-render = { path = "../cockpitctl-render", version = "0.3.0" }
-cockpitctl-feature-state = { path = "../cockpitctl-feature-state", version = "0.3.0" }
+cockpitctl-feature-state = { path = "../cockpitctl-feature-state", version = "0.3.0", default-features = false }
 cockpitctl-io-buildfix = { path = "../cockpitctl-io-buildfix", version = "0.3.0", optional = true }
 cockpitctl-io = { path = "../cockpitctl-io", version = "0.3.0" }
 cockpitctl-io-hooks = { path = "../cockpitctl-io-hooks", version = "0.3.0", optional = true }
@@ -45,14 +45,17 @@ cockpitctl-sarif = { path = "../cockpitctl-sarif", version = "0.3.0" }
 default = ["feature-hooks", "feature-buildfix", "feature-policy-signing", "feature-schema"]
 feature-hooks = [
     "dep:cockpitctl-io-hooks",
+    "cockpitctl-feature-state/feature-hooks",
 ]
 feature-buildfix = [
     "dep:cockpitctl-domain-buildfix",
     "dep:cockpitctl-io-buildfix",
+    "cockpitctl-feature-state/feature-buildfix",
 ]
 feature-policy-signing = [
     "dep:cockpitctl-domain-signing",
     "dep:cockpitctl-io-policy-signing",
+    "cockpitctl-feature-state/feature-policy-signing",
 ]
 feature-schema = ["dep:cockpitctl-io-schema"]
 
