@@ -34,9 +34,18 @@ jobs:
         run: |
           cargo package --list \
             -p cockpitctl-types \
+            -p cockpitctl-feature-state \
+            -p cockpitctl-feature-grid \
+            -p cockpitctl-domain-buildfix \
+            -p cockpitctl-domain-signing \
+            -p cockpitctl-domain-trend \
             -p cockpitctl-domain \
             -p cockpitctl-ingest \
             -p cockpitctl-render \
+            -p cockpitctl-io-schema \
+            -p cockpitctl-io-buildfix \
+            -p cockpitctl-io-hooks \
+            -p cockpitctl-io-policy-signing \
             -p cockpitctl-io \
             -p cockpitctl-sarif \
             -p cockpitctl-core \
@@ -50,9 +59,18 @@ jobs:
           echo "Packaging crates as a set"
           cargo package \
             -p cockpitctl-types \
+            -p cockpitctl-feature-state \
+            -p cockpitctl-feature-grid \
+            -p cockpitctl-domain-buildfix \
+            -p cockpitctl-domain-signing \
+            -p cockpitctl-domain-trend \
             -p cockpitctl-domain \
             -p cockpitctl-ingest \
             -p cockpitctl-render \
+            -p cockpitctl-io-schema \
+            -p cockpitctl-io-buildfix \
+            -p cockpitctl-io-hooks \
+            -p cockpitctl-io-policy-signing \
             -p cockpitctl-io \
             -p cockpitctl-sarif \
             -p cockpitctl-core \
