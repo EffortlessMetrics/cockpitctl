@@ -1,5 +1,8 @@
 # cockpitctl
 
+[![CI](https://github.com/EffortlessMetrics/cockpitctl/actions/workflows/ci.yml/badge.svg)](https://github.com/EffortlessMetrics/cockpitctl/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0%20%2F%20MIT-blue)](LICENSE-APACHE)
+
 `cockpitctl` is the **director** for the Effortless Metrics PR cockpit.
 
 It does one job: **ingest receipts** emitted by sensors and **render one merge surface**
@@ -16,6 +19,28 @@ It does one job: **ingest receipts** emitted by sensors and **render one merge s
 - Not a runner/orchestrator (no installing tools, no running sensors)
 - Not a GitHub bot (workflow owns posting comments/checks)
 - Not an adapter soup (tool-specific payload is opaque; contract lives in the envelope)
+
+## Installation
+
+### From GitHub Releases
+
+Download pre-built binaries for Linux, macOS (x64/ARM64), and Windows from
+[GitHub Releases](https://github.com/EffortlessMetrics/cockpitctl/releases).
+
+### From source
+
+```bash
+cargo install cockpitctl
+```
+
+### As a GitHub Action
+
+```yaml
+- uses: EffortlessMetrics/cockpitctl@v0
+  with:
+    artifacts-path: artifacts
+    config-path: cockpit.toml
+```
 
 ## Quickstart (local)
 
@@ -98,8 +123,6 @@ Before announcing a release, validate it using only published artifacts:
 
 See [`docs/how-to/smoke-test-release.md`](docs/how-to/smoke-test-release.md) for details.
 
-See `CHANGELOG.md` for recent changes, `ROADMAP.md` for planned work, and `docs/` for full documentation.
-
 ## GitHub Action
 
 Use cockpitctl as a reusable GitHub Action to aggregate sensor receipts and
@@ -145,3 +168,45 @@ jobs:
           config-path: cockpit.toml
       - run: echo "Verdict was ${{ steps.cockpit.outputs.verdict }}"
 ```
+
+## Test coverage
+
+cockpitctl has 1800+ tests across 19 crates, spanning all major modalities:
+
+| Modality | Description |
+|----------|-------------|
+| Unit tests | Per-crate tests for all 19 microcrates |
+| Integration tests | Cross-crate pipeline, IO adapters, domain logic |
+| E2E tests | CLI invocations, exit codes, config precedence |
+| BDD scenarios | Cucumber/Gherkin scenarios for ingest, validate, init |
+| Golden/snapshot | Deterministic output verification via insta |
+| Property-based | Proptest across types, domain, ingest, render, IO, conform |
+| Fuzz testing | 6 cargo-fuzz targets with corpus seeds |
+| Stress tests | Caps, budgets, and load testing |
+| Doc tests | Executable examples in rustdoc for public APIs |
+| Benchmarks | Performance benchmarks for critical paths |
+| Mutation testing | cargo-mutants configuration for test quality |
+| Cross-platform | Path normalization tests for Windows/Unix |
+| CLI completeness | Help, version, and snapshot tests for CLI interface |
+
+## CLI usage
+
+```bash
+cockpitctl ingest --artifacts artifacts --config cockpit.toml
+cockpitctl init --path cockpit.toml          # Write starter config
+cockpitctl validate --input report.json       # Validate receipt/report
+cockpitctl explain <CODE|all>                 # Explain finding codes
+```
+
+## License
+
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or
+[MIT License](LICENSE-MIT) at your option.
+
+## Links
+
+- [CHANGELOG](CHANGELOG.md) — Recent changes and release history
+- [ROADMAP](ROADMAP.md) — Planned and completed work
+- [Documentation](docs/README.md) — Full Diataxis-structured docs
+- [Release Gate Checklist](RELEASE_READY_GATE_CHECKLIST.md) — Release process verification
+- [Contracts](contracts/) — JSON schemas and protocol specs
