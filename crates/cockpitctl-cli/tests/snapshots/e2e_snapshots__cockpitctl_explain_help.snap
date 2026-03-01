@@ -1,0 +1,14 @@
+---
+source: crates/cockpitctl-cli/tests/e2e_snapshots.rs
+assertion_line: 78
+expression: normalize(&stdout)
+---
+Explain a cockpit finding code (e.g. cockpit.missing_receipt)
+
+Usage: cockpitctl explain <CODE>
+
+Arguments:
+  <CODE>  The finding code to explain, or "all" to list every code
+
+Options:
+  -h, --help  Print help

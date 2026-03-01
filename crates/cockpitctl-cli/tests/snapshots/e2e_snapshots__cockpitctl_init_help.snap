@@ -1,0 +1,12 @@
+---
+source: crates/cockpitctl-cli/tests/e2e_snapshots.rs
+assertion_line: 54
+expression: normalize(&stdout)
+---
+Write a starter cockpit.toml (does not overwrite)
+
+Usage: cockpitctl init [OPTIONS]
+
+Options:
+      --path <PATH>  [default: cockpit.toml]
+  -h, --help         Print help

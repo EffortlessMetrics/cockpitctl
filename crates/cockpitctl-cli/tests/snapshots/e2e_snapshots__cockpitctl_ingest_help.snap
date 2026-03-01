@@ -1,0 +1,86 @@
+---
+source: crates/cockpitctl-cli/tests/e2e_snapshots.rs
+assertion_line: 42
+expression: normalize(&stdout)
+---
+Ingest sensor receipts under artifacts/ and render a cockpit report + comment
+
+Usage: cockpitctl ingest [OPTIONS]
+
+Options:
+      --artifacts <ARTIFACTS>
+          Artifacts directory (default: artifacts)
+          
+          [default: artifacts]
+
+      --config <CONFIG>
+          Policy file (default: cockpit.toml)
+          
+          [default: cockpit.toml]
+
+      --label <LABEL>
+          Labels present on the PR (optional; used for label-gates)
+
+      --schema-validation <SCHEMA_VALIDATION>
+          Schema validation mode for sensor receipts.
+          
+          - lax: Skip JSON schema validation; only parse receipts as JSON. - strict: Validate
+          receipts against schemas/sensor.report.v1.json; schema violations are surfaced as findings
+          rather than causing parse errors.
+
+          Possible values:
+          - lax:    Skip JSON schema validation; only parse receipts as JSON
+          - strict: Validate receipts against schemas/sensor.report.v1.json
+
+      --github-annotations
+          Emit GitHub Actions workflow command annotations (::error, ::warning, ::notice) to stdout
+
+      --format <FORMAT>
+          Output format for the cockpit report
+
+          Possible values:
+          - cockpit: Standard cockpit report (default)
+          - sarif:   SARIF v2.1.0 (Static Analysis Results Interchange Format)
+          
+          [default: cockpit]
+
+      --baseline <BASELINE>
+          Path to a previous cockpit report for trend comparison
+
+      --buildfix-auto-apply
+          Enable buildfix auto-apply for this run
+
+      --buildfix-max-auto-apply-safety <BUILDFIX_MAX_AUTO_APPLY_SAFETY>
+          Maximum safety level that auto-apply may execute
+          
+          [possible values: safe, guarded, unsafe]
+
+      --buildfix-actuator <BUILDFIX_ACTUATOR>
+          External actuator command used for buildfix auto-apply
+
+      --buildfix-actuator-timeout-ms <BUILDFIX_ACTUATOR_TIMEOUT_MS>
+          Timeout for buildfix actuator command in milliseconds
+
+      --disable-hooks
+          Disable hook execution for this run (explicit runtime capability toggle)
+
+      --policy-sign
+          Enable policy snapshot signing for this run
+
+      --disable-buildfix
+          Disable buildfix orchestration and auto-apply for this run
+
+      --disable-policy-signing
+          Disable policy signing for this run
+
+      --policy-sign-key-path <POLICY_SIGN_KEY_PATH>
+          Override policy signing key path
+
+      --policy-sign-key-env <POLICY_SIGN_KEY_ENV>
+          Override policy signing env var name
+
+      --policy-sign-key-id <POLICY_SIGN_KEY_ID>
+          Override policy signing key identifier
+
+  -h, --help
+          Print help (see a summary with '-h')
