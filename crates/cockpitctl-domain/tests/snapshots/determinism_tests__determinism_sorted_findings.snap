@@ -1,0 +1,78 @@
+---
+source: crates/cockpitctl-domain/tests/determinism_tests.rs
+expression: reference
+---
+[
+  {
+    "severity": "error",
+    "code": "E001",
+    "message": "Error in a:5",
+    "location": {
+      "path": "src/a.rs",
+      "line": 5
+    }
+  },
+  {
+    "severity": "error",
+    "code": "E001",
+    "message": "Error in a:5 alt msg",
+    "location": {
+      "path": "src/a.rs",
+      "line": 5
+    }
+  },
+  {
+    "severity": "error",
+    "code": "E002",
+    "message": "Error in a:5 dup code",
+    "location": {
+      "path": "src/a.rs",
+      "line": 5
+    }
+  },
+  {
+    "severity": "error",
+    "code": "E001",
+    "message": "Error in a:20",
+    "location": {
+      "path": "src/a.rs",
+      "line": 20
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "W001",
+    "message": "Warn in a",
+    "location": {
+      "path": "src/a.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "W002",
+    "message": "Warn in b",
+    "location": {
+      "path": "src/b.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "info",
+    "code": "I002",
+    "message": "Info in a",
+    "location": {
+      "path": "src/a.rs",
+      "line": 100
+    }
+  },
+  {
+    "severity": "info",
+    "code": "I001",
+    "message": "Info in c",
+    "location": {
+      "path": "src/c.rs",
+      "line": 1
+    }
+  }
+]

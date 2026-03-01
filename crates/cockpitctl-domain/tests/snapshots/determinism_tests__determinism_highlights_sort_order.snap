@@ -1,0 +1,45 @@
+---
+source: crates/cockpitctl-domain/tests/determinism_tests.rs
+expression: selected
+---
+[
+  {
+    "sensor_id": "a_sensor",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "Err a blocking",
+      "location": {
+        "path": "src/a.rs",
+        "line": 1
+      },
+      "fingerprint": "7876c68ac109c744fba9e1430aa1b48dae1c95b9c50a088abcaa198294486edd"
+    }
+  },
+  {
+    "sensor_id": "a_sensor",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "Err a non-blocking",
+      "location": {
+        "path": "src/b.rs",
+        "line": 1
+      },
+      "fingerprint": "605593022296e01c66d97b0fddd5ca31e8082596d2c5c60e7a6da801d6b89826"
+    }
+  },
+  {
+    "sensor_id": "z_sensor",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "Err z",
+      "location": {
+        "path": "src/a.rs",
+        "line": 1
+      },
+      "fingerprint": "0e41f6a1782544158a05b9651add69892e7b728d8e3d7877dded552b368e9d9d"
+    }
+  }
+]

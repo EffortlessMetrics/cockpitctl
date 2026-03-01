@@ -1,0 +1,66 @@
+---
+source: crates/cockpitctl-domain/tests/determinism_tests.rs
+expression: results
+---
+[
+  [
+    "all_pass",
+    {
+      "status": "pass",
+      "counts": {
+        "info": 0,
+        "warn": 0,
+        "error": 0
+      },
+      "reasons": []
+    }
+  ],
+  [
+    "blocking_fail_overrides",
+    {
+      "status": "fail",
+      "counts": {
+        "info": 0,
+        "warn": 0,
+        "error": 5
+      },
+      "reasons": []
+    }
+  ],
+  [
+    "nonblocking_fail_ignored",
+    {
+      "status": "pass",
+      "counts": {
+        "info": 0,
+        "warn": 0,
+        "error": 10
+      },
+      "reasons": []
+    }
+  ],
+  [
+    "mixed_warn_and_fail",
+    {
+      "status": "fail",
+      "counts": {
+        "info": 0,
+        "warn": 3,
+        "error": 2
+      },
+      "reasons": []
+    }
+  ],
+  [
+    "all_skip",
+    {
+      "status": "pass",
+      "counts": {
+        "info": 0,
+        "warn": 0,
+        "error": 0
+      },
+      "reasons": []
+    }
+  ]
+]
