@@ -32,6 +32,8 @@ cockpitctl-domain-trend = { path = "../cockpitctl-domain-trend", version = "0.3.
 
 [dev-dependencies]
 anyhow.workspace = true
+cockpitctl-conform = { path = "../cockpitctl-conform", version = "0.3.0" }
+jsonschema.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 toml.workspace = true
