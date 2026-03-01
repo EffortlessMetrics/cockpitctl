@@ -47,6 +47,7 @@ See: `docs/reference/config.md` for full reference.
 crates/
   cockpitctl-types     # stable DTOs + embedded schemas
   cockpitctl-domain    # pure policy logic, sorting, synthesis
+  cockpitctl-explain   # finding-code explanation catalog
   cockpitctl-ingest    # use case + ports + exit semantics
   cockpitctl-io        # filesystem adapters + safety guards
   cockpitctl-render    # deterministic markdown + annotation rendering

@@ -1,0 +1,15 @@
+[package]
+name = "cockpitctl-explain"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Finding-code explanation catalog for cockpitctl."
+readme = "README.md"
+keywords = ["ci", "findings", "docs", "policy"]
+categories = ["development-tools"]
+
+[dependencies]

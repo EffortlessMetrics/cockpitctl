@@ -5,6 +5,7 @@
 //! `cockpitctl-core` crate instead of wiring individual microcrates.
 
 pub use cockpitctl_domain as domain;
+pub use cockpitctl_explain as explain;
 pub use cockpitctl_ingest as ingest;
 pub use cockpitctl_io as io;
 pub use cockpitctl_render as render;
@@ -24,7 +25,7 @@ pub use cockpitctl_types::{
     VerdictStatus,
 };
 
-// Flatten domain helpers.
+// Flatten domain + explain helpers.
 pub use cockpitctl_domain::{
     CodeExplanation, all_codes, explain_code, policy_snapshot_sha256_hex, select_auto_apply_fixes,
     sign_policy_snapshot, sign_policy_snapshot_hmac_sha256,
