@@ -1,6 +1,8 @@
 //! Filesystem adapters for cockpitctl (ports implementation).
 //!
 //! This crate is the boundary between IO and the ingest use case.
+//! It provides [`FsReceiptSource`], [`FsPolicySource`], and [`FsOutputSink`]
+//! which implement the port traits from `cockpitctl-ingest`.
 
 use anyhow::{Context, Result};
 use cockpitctl_ingest::{
@@ -19,6 +21,7 @@ pub use cockpitctl_io_schema::JsonSchemaValidator;
 /// Protects against DoS if someone creates thousands of sensor directories.
 pub const DEFAULT_MAX_RECEIPTS: usize = 100;
 
+/// Filesystem layout describing artifact and output paths.
 #[derive(Clone)]
 pub struct FsLayout {
     pub artifacts_dir: PathBuf,
@@ -54,35 +57,43 @@ impl FsLayout {
         self
     }
 
+    /// Return the directory for a given sensor.
     pub fn sensor_dir(&self, sensor_id: &str) -> PathBuf {
         self.artifacts_dir.join(sensor_id)
     }
 
+    /// Return the path to a sensor's `report.json`.
     pub fn report_file(&self, sensor_id: &str) -> PathBuf {
         self.sensor_dir(sensor_id).join("report.json")
     }
 
+    /// Return the path to a sensor's `comment.md`.
     pub fn comment_file(&self, sensor_id: &str) -> PathBuf {
         self.sensor_dir(sensor_id).join("comment.md")
     }
 
+    /// Return the path to a sensor's `plan.json`.
     pub fn plan_file(&self, sensor_id: &str) -> PathBuf {
         self.sensor_dir(sensor_id).join("plan.json")
     }
 
+    /// Return the path to the SARIF output file.
     pub fn sarif_report_file(&self) -> PathBuf {
         self.out_dir.join("sarif.json")
     }
 
+    /// Return the path to the cockpit `report.json` output.
     pub fn cockpit_report_file(&self) -> PathBuf {
         self.out_dir.join("report.json")
     }
 
+    /// Return the path to the cockpit `comment.md` output.
     pub fn cockpit_comment_file(&self) -> PathBuf {
         self.out_dir.join("comment.md")
     }
 }
 
+/// Receipt source backed by the local filesystem.
 #[derive(Clone)]
 pub struct FsReceiptSource {
     layout: FsLayout,
@@ -90,6 +101,7 @@ pub struct FsReceiptSource {
 }
 
 impl FsReceiptSource {
+    /// Create a new filesystem receipt source from the given layout.
     pub fn new(layout: FsLayout) -> Self {
         let artifacts_root = canonicalize_root(&layout.artifacts_dir);
         Self {
@@ -245,12 +257,14 @@ impl ReceiptSource for FsReceiptSource {
     }
 }
 
+/// Policy source that loads `cockpit.toml` from the filesystem.
 #[derive(Clone)]
 pub struct FsPolicySource {
     layout: FsLayout,
 }
 
 impl FsPolicySource {
+    /// Create a new filesystem policy source from the given layout.
     pub fn new(layout: FsLayout) -> Self {
         Self { layout }
     }
@@ -269,12 +283,14 @@ impl PolicySource for FsPolicySource {
     }
 }
 
+/// Output sink that writes cockpit report and comment to the filesystem.
 #[derive(Clone)]
 pub struct FsOutputSink {
     layout: FsLayout,
 }
 
 impl FsOutputSink {
+    /// Create a new filesystem output sink from the given layout.
     pub fn new(layout: FsLayout) -> Self {
         Self { layout }
     }

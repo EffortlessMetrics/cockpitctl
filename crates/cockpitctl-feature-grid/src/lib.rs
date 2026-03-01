@@ -1,4 +1,7 @@
 //! Shared feature-grid definitions for BDD and feature flag parity.
+//!
+//! Defines the expected presence/absence of features per CLI argument
+//! combination, used by BDD scenario expansion and feature-flag tests.
 
 use cockpitctl_feature_state::Feature;
 

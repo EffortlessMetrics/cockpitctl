@@ -30,7 +30,9 @@
 //! assert!(result.is_pass());
 //! ```
 
+/// Individual conformance check functions.
 pub mod checks;
+/// Single-receipt conformance runner.
 pub mod single;
 
 pub use checks::{

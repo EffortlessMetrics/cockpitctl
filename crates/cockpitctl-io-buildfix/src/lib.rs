@@ -1,4 +1,7 @@
 //! Buildfix actuator adapter extracted from `cockpitctl-io`.
+//!
+//! Runs an external command to apply selected fixes, passing the request
+//! as JSON on stdin and reading the result from stdout.
 
 use anyhow::{Context, Result};
 use cockpitctl_types::{BuildfixActuatorConfig, BuildfixActuatorResult, BuildfixApplyRequest};

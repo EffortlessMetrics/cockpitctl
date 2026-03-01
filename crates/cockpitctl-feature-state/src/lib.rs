@@ -1,4 +1,7 @@
 //! Shared feature flag model for runtime availability and runtime-disable state.
+//!
+//! Enumerates features that can be conditionally present at runtime and
+//! maps each feature to its CLI flag, comment marker, and sidecar file.
 
 /// Metadata describing how a feature maps to CLI/runtime artifacts.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

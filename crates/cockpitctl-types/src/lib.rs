@@ -27,12 +27,17 @@ pub const COCKPIT_PROMOTE_V1_SCHEMA_JSON: &str = include_str!("../schemas/cockpi
 /// A schema identifier string, e.g. `builddiag.report.v1`.
 pub type SchemaId = String;
 
+/// Overall status of a sensor or cockpit verdict.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum VerdictStatus {
+    /// All checks passed.
     Pass,
+    /// Non-fatal warnings were raised.
     Warn,
+    /// One or more checks failed.
     Fail,
+    /// The sensor was skipped (e.g., missing or label-gated).
     Skip,
 }
 
@@ -63,6 +68,7 @@ pub struct VerdictCounts {
     pub suppressed: u64,
 }
 
+/// Combined verdict including status, counts, and reason tokens.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Verdict {
     pub status: VerdictStatus,
@@ -71,6 +77,7 @@ pub struct Verdict {
     pub reasons: Vec<String>,
 }
 
+/// Metadata about the tool that produced a report.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ToolInfo {
     pub name: String,
@@ -79,6 +86,7 @@ pub struct ToolInfo {
     pub commit: Option<String>,
 }
 
+/// Host environment information captured at run time.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HostInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -89,6 +97,7 @@ pub struct HostInfo {
     pub hostname: Option<String>,
 }
 
+/// Git repository context captured at run time.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -105,6 +114,7 @@ pub struct GitInfo {
     pub merge_base: Option<String>,
 }
 
+/// CI provider context captured at run time.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CiInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -117,14 +127,19 @@ pub struct CiInfo {
     pub job: Option<String>,
 }
 
+/// Availability status of a declared capability.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum CapabilityStatus {
+    /// The capability is available and was exercised.
     Available,
+    /// The capability is not available in this environment.
     Unavailable,
+    /// The capability was available but intentionally skipped.
     Skipped,
 }
 
+/// A declared runtime capability and its status.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Capability {
     pub status: CapabilityStatus,
@@ -132,6 +147,7 @@ pub struct Capability {
     pub reason: Option<String>,
 }
 
+/// Execution context for a sensor or cockpitctl run.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunInfo {
     pub started_at: String, // RFC3339
@@ -150,14 +166,19 @@ pub struct RunInfo {
     pub capabilities: BTreeMap<String, Capability>,
 }
 
+/// Finding severity level.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Severity {
+    /// Informational notice.
     Info,
+    /// Non-fatal warning.
     Warn,
+    /// Error that contributes to a fail verdict.
     Error,
 }
 
+/// Source location of a finding in a file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Location {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -168,6 +189,7 @@ pub struct Location {
     pub col: Option<u32>,
 }
 
+/// A single diagnostic finding produced by a sensor.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Finding {
     pub severity: Severity,
@@ -340,6 +362,7 @@ pub struct BuildfixActuatorConfig {
     pub timeout_ms: u64,
 }
 
+/// Global policy settings from `cockpit.toml`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Policy {
     #[serde(default)]
@@ -411,6 +434,7 @@ impl Default for Policy {
     }
 }
 
+/// Top-level cockpit configuration deserialized from `cockpit.toml`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct CockpitConfig {
     #[serde(default)]
@@ -446,6 +470,7 @@ pub struct SensorSummary {
     pub policy_outcome: Option<PolicyOutcome>,
 }
 
+/// A finding surfaced as a highlight in the cockpit report.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Highlight {
     pub sensor_id: String,
@@ -466,6 +491,7 @@ pub struct CockpitReport {
     pub data: Option<Value>,
 }
 
+/// Snapshot of the policy configuration used during evaluation.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PolicySnapshot {
     pub warn_is_fail: bool,
@@ -476,6 +502,7 @@ pub struct PolicySnapshot {
     pub sensors: Vec<PolicySensorSnapshot>,
 }
 
+/// Per-sensor policy snapshot embedded in the cockpit report.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PolicySensorSnapshot {
     pub id: String,

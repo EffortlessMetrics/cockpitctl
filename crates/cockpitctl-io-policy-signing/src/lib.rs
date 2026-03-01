@@ -1,4 +1,7 @@
 //! Policy-signing key-loading adapter extracted from `cockpitctl-io`.
+//!
+//! Resolves a signing key from either a file path or an environment
+//! variable, normalising the raw bytes for use by the signing domain.
 
 use anyhow::{Context, Result};
 use cockpitctl_types::PolicySigningConfig;

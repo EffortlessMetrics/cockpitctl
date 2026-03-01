@@ -1,4 +1,7 @@
 //! Buildfix domain boundary microcrate.
+//!
+//! Matches fixes from buildfix plans to surfaced findings and selects
+//! fixes eligible for automatic application based on safety-level gating.
 
 use cockpitctl_types::{
     BuildfixPlan, BuildfixSummary, FixSummary, Highlight, MatchedFinding, SafetyLevel,
