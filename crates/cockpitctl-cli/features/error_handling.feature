@@ -77,3 +77,65 @@ Feature: Error handling
     And the sensor "builddiag" has verdict status "pass"
     And the file "artifacts/cockpit/report.json" exists
     And the file "artifacts/cockpit/comment.md" exists
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Empty and Minimal Artifacts
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @new
+  Scenario: empty artifacts directory produces valid output with no sensors
+    Given a temporary directory
+    And a minimal cockpit config
+    And an empty artifacts subdirectory
+    When I run "cockpitctl ingest --artifacts artifacts --config cockpit.toml"
+    Then the exit code is 0
+    And the file "artifacts/cockpit/report.json" exists
+    And the file "artifacts/cockpit/comment.md" exists
+
+  @new
+  Scenario: sensor directory with no report.json is treated as missing receipt
+    Given a dynamic artifacts directory with sensors "alpha"
+    And the file "artifacts/alpha/report.json" is deleted
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the cockpit report is valid JSON
+    And the cockpit report contains a highlight "cockpit.missing_receipt"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Multiple Corrupt Receipts
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @new
+  Scenario: multiple corrupt receipts all produce individual findings
+    Given a dynamic artifacts directory with sensors "bad1,bad2,good"
+    And dynamic sensor "bad1" has corrupt JSON content
+    And dynamic sensor "bad2" has corrupt JSON content
+    And dynamic sensor "good" has verdict "pass"
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the cockpit report is valid JSON
+    And the cockpit report contains a highlight "cockpit.invalid_receipt"
+    And the file "artifacts/cockpit/report.json" exists
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Truncated and Minimal JSON
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @new
+  Scenario: truncated JSON receipt produces a finding
+    Given a dynamic artifacts directory with sensors "trunc"
+    And dynamic sensor "trunc" has truncated JSON content
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the cockpit report is valid JSON
+    And the cockpit report contains a highlight "cockpit.invalid_receipt"
+
+  @new
+  Scenario: receipt with empty JSON object produces a finding
+    Given a dynamic artifacts directory with sensors "emptyobj"
+    And dynamic sensor "emptyobj" has content "{}"
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the cockpit report is valid JSON
+    And the cockpit report contains a highlight "cockpit.invalid_receipt"
