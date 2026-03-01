@@ -41,6 +41,46 @@ fn highlight_to_trend_finding(h: &Highlight) -> TrendFinding {
 }
 
 /// Compute the trend delta between a baseline and current cockpit report.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain_trend::compute_trend;
+/// use cockpitctl_types::{
+///     CockpitReport, PolicySnapshot, RunInfo, ToolInfo,
+///     Verdict, VerdictCounts, VerdictStatus,
+/// };
+/// use std::collections::BTreeMap;
+///
+/// # fn make_report(status: VerdictStatus) -> CockpitReport {
+/// #     CockpitReport {
+/// #         schema: "cockpit.report.v1".into(),
+/// #         tool: ToolInfo { name: "t".into(), version: "1".into(), commit: None },
+/// #         run: RunInfo {
+/// #             started_at: "2026-01-01T00:00:00Z".into(),
+/// #             ended_at: None, duration_ms: None, host: None,
+/// #             git: None, ci: None, capabilities: BTreeMap::new(),
+/// #         },
+/// #         verdict: Verdict {
+/// #             status,
+/// #             counts: VerdictCounts { info: 0, warn: 0, error: 0, suppressed: 0 },
+/// #             reasons: vec![],
+/// #         },
+/// #         sensors: vec![],
+/// #         highlights: vec![],
+/// #         policy: PolicySnapshot {
+/// #             warn_is_fail: false, max_highlights: 5,
+/// #             max_per_sensor_findings: 20, max_annotations: 10,
+/// #             section_order: vec![], sensors: vec![],
+/// #         },
+/// #         data: None,
+/// #     }
+/// # }
+/// let baseline = make_report(VerdictStatus::Fail);
+/// let current = make_report(VerdictStatus::Pass);
+/// let trend = compute_trend(&baseline, &current);
+/// assert!(trend.verdict_change.is_some());
+/// ```
 pub fn compute_trend(baseline: &CockpitReport, current: &CockpitReport) -> TrendDelta {
     // Index baseline findings by fingerprint then by composite key.
     let mut baseline_by_fp: BTreeMap<String, &Highlight> = BTreeMap::new();

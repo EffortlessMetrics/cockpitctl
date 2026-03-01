@@ -2,6 +2,17 @@
 //!
 //! This crate defines the core application flow in terms of ports (traits).
 //! It does not touch filesystem directly; adapters provide IO.
+//!
+//! # Examples
+//!
+//! ```
+//! use cockpitctl_ingest::{NoOpSchemaValidator, SchemaValidator, SchemaValidationResult};
+//!
+//! // The no-op validator always returns Valid (for lax mode).
+//! let validator = NoOpSchemaValidator;
+//! let result = validator.validate_receipt(b"{}").unwrap();
+//! assert!(matches!(result, SchemaValidationResult::Valid));
+//! ```
 
 use anyhow::{Context, Result};
 use cockpitctl_domain::{

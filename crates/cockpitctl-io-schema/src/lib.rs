@@ -7,6 +7,26 @@ use serde_json::Value;
 use std::fs;
 
 /// JSON Schema validator for sensor and cockpit reports.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_io_schema::JsonSchemaValidator;
+/// use cockpitctl_ingest::{SchemaValidator, SchemaValidationResult};
+///
+/// let validator = JsonSchemaValidator::sensor_report_v1().unwrap();
+///
+/// let valid = r#"{
+///   "schema": "sensor.report.v1",
+///   "tool": { "name": "test", "version": "1.0.0" },
+///   "run": { "started_at": "2026-01-01T00:00:00Z" },
+///   "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+///   "findings": []
+/// }"#;
+///
+/// let result = validator.validate_receipt(valid.as_bytes()).unwrap();
+/// assert!(matches!(result, SchemaValidationResult::Valid));
+/// ```
 #[derive(Debug)]
 pub struct JsonSchemaValidator {
     validator: Validator,

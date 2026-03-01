@@ -15,6 +15,19 @@ pub struct FeatureContract {
 }
 
 /// Features that can be conditionally present at runtime.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_feature_state::Feature;
+///
+/// // Parse a feature by name
+/// let f = Feature::from_name("hooks").unwrap();
+/// assert_eq!(f.as_str(), "hooks");
+///
+/// // Enumerate all features
+/// assert_eq!(Feature::all().len(), 3);
+/// ```
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Feature {
     Hooks,
@@ -91,6 +104,17 @@ impl Feature {
 }
 
 /// Runtime feature state after compile-time and CLI disable flags are applied.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_feature_state::{Feature, RuntimeFeatureState};
+///
+/// let state = RuntimeFeatureState::new(true, false, true);
+/// assert!(state.hooks());
+/// assert!(!state.buildfix());
+/// assert!(state.is_enabled(Feature::PolicySigning));
+/// ```
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct RuntimeFeatureState {
     hooks: bool,
