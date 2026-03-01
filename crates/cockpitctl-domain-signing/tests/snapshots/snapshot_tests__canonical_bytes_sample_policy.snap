@@ -1,0 +1,22 @@
+---
+source: crates/cockpitctl-domain-signing/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "max_annotations": 10,
+  "max_highlights": 5,
+  "max_per_sensor_findings": 50,
+  "section_order": [
+    "quality",
+    "security"
+  ],
+  "sensors": [
+    {
+      "blocking": true,
+      "id": "clippy",
+      "missing": "fail",
+      "section": "quality"
+    }
+  ],
+  "warn_is_fail": false
+}

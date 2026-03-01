@@ -1,0 +1,5 @@
+---
+source: crates/cockpitctl-domain-signing/tests/snapshot_tests.rs
+expression: hex
+---
+4b964c735ae15fddcfebf580f4eb099d74e240a151982feb0a545e171e06d0d6

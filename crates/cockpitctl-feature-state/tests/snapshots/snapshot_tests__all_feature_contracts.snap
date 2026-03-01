@@ -1,0 +1,9 @@
+---
+source: crates/cockpitctl-feature-state/tests/snapshot_tests.rs
+expression: contracts
+---
+[
+    "FeatureContract {\n    feature: Hooks,\n    name: \"hooks\",\n    disable_flag: \"--disable-hooks\",\n    comment_marker: Some(\n        \"### Hook Notes\",\n    ),\n    report_data_key: None,\n    sidecar_file: None,\n}",
+    "FeatureContract {\n    feature: Buildfix,\n    name: \"buildfix\",\n    disable_flag: \"--disable-buildfix\",\n    comment_marker: Some(\n        \"### Buildfix\",\n    ),\n    report_data_key: Some(\n        \"_buildfix\",\n    ),\n    sidecar_file: Some(\n        \"buildfix.apply.json\",\n    ),\n}",
+    "FeatureContract {\n    feature: PolicySigning,\n    name: \"policy-signing\",\n    disable_flag: \"--disable-policy-signing\",\n    comment_marker: Some(\n        \"### Policy Signature\",\n    ),\n    report_data_key: Some(\n        \"_policy_signature\",\n    ),\n    sidecar_file: Some(\n        \"policy.signature.json\",\n    ),\n}",
+]

@@ -1,0 +1,18 @@
+---
+source: crates/cockpitctl-feature-state/tests/snapshot_tests.rs
+expression: view
+---
+[
+    (
+        "hooks",
+        true,
+    ),
+    (
+        "buildfix",
+        false,
+    ),
+    (
+        "policy-signing",
+        true,
+    ),
+]

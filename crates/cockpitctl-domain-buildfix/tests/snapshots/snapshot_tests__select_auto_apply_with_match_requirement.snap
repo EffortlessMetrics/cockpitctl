@@ -1,0 +1,19 @@
+---
+source: crates/cockpitctl-domain-buildfix/tests/snapshot_tests.rs
+expression: selected
+---
+[
+  {
+    "fix_id": "matched-safe",
+    "sensor_id": "sensor",
+    "safety": "safe",
+    "description": "desc-matched-safe",
+    "matched_findings": [
+      {
+        "sensor_id": "sensor",
+        "code": "CODE-1"
+      }
+    ],
+    "unmatched": false
+  }
+]

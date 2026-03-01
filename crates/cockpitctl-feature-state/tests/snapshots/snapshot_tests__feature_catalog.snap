@@ -1,0 +1,21 @@
+---
+source: crates/cockpitctl-feature-state/tests/snapshot_tests.rs
+expression: catalog
+---
+[
+    (
+        "hooks",
+        "--disable-hooks",
+        false,
+    ),
+    (
+        "buildfix",
+        "--disable-buildfix",
+        false,
+    ),
+    (
+        "policy-signing",
+        "--disable-policy-signing",
+        false,
+    ),
+]

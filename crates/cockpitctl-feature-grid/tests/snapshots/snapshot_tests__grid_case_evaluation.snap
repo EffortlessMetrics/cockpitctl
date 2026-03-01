@@ -1,0 +1,30 @@
+---
+source: crates/cockpitctl-feature-grid/tests/snapshot_tests.rs
+expression: results
+---
+[
+    (
+        "hooks+[]=>Present",
+        false,
+    ),
+    (
+        "hooks+[\"--disable-hooks\"]=>Absent",
+        true,
+    ),
+    (
+        "buildfix+[]=>Present",
+        false,
+    ),
+    (
+        "buildfix+[\"--disable-buildfix\"]=>Absent",
+        true,
+    ),
+    (
+        "policy-signing+[]=>Present",
+        false,
+    ),
+    (
+        "policy-signing+[\"--disable-policy-signing\"]=>Absent",
+        true,
+    ),
+]

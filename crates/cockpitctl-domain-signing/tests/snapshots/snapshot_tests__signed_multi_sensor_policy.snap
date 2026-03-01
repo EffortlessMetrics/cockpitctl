@@ -1,0 +1,11 @@
+---
+source: crates/cockpitctl-domain-signing/tests/snapshot_tests.rs
+expression: evidence
+---
+{
+  "schema": "cockpit.policy_signature.v1",
+  "algorithm": "hmac_sha256",
+  "policy_sha256": "1719ce48b8860ed71764880b55f5d905b918743b47d7819f0aff9a882f16736d",
+  "signature": "03fd69566d972c457f439d94725395ec5d7872c1164533ec5b8f9ab4181ff24a",
+  "key_id": "mk-1"
+}

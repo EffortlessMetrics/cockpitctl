@@ -1,0 +1,42 @@
+---
+source: crates/cockpitctl-feature-grid/tests/snapshot_tests.rs
+expression: scenarios
+---
+[
+    (
+        "hooks",
+        [],
+        false,
+    ),
+    (
+        "hooks",
+        [
+            "--disable-hooks",
+        ],
+        false,
+    ),
+    (
+        "buildfix",
+        [],
+        false,
+    ),
+    (
+        "buildfix",
+        [
+            "--disable-buildfix",
+        ],
+        false,
+    ),
+    (
+        "policy-signing",
+        [],
+        false,
+    ),
+    (
+        "policy-signing",
+        [
+            "--disable-policy-signing",
+        ],
+        false,
+    ),
+]
