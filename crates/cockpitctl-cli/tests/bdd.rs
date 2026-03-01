@@ -863,6 +863,47 @@ fn given_file_with_content(world: &mut IngestWorld, filename: String, content: S
     fs::write(&path, &content).expect("failed to write file");
 }
 
+#[given(expr = "a valid sensor report at {string}")]
+fn given_valid_sensor_report(world: &mut IngestWorld, filename: String) {
+    let dir = world.fixture_path.as_ref().expect("temp directory not set");
+    let report = r#"{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "test-sensor", "version": "1.0.0" },
+  "run": { "started_at": "2026-02-02T11:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+  "findings": []
+}"#;
+    fs::write(dir.join(&filename), report).expect("failed to write sensor report");
+}
+
+#[given(expr = "a valid cockpit report at {string}")]
+fn given_valid_cockpit_report(world: &mut IngestWorld, filename: String) {
+    let dir = world.fixture_path.as_ref().expect("temp directory not set");
+    let report = r#"{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": "cockpitctl", "version": "0.2.0" },
+  "run": { "started_at": "2026-02-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] },
+  "sensors": [],
+  "highlights": [],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 10,
+    "max_per_sensor_findings": 50,
+    "section_order": [],
+    "sensors": []
+  }
+}"#;
+    fs::write(dir.join(&filename), report).expect("failed to write cockpit report");
+}
+
+#[given("a minimal cockpit config")]
+fn given_minimal_cockpit_config(world: &mut IngestWorld) {
+    let dir = world.fixture_path.as_ref().expect("temp directory not set");
+    let config = "[policy]\nwarn_is_fail = false\nmax_highlights = 10\n";
+    fs::write(dir.join("cockpit.toml"), config).expect("failed to write cockpit.toml");
+}
+
 #[when(expr = "I run {string}")]
 fn run_cli_command(world: &mut IngestWorld, command: String) {
     let parts: Vec<&str> = command.split_whitespace().collect();
@@ -917,6 +958,18 @@ fn file_exists(world: &mut IngestWorld, filename: String) {
     assert!(
         path.exists(),
         "file {} does not exist at {:?}",
+        filename,
+        path
+    );
+}
+
+#[then(expr = "the file {string} does not exist")]
+fn file_does_not_exist(world: &mut IngestWorld, filename: String) {
+    let dir = world.fixture_path.as_ref().expect("directory not set");
+    let path = dir.join(&filename);
+    assert!(
+        !path.exists(),
+        "file {} should not exist but was found at {:?}",
         filename,
         path
     );
@@ -1007,6 +1060,14 @@ fn file_contains(world: &mut IngestWorld, filename: String, expected: String) {
         expected,
         content
     );
+}
+
+#[then(expr = "the file {string} is valid TOML")]
+fn file_is_valid_toml(world: &mut IngestWorld, filename: String) {
+    let dir = world.fixture_path.as_ref().expect("directory not set");
+    let path = dir.join(&filename);
+    let content = fs::read_to_string(&path).expect("failed to read file");
+    let _parsed: toml::Value = toml::from_str(&content).expect("file is not valid TOML");
 }
 
 #[then(expr = "the JSON file {string} field {string} equals {string}")]
