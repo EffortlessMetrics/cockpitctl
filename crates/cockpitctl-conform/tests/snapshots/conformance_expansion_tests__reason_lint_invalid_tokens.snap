@@ -1,0 +1,32 @@
+---
+source: crates/cockpitctl-conform/tests/conformance_expansion_tests.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[0]: invalid token \"\"",
+        },
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[1]: invalid token \"Has Space\"",
+        },
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[2]: invalid token \"UPPER\"",
+        },
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[3]: invalid token \"has-dash\"",
+        },
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[5]: invalid token \"has.dot\"",
+        },
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[6]: invalid token \"a!b@c#\"",
+        },
+    ],
+}

@@ -1,0 +1,16 @@
+---
+source: crates/cockpitctl-conform/tests/conformance_expansion_tests.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "ordering",
+            message: "finding[1] is out of order (severity_rank=1, code=W1) < finding[0] (severity_rank=2, code=I1)",
+        },
+        Violation {
+            check: "ordering",
+            message: "finding[2] is out of order (severity_rank=0, code=E1) < finding[1] (severity_rank=1, code=W1)",
+        },
+    ],
+}

@@ -1,0 +1,32 @@
+---
+source: crates/cockpitctl-conform/tests/conformance_expansion_tests.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "path_hygiene",
+            message: "finding[0]: path traversal (contains ..): ../traversal",
+        },
+        Violation {
+            check: "path_hygiene",
+            message: "finding[1]: absolute path (starts with / or \\): /abs/path",
+        },
+        Violation {
+            check: "ordering",
+            message: "finding[1] is out of order (severity_rank=0, code=E1) < finding[0] (severity_rank=2, code=I1)",
+        },
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[0]: invalid token \"INVALID\"",
+        },
+        Violation {
+            check: "tool_error_identity",
+            message: "verdict.reasons contains \"tool_error\" but no finding has check_id=\"tool.runtime\" + code=\"runtime_error\"",
+        },
+        Violation {
+            check: "sensor_id_format",
+            message: "sensor_id \"bad.id!\" does not match [a-zA-Z0-9_-]+",
+        },
+    ],
+}

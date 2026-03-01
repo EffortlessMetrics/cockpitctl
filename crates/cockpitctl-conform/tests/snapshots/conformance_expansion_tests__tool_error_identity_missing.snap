@@ -1,0 +1,12 @@
+---
+source: crates/cockpitctl-conform/tests/conformance_expansion_tests.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "tool_error_identity",
+            message: "verdict.reasons contains \"tool_error\" but no finding has check_id=\"tool.runtime\" + code=\"runtime_error\"",
+        },
+    ],
+}
