@@ -1,6 +1,6 @@
 # cargo-mutants configuration.
 #
-# Covered crates (all have meaningful test suites):
+# Covered crates (all 19 workspace crates):
 #
 #   Domain layer:
 #     cockpitctl-domain          — policy + highlight selection
@@ -13,6 +13,7 @@
 #     cockpitctl-feature-grid    — grid computation (30 tests)
 #
 #   IO layer:
+#     cockpitctl-io              — filesystem adapters + safety limits
 #     cockpitctl-io-hooks        — hook execution (22 tests)
 #     cockpitctl-io-schema       — schema loading (31 tests)
 #     cockpitctl-io-buildfix     — build-fix I/O (13 tests)
@@ -24,32 +25,47 @@
 #     cockpitctl-conform         — conformance checking (132 tests)
 #     cockpitctl-render          — PR comment renderer (32+ tests)
 #     cockpitctl-sarif           — SARIF conversion (30+ tests)
+#     cockpitctl-core            — facade re-exports
 #
-# You can run:
-#   cargo mutants --workspace --exclude cockpitctl-io --exclude xtask
+#   Binaries:
+#     cockpitctl-cli             — clap entry point
+#     conformctl                 — standalone conformance checker
+#
+# Usage:
+#   cargo mutants --workspace --timeout 60 -- --all-targets
+#   cargo mutants -p cockpitctl-domain --timeout 60 -- --all-targets
 #
 # Keep this file conservative; mutation testing can be expensive in CI.
 
 [mutants]
 timeout = 60
 
-# Crates to mutate — only those with adequate test coverage.
+# Crates to mutate — all 19 workspace crates.
 examine_globs = [
+  # Domain layer
   "crates/cockpitctl-domain/src/**",
   "crates/cockpitctl-domain-signing/src/**",
   "crates/cockpitctl-domain-buildfix/src/**",
   "crates/cockpitctl-domain-trend/src/**",
+  # Feature layer
   "crates/cockpitctl-feature-state/src/**",
   "crates/cockpitctl-feature-grid/src/**",
+  # IO layer
+  "crates/cockpitctl-io/src/**",
   "crates/cockpitctl-io-hooks/src/**",
   "crates/cockpitctl-io-schema/src/**",
   "crates/cockpitctl-io-buildfix/src/**",
   "crates/cockpitctl-io-policy-signing/src/**",
+  # Core/shared
   "crates/cockpitctl-types/src/**",
   "crates/cockpitctl-ingest/src/**",
   "crates/cockpitctl-conform/src/**",
   "crates/cockpitctl-render/src/**",
   "crates/cockpitctl-sarif/src/**",
+  "crates/cockpitctl-core/src/**",
+  # Binaries
+  "crates/cockpitctl-cli/src/**",
+  "crates/conformctl/src/**",
 ]
 
 exclude_globs = [
@@ -57,4 +73,23 @@ exclude_globs = [
   "schemas/**",
   "templates/**",
   "fuzz/**",
+  "xtask/**",
+]
+
+# Skip functions where mutations are unlikely to be caught or are not meaningful.
+exclude_re = [
+  # Display/Debug impls — trivial formatting, not business logic
+  "impl (?:core::fmt::)?Display for",
+  "impl (?:core::fmt::)?Debug for",
+  # Simple accessor/getter methods
+  "fn as_str\\b",
+  "fn as_ref\\b",
+  "fn is_empty\\b",
+  # Clap derive boilerplate (CLI argument parsing)
+  "fn augment_args\\b",
+  "fn command\\b",
+  # Serde visitor boilerplate
+  "fn expecting\\b",
+  # Default trait impls
+  "impl (?:core::default::)?Default for",
 ]
