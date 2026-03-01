@@ -16,7 +16,7 @@ categories = ["development-tools", "filesystem"]
 insta = { workspace = true }
 
 [features]
-default = []
+default = ["feature-hooks", "feature-buildfix", "feature-policy-signing"]
 feature-hooks = []
 feature-buildfix = []
 feature-policy-signing = []

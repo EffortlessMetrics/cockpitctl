@@ -6,16 +6,16 @@ expression: catalog
     (
         "hooks",
         "--disable-hooks",
-        false,
+        true,
     ),
     (
         "buildfix",
         "--disable-buildfix",
-        false,
+        true,
     ),
     (
         "policy-signing",
         "--disable-policy-signing",
-        false,
+        true,
     ),
 ]
