@@ -21,3 +21,4 @@ cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 
 [dev-dependencies]
 tempfile.workspace = true
+insta.workspace = true

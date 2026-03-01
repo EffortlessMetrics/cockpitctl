@@ -1,0 +1,14 @@
+---
+source: crates/cockpitctl-io-hooks/tests/hooks_adapter_tests.rs
+expression: "serde_json::json!(sections.iter().map(|s|\nserde_json::json!({ \"name\": s.name, \"order\": s.order, })).collect::<Vec<_>>())"
+---
+[
+  {
+    "name": "alpha",
+    "order": 1
+  },
+  {
+    "name": "beta",
+    "order": 2
+  }
+]
