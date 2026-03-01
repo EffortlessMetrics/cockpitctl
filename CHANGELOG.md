@@ -31,7 +31,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Packaging hygiene check scripts for CI (`check_state.js`, `check_state.ps1`)
   (PR #50)
 
-#### Testing expansion (1800+ tests across 19 crates)
+#### Testing expansion (2000+ tests across 19 crates)
 
 Unit and integration tests:
 - Comprehensive unit tests across all 19 microcrates (PR #9)
@@ -48,12 +48,19 @@ Unit and integration tests:
 - Ingest use case edge case coverage (PR #71)
 - Proptest serde roundtrips and core reexport regression tests (PR #52)
 - Property-based ordering invariant tests for types (PR #64)
+- Types crate validation and constraint tests — 20 tests (PR #87)
+- Domain edge case and boundary condition tests — 37 tests (PR #86)
+- Render annotation, marker, and template tests — 36 tests (PR #88)
+- Conform ordering and validation edge case tests — 25 tests (PR #89)
+- Ingest port boundary tests with test doubles — 24 tests (PR #90)
 
 Golden and snapshot tests:
 - Golden/snapshot test expansion: 29 test functions, 34 snapshot files covering
   normal, edge, error, and multi-sensor scenarios (PR #32)
 - Determinism golden tests for ordering stability (PR #46)
 - Render golden/snapshot test coverage expansion (PR #66)
+- Snapshot regression tests across 5 crates (domain-signing, domain-buildfix,
+  feature-state, feature-grid, IO) — 27 tests (PR #85)
 
 BDD scenarios:
 - Multi-sensor BDD scenarios and CI workflow improvements (PR #53)
@@ -102,6 +109,8 @@ Mutation testing:
 - Code coverage reporting with cargo-tarpaulin (PR #36)
 - cargo-deny for license and advisory checking (PR #37)
 - Benchmark, examples, and doc test compilation checks in CI (PR #68)
+- Package content hygiene verification and embedded schema checks in CI (PR #84)
+- Release dry-run scripts for pre-release confidence (bash + PowerShell) (PR #84)
 - CI pipeline: fmt → clippy → tests → doc tests → benchmarks → examples →
   no-default-features → schema-sync → packaging → conformance → dependency
   checks → security audit → MSRV
@@ -112,6 +121,8 @@ Mutation testing:
 - Runnable doc-tested examples for core and types crates (PR #33)
 - Improved rustdoc coverage across core crates (PR #40)
 - Executable doc tests for public APIs (PR #58)
+- CONTRIBUTING.md with development workflow, architecture guide, testing overview,
+  code style, and PR guidelines (PR #91)
 
 #### Release infrastructure
 - 9-tier dependency-ordered publish in release workflow
