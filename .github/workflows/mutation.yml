@@ -1,0 +1,42 @@
+name: Mutation Testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      crate:
+        description: 'Crate to test (or "all" for workspace)'
+        required: true
+        default: 'all'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  mutants:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-mutants
+        run: cargo install cargo-mutants
+
+      - name: Run mutation tests
+        run: |
+          if [ "${{ inputs.crate }}" = "all" ]; then
+            cargo mutants --workspace --timeout 60 -- --all-targets
+          else
+            cargo mutants -p "${{ inputs.crate }}" --timeout 60 -- --all-targets
+          fi
+
+      - name: Upload mutation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-results
+          path: mutants.out/
