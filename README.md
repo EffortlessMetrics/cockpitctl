@@ -45,24 +45,33 @@ See: `docs/reference/config.md` for full reference.
 
 ```
 crates/
-  cockpitctl-types     # stable DTOs + embedded schemas
-  cockpitctl-domain    # pure policy logic, sorting, synthesis
-  cockpitctl-ingest    # use case + ports + exit semantics
-  cockpitctl-io        # filesystem adapters + safety guards
-  cockpitctl-render    # deterministic markdown + annotation rendering
-  cockpitctl-sarif     # SARIF v2.1.0 export
-  cockpitctl-conform   # conformance checking library
-  cockpitctl-core      # facade crate (re-exports all microcrates)
-  cockpitctl-cli       # `cockpitctl` CLI package (binary + compatibility lib)
-  conformctl           # standalone conformance checker CLI
-xtask/                 # schema sync, conformance harness, fixture tooling
+  cockpitctl-types          # stable DTOs + embedded schemas
+  cockpitctl-domain         # pure policy logic, sorting, synthesis
+  cockpitctl-domain-buildfix  # buildfix domain logic
+  cockpitctl-domain-signing   # policy signing domain logic
+  cockpitctl-domain-trend     # trend analysis domain logic
+  cockpitctl-ingest          # use case + ports + exit semantics
+  cockpitctl-io              # filesystem adapters + safety guards
+  cockpitctl-io-buildfix     # buildfix I/O adapters
+  cockpitctl-io-hooks        # hook execution adapters
+  cockpitctl-io-policy-signing # policy signing I/O adapters
+  cockpitctl-io-schema       # schema validation adapters
+  cockpitctl-render          # deterministic markdown + annotation rendering
+  cockpitctl-sarif           # SARIF v2.1.0 export
+  cockpitctl-conform         # conformance checking library
+  cockpitctl-feature-state   # feature flag state management
+  cockpitctl-feature-grid    # BDD feature toggle grid
+  cockpitctl-core            # facade crate (re-exports all microcrates)
+  cockpitctl-cli             # `cockpitctl` CLI package (binary + compatibility lib)
+  conformctl                 # standalone conformance checker CLI
+xtask/                       # schema sync, conformance harness, fixture tooling
 contracts/
-  schemas/             # JSON Schemas (source-of-truth)
-  docs/                # protocol specifications (tokens, identity)
-docs/                  # user-facing documentation (Diataxis)
-fixtures/              # golden fixture inputs + expected outputs
-templates/             # comment contract template
-fuzz/                  # cargo-fuzz harness (optional)
+  schemas/                   # JSON Schemas (source-of-truth)
+  docs/                      # protocol specifications (tokens, identity)
+docs/                        # user-facing documentation (Diataxis)
+fixtures/                    # golden fixture inputs + expected outputs
+templates/                   # comment contract template
+fuzz/                        # cargo-fuzz harness (optional)
 ```
 
 ## Development (recommended)

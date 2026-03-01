@@ -21,10 +21,20 @@ The project follows a **Hexagonal / Clean Architecture** with a workspace of mic
 ### Crate Structure
 *   **`cockpitctl-types`**: Core DTOs, stable IDs, embedded schemas. No external deps except serde/time.
 *   **`cockpitctl-domain`**: Pure business logic (policy evaluation, ordering, normalization).
+*   **`cockpitctl-domain-buildfix`**: Buildfix domain logic.
+*   **`cockpitctl-domain-signing`**: Policy signing domain logic.
+*   **`cockpitctl-domain-trend`**: Trend analysis domain logic.
 *   **`cockpitctl-ingest`**: Use case boundary. Defines ports (`ReceiptSource`, `PolicySource`, `OutputSink`).
 *   **`cockpitctl-io`**: Adapters implementing ports (filesystem access, safety limits).
+*   **`cockpitctl-io-buildfix`**: Buildfix I/O adapters.
+*   **`cockpitctl-io-hooks`**: Hook execution adapters.
+*   **`cockpitctl-io-policy-signing`**: Policy signing I/O adapters.
+*   **`cockpitctl-io-schema`**: Schema validation adapters.
 *   **`cockpitctl-render`**: Markdown renderer for the PR comment.
+*   **`cockpitctl-sarif`**: SARIF v2.1.0 export.
 *   **`cockpitctl-conform`**: Validation library (schema, path hygiene).
+*   **`cockpitctl-feature-state`**: Feature flag state management.
+*   **`cockpitctl-feature-grid`**: BDD feature toggle grid.
 *   **`cockpitctl-core`**: Facade crate — re-exports all microcrates as one dependency.
 *   **`cockpitctl-cli`**: Binary entry point (using `clap`). Wires adapters to the use case.
 *   **`conformctl`**: Standalone conformance checking binary.
@@ -82,8 +92,13 @@ Receipts are treated as untrusted input.
 -   Conformance Harness & BDD
 -   Distribution & Documentation
 
-**Current Focus (Near-term):**
--   Configurable receipt size limits.
--   `cockpitctl explain` command.
--   Reusable GitHub Action.
--   GitHub Annotation output.
+**Recently Completed:**
+-   19-crate microcrate extraction with feature-gated builds
+-   1200+ tests across all crates (unit, integration, golden, BDD, E2E)
+-   Code coverage with cargo-tarpaulin, cargo-deny for license/advisory checking
+-   GitHub Action with schema-validation, annotations, and SHA256 checksum verification
+-   SARIF export, trend tracking, buildfix integration, policy signing
+
+**Long-term / Exploratory:**
+-   Receipt streaming for large monorepos
+-   Web dashboard for interactive report viewing

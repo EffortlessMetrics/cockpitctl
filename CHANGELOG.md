@@ -22,6 +22,14 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Feature-gated builds: hooks, buildfix, policy-signing, and schema are opt-in
   features (`default = []`, opt-in from CLI)
 
+#### Features & Integrations
+- tokmd sensor integration fixture and documentation (PR #43)
+- GitHub Action improvements: `schema-validation` and `annotations` inputs,
+  SHA256SUMS.txt checksum verification, `toolpack` manifest-based installation
+  (PR #50)
+- Packaging hygiene check scripts for CI (`check_state.js`, `check_state.ps1`)
+  (PR #50)
+
 #### Testing expansion
 - Comprehensive unit tests across all 19 microcrates (PR #9)
 - Doc tests across all public API crates (PR #25)
@@ -36,16 +44,29 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Runnable examples for `cockpitctl-core` and `cockpitctl-types` crates (PR #33)
 - E2E test expansion: 47 new end-to-end tests covering CLI invocations, config
   precedence, exit codes, and output validation (PR #34)
+- Renderer budget and marker regression tests — 18 tests (PR #41)
+- Safety boundary tests for IO crate — 35 tests (PR #42)
+- Conformance expansion with snapshot tests and E2E (PR #44)
+- CLI precedence contract E2E tests — 22 tests (PR #45)
+- Determinism golden tests for ordering stability (PR #46)
+- Domain microcrate unit tests: buildfix, signing, and trend (PR #47)
+- IO adapter integration tests (PR #48)
+- SARIF, explain, and feature-grid test coverage expansion (PR #49)
+- Init, validate, and error message E2E hardening (PR #51)
+- Total test count: 1200+ tests across 19 crates
 
 #### CI hardening
 - No-default-features build and test steps in CI (PR #11)
 - Security audit workflow: weekly schedule plus on dependency changes (PR #27)
 - MSRV (minimum supported Rust version) verification in CI (PR #27)
+- Code coverage reporting with cargo-tarpaulin (PR #36)
+- cargo-deny for license and advisory checking (PR #37)
 
 #### Documentation
 - Architecture documentation aligned with 19-crate layout (PR #10)
 - Per-crate `README.md` files for crates.io readiness (PR #28)
 - Runnable doc-tested examples for core and types crates (PR #33)
+- Improved rustdoc coverage across core crates (PR #40)
 
 #### Release infrastructure
 - 9-tier dependency-ordered publish in release workflow
