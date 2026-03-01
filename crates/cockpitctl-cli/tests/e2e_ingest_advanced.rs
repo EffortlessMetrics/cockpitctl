@@ -320,6 +320,7 @@ missing = "skip"
 // Schema validation: strict mode rejects additional properties
 // ─────────────────────────────────────────────────────────────────────────────
 
+#[cfg(feature = "feature-schema")]
 #[test]
 fn schema_validation_strict_rejects_extra_fields() {
     let setup = setup_from_fixture("schema_violation");
@@ -349,6 +350,29 @@ fn schema_validation_strict_rejects_extra_fields() {
         has_violation,
         "strict mode should produce schema_violation findings"
     );
+}
+
+#[cfg(not(feature = "feature-schema"))]
+#[test]
+fn schema_validation_strict_rejects_extra_fields() {
+    let setup = setup_from_fixture("schema_violation");
+
+    // Without the schema feature, strict mode gracefully falls back to lax
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+            "--schema-validation",
+            "strict",
+        ])
+        .assert()
+        .success()
+        .stderr(predicates::str::contains(
+            "schema feature disabled in this build",
+        ));
 }
 
 #[test]
