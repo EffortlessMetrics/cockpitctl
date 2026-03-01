@@ -6,7 +6,24 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-No changes yet.
+### Added
+- Extract 9 new microcrates for clean SRP architecture:
+  - `cockpitctl-domain-buildfix` — Buildfix domain logic
+  - `cockpitctl-domain-signing` — Policy signing domain logic
+  - `cockpitctl-domain-trend` — Trend analysis domain logic
+  - `cockpitctl-io-hooks` — Hook execution adapters
+  - `cockpitctl-io-schema` — Schema validation adapters
+  - `cockpitctl-io-buildfix` — Buildfix I/O adapters
+  - `cockpitctl-io-policy-signing` — Policy signing I/O adapters
+  - `cockpitctl-feature-state` — Feature flag state management
+  - `cockpitctl-feature-grid` — BDD feature toggle grid
+- Comprehensive test suite: 947 tests across unit, snapshot, proptest, integration, E2E, and BDD
+- Feature-gated builds: hooks, buildfix, policy-signing, and schema are opt-in features
+
+### Fixed
+- Feature gating: feature flags now properly propagate from CLI to feature-state crate
+- CI packaging: all 19 crates included in cargo package verification
+- Release workflow: 9-tier dependency-ordered publish with proper index waits
 
 ## [0.3.0] - 2026-02-17
 
