@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator, SchemaValidator};
 use cockpitctl_io::{FsLayout, FsOutputSink, FsPolicySource, FsReceiptSource, JsonSchemaValidator};
+use cockpitctl_process::{load_policy_signing_key, run_buildfix_actuator, run_hooks};
 use cockpitctl_render::{append_comment_sections, render_comment, render_github_annotations};
 use cockpitctl_types::{
     BUILDFIX_APPLY_REQUEST_SCHEMA_ID, BuildfixActuatorConfig, BuildfixApplyRequest,
@@ -478,7 +479,7 @@ fn cmd_ingest(opts: IngestOptions) -> Result<i32> {
                 fixes: selected_fixes,
             };
 
-            match cockpitctl_io::run_buildfix_actuator(actuator, &request) {
+            match run_buildfix_actuator(actuator, &request) {
                 Ok(out) => {
                     apply_summary.applied_fix_ids = out.applied_fix_ids;
                     apply_summary.skipped_fix_ids = out.skipped_fix_ids;
@@ -533,7 +534,7 @@ fn cmd_ingest(opts: IngestOptions) -> Result<i32> {
 
     // Policy snapshot signing (tamper-evident policy provenance).
     if effective_policy_signing.enabled {
-        let key = cockpitctl_io::load_policy_signing_key(&effective_policy_signing)
+        let key = load_policy_signing_key(&effective_policy_signing)
             .context("load policy signing key")?
             .ok_or_else(|| {
                 anyhow::anyhow!(
@@ -585,8 +586,8 @@ fn cmd_ingest(opts: IngestOptions) -> Result<i32> {
         let report_json =
             serde_json::to_string_pretty(&result.report).context("serialize report for hooks")?;
         let hook_output = FsOutputSink::new(layout);
-        let sections = cockpitctl_io::run_hooks(&pre_cfg.hooks, &report_json, &hook_output)
-            .context("run hooks")?;
+        let sections =
+            run_hooks(&pre_cfg.hooks, &report_json, &hook_output).context("run hooks")?;
         if !sections.is_empty() {
             let pairs: Vec<(String, String)> = sections
                 .iter()
