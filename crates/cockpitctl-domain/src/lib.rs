@@ -91,6 +91,17 @@ pub fn explain_code(code: &str) -> Option<CodeExplanation> {
 }
 
 /// Return all known cockpit finding codes with explanations.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::all_codes;
+///
+/// let codes = all_codes();
+/// assert!(codes.len() >= 7);
+/// assert!(codes.iter().any(|c| c.code == "cockpit.missing_receipt"));
+/// assert!(codes.iter().any(|c| c.code == "cockpit.path_traversal"));
+/// ```
 pub fn all_codes() -> Vec<CodeExplanation> {
     vec![
         CodeExplanation {
@@ -148,6 +159,32 @@ pub fn all_codes() -> Vec<CodeExplanation> {
 /// Normalize and cap a sensor report's findings for cockpit surfacing.
 ///
 /// The original report remains the record; cockpit surfaces only up to policy limits.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::cap_findings;
+/// use cockpitctl_types::{Finding, Severity};
+///
+/// let findings: Vec<Finding> = (0..5).map(|i| Finding {
+///     severity: Severity::Info,
+///     check_id: None,
+///     code: format!("C{}", i),
+///     message: format!("msg {}", i),
+///     location: None,
+///     help: None, url: None, fingerprint: None, data: None,
+/// }).collect();
+///
+/// // Under the cap: no truncation.
+/// let (capped, truncated) = cap_findings(findings.clone(), 10);
+/// assert_eq!(capped.len(), 5);
+/// assert!(!truncated);
+///
+/// // Over the cap: truncated.
+/// let (capped, truncated) = cap_findings(findings, 3);
+/// assert_eq!(capped.len(), 3);
+/// assert!(truncated);
+/// ```
 pub fn cap_findings(mut findings: Vec<Finding>, max: usize) -> (Vec<Finding>, bool) {
     if findings.len() <= max {
         return (findings, false);
@@ -206,6 +243,28 @@ pub fn compute_counts(findings: &[Finding]) -> VerdictCounts {
 }
 
 /// Derive a stable fingerprint for a finding when absent.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::derive_fingerprint;
+/// use cockpitctl_types::{Finding, Severity};
+///
+/// let finding = Finding {
+///     severity: Severity::Error,
+///     check_id: None,
+///     code: "E001".into(),
+///     message: "something broke".into(),
+///     location: None,
+///     help: None, url: None, fingerprint: None, data: None,
+/// };
+///
+/// let fp = derive_fingerprint("builddiag", &finding);
+/// assert_eq!(fp.len(), 64); // SHA-256 hex
+///
+/// // Same input produces the same fingerprint.
+/// assert_eq!(fp, derive_fingerprint("builddiag", &finding));
+/// ```
 pub fn derive_fingerprint(sensor_id: &str, finding: &Finding) -> String {
     let mut h = Sha256::new();
     h.update(sensor_id.as_bytes());
@@ -229,6 +288,27 @@ pub fn derive_fingerprint(sensor_id: &str, finding: &Finding) -> String {
 }
 
 /// Build a deterministic sort key for a finding, enabling stable ordering.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::finding_sort_key;
+/// use cockpitctl_types::{Finding, Location, Severity};
+///
+/// let finding = Finding {
+///     severity: Severity::Error,
+///     check_id: None,
+///     code: "E001".into(),
+///     message: "fail".into(),
+///     location: Some(Location { path: Some("src/main.rs".into()), line: Some(10), col: None }),
+///     help: None, url: None, fingerprint: None, data: None,
+/// };
+///
+/// let key = finding_sort_key("builddiag", &finding);
+/// assert_eq!(key.severity_rank, 0); // Error is most severe
+/// assert_eq!(key.path, "src/main.rs");
+/// assert_eq!(key.line, 10);
+/// ```
 pub fn finding_sort_key(sensor_id: &str, f: &Finding) -> FindingSortKey {
     let (path, line) = match &f.location {
         Some(loc) => (
@@ -248,6 +328,35 @@ pub fn finding_sort_key(sensor_id: &str, f: &Finding) -> FindingSortKey {
 }
 
 /// Sort findings deterministically: severity desc → sensor_id → path → line → code → message.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::sort_findings;
+/// use cockpitctl_types::{Finding, Severity};
+///
+/// let mut findings = vec![
+///     Finding {
+///         severity: Severity::Info,
+///         check_id: None,
+///         code: "I1".into(),
+///         message: "info".into(),
+///         location: None, help: None, url: None, fingerprint: None, data: None,
+///     },
+///     Finding {
+///         severity: Severity::Error,
+///         check_id: None,
+///         code: "E1".into(),
+///         message: "error".into(),
+///         location: None, help: None, url: None, fingerprint: None, data: None,
+///     },
+/// ];
+///
+/// sort_findings("sensor", &mut findings);
+/// // Errors sort before info (lower severity_rank = more severe).
+/// assert_eq!(findings[0].severity, Severity::Error);
+/// assert_eq!(findings[1].severity, Severity::Info);
+/// ```
 pub fn sort_findings(sensor_id: &str, findings: &mut [Finding]) {
     findings.sort_by_key(|f| finding_sort_key(sensor_id, f));
 }
@@ -352,6 +461,18 @@ pub fn select_highlights(
 }
 
 /// Capture the current policy configuration as a snapshot for the report.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::snapshot_policy;
+/// use cockpitctl_types::CockpitConfig;
+///
+/// let cfg = CockpitConfig::default();
+/// let snapshot = snapshot_policy(&cfg);
+/// assert_eq!(snapshot.max_highlights, 7);
+/// assert!(!snapshot.warn_is_fail);
+/// ```
 pub fn snapshot_policy(cfg: &CockpitConfig) -> PolicySnapshot {
     let mut sensors = Vec::new();
     for (id, p) in cfg.sensors.iter() {
@@ -375,6 +496,35 @@ pub fn snapshot_policy(cfg: &CockpitConfig) -> PolicySnapshot {
 }
 
 /// Derive the overall cockpit verdict from blocking sensor summaries.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::overall_verdict;
+/// use cockpitctl_types::*;
+///
+/// let summaries = vec![SensorSummary {
+///     id: "builddiag".into(),
+///     blocking: true,
+///     missing: MissingPolicy::Skip,
+///     presence: Presence::Present,
+///     report_path: "artifacts/builddiag/report.json".into(),
+///     comment_path: None,
+///     verdict: Verdict {
+///         status: VerdictStatus::Fail,
+///         counts: VerdictCounts { info: 0, warn: 0, error: 1, suppressed: 0 },
+///         reasons: vec![],
+///     },
+///     truncated: false,
+///     errors: vec![],
+///     missing_policy_applied: None,
+///     policy_outcome: Some(PolicyOutcome::Blocked),
+/// }];
+///
+/// let cfg = CockpitConfig::default();
+/// let verdict = overall_verdict(&summaries, &cfg);
+/// assert_eq!(verdict.status, VerdictStatus::Fail);
+/// ```
 pub fn overall_verdict(sensor_summaries: &[SensorSummary], cfg: &CockpitConfig) -> Verdict {
     // Overall verdict is derived from blocking sensors only.
     // Status ordering: fail > warn > pass > skip
@@ -764,6 +914,26 @@ pub fn synthesize_receipt_inconsistent(
 }
 
 /// Construct a cockpit report from sensor reports and synthesized summaries.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::build_cockpit_report;
+/// use cockpitctl_types::*;
+/// use std::collections::BTreeMap;
+///
+/// let cfg = CockpitConfig::default();
+/// let tool = ToolInfo { name: "cockpitctl".into(), version: "0.1.0".into(), commit: None };
+/// let run = RunInfo {
+///     started_at: "2026-01-01T00:00:00Z".into(),
+///     ended_at: None, duration_ms: None, host: None,
+///     git: None, ci: None, capabilities: BTreeMap::new(),
+/// };
+///
+/// let report = build_cockpit_report(&cfg, tool, run, vec![], vec![]);
+/// assert_eq!(report.schema, "cockpit.report.v1");
+/// assert_eq!(report.verdict.status, VerdictStatus::Pass);
+/// ```
 pub fn build_cockpit_report(
     cfg: &CockpitConfig,
     tool: ToolInfo,

@@ -3,6 +3,23 @@
 //! Re-exports the public API from each microcrate so downstream consumers
 //! (including the substrate-bridge / in-memory path) can depend on a single
 //! `cockpitctl-core` crate instead of wiring individual microcrates.
+//!
+//! # Examples
+//!
+//! ```
+//! // Access types directly via flattened re-exports.
+//! use cockpitctl_core::{CockpitConfig, CockpitReport, VerdictStatus, ToolInfo};
+//!
+//! // Or use the namespaced module path.
+//! use cockpitctl_core::domain::explain_code;
+//! use cockpitctl_core::types::Severity;
+//!
+//! let cfg = CockpitConfig::default();
+//! assert_eq!(cfg.policy.max_highlights, 7);
+//!
+//! let explanation = explain_code("cockpit.missing_receipt");
+//! assert!(explanation.is_some());
+//! ```
 
 pub use cockpitctl_domain as domain;
 pub use cockpitctl_domain_buildfix as domain_buildfix;

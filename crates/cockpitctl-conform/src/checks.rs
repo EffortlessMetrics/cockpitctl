@@ -19,6 +19,42 @@ pub fn is_valid_reason_token(s: &str) -> bool {
 }
 
 /// Check finding location paths for hygiene violations (absolute paths, traversal, backslashes).
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_conform::check_path_hygiene;
+/// use cockpitctl_types::*;
+/// use std::collections::BTreeMap;
+///
+/// let mut report = SensorReport {
+///     schema: "sensor.report.v1".into(),
+///     tool: ToolInfo { name: "test".into(), version: "1.0.0".into(), commit: None },
+///     run: RunInfo {
+///         started_at: "2026-01-01T00:00:00Z".into(),
+///         ended_at: None, duration_ms: None, host: None,
+///         git: None, ci: None, capabilities: BTreeMap::new(),
+///     },
+///     verdict: Verdict {
+///         status: VerdictStatus::Pass,
+///         counts: VerdictCounts::default(),
+///         reasons: vec![],
+///     },
+///     findings: vec![Finding {
+///         severity: Severity::Info,
+///         check_id: None,
+///         code: "T1".into(),
+///         message: "traversal".into(),
+///         location: Some(Location { path: Some("../etc/passwd".into()), line: None, col: None }),
+///         help: None, url: None, fingerprint: None, data: None,
+///     }],
+///     artifacts: vec![],
+///     data: None,
+/// };
+///
+/// let violations = check_path_hygiene(&report);
+/// assert!(!violations.is_empty()); // detects path traversal
+/// ```
 pub fn check_path_hygiene(report: &SensorReport) -> Vec<String> {
     let mut violations = Vec::new();
     for (i, f) in report.findings.iter().enumerate() {
@@ -54,6 +90,51 @@ pub fn check_path_hygiene(report: &SensorReport) -> Vec<String> {
 }
 
 /// Check that findings are sorted in canonical order.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_conform::check_ordering;
+/// use cockpitctl_types::*;
+/// use std::collections::BTreeMap;
+///
+/// let report = SensorReport {
+///     schema: "sensor.report.v1".into(),
+///     tool: ToolInfo { name: "test".into(), version: "1.0.0".into(), commit: None },
+///     run: RunInfo {
+///         started_at: "2026-01-01T00:00:00Z".into(),
+///         ended_at: None, duration_ms: None, host: None,
+///         git: None, ci: None, capabilities: BTreeMap::new(),
+///     },
+///     verdict: Verdict {
+///         status: VerdictStatus::Pass,
+///         counts: VerdictCounts::default(),
+///         reasons: vec![],
+///     },
+///     findings: vec![
+///         Finding {
+///             severity: Severity::Info,
+///             check_id: None,
+///             code: "A".into(),
+///             message: "first".into(),
+///             location: None, help: None, url: None, fingerprint: None, data: None,
+///         },
+///         Finding {
+///             severity: Severity::Error,
+///             check_id: None,
+///             code: "B".into(),
+///             message: "second".into(),
+///             location: None, help: None, url: None, fingerprint: None, data: None,
+///         },
+///     ],
+///     artifacts: vec![],
+///     data: None,
+/// };
+///
+/// // Info before Error is out of order (Error should come first).
+/// let violations = check_ordering(&report, "test");
+/// assert!(!violations.is_empty());
+/// ```
 pub fn check_ordering(report: &SensorReport, sensor_id: &str) -> Vec<String> {
     let keys: Vec<FindingSortKey> = report
         .findings
@@ -255,6 +336,15 @@ pub fn check_cockpit_reason_tokens(report: &CockpitReport) -> Vec<String> {
 }
 
 /// Pure string compare for determinism checking.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_conform::check_determinism;
+///
+/// assert!(check_determinism("hello", "hello").is_none());
+/// assert!(check_determinism("hello", "world").is_some());
+/// ```
 pub fn check_determinism(actual: &str, expected: &str) -> Option<String> {
     if actual != expected {
         Some("report does not match golden file".to_string())
