@@ -5,14 +5,14 @@ expression: paths
 [
     (
         "cockpit_report",
-        "artifacts\\cockpit\\report.json",
+        "artifacts/cockpit/report.json",
     ),
     (
         "cockpit_comment",
-        "artifacts\\cockpit\\comment.md",
+        "artifacts/cockpit/comment.md",
     ),
     (
         "sarif_report",
-        "artifacts\\cockpit\\sarif.json",
+        "artifacts/cockpit/sarif.json",
     ),
 ]
