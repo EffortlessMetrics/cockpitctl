@@ -977,3 +977,558 @@ missing = "fail"
     assert!(setup.cockpit_report_path().exists());
     assert!(setup.cockpit_comment_path().exists());
 }
+
+// =============================================================================
+// No config file → uses defaults
+// =============================================================================
+
+/// No config file at all → valid input passes with defaults (exit 0).
+#[test]
+fn no_config_file_uses_defaults_exit_zero() {
+    let setup = TestSetup::new();
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    let nonexistent_config = setup._temp_dir.path().join("does_not_exist.toml");
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            nonexistent_config.to_string_lossy().as_ref(),
+        ])
+        .assert()
+        .success();
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    assert_eq!(json["verdict"]["status"].as_str(), Some("pass"));
+    // Default policy values reflected
+    assert_eq!(json["policy"]["warn_is_fail"].as_bool(), Some(false));
+    assert_eq!(json["policy"]["max_highlights"].as_u64(), Some(7));
+    assert_eq!(json["policy"]["max_per_sensor_findings"].as_u64(), Some(20));
+    assert_eq!(json["policy"]["max_annotations"].as_u64(), Some(25));
+}
+
+// =============================================================================
+// Config overriding max_per_sensor_findings
+// =============================================================================
+
+/// Config max_per_sensor_findings = 2 → findings truncated to at most 2 per sensor.
+#[test]
+fn config_max_per_sensor_findings_respected() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+warn_is_fail = false
+max_per_sensor_findings = 2
+
+[sensors.checker]
+blocking = false
+missing = "skip"
+"#,
+    );
+
+    let report = r#"{
+  "schema": "checker.report.v1",
+  "tool": { "name": "checker", "version": "1.0.0" },
+  "run": { "started_at": "2026-02-02T11:00:00Z" },
+  "verdict": { "status": "warn", "counts": { "info": 0, "warn": 5, "error": 0 } },
+  "findings": [
+    { "severity": "warn", "code": "checker.a", "message": "Issue A" },
+    { "severity": "warn", "code": "checker.b", "message": "Issue B" },
+    { "severity": "warn", "code": "checker.c", "message": "Issue C" },
+    { "severity": "warn", "code": "checker.d", "message": "Issue D" },
+    { "severity": "warn", "code": "checker.e", "message": "Issue E" }
+  ]
+}"#;
+    setup.write_sensor_report("checker", report);
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    assert_eq!(
+        json["policy"]["max_per_sensor_findings"].as_u64(),
+        Some(2),
+        "report should reflect config max_per_sensor_findings"
+    );
+    // The sensor should be marked as truncated.
+    let sensors = json["sensors"].as_array().expect("sensors");
+    let checker = sensors.iter().find(|s| s["id"] == "checker");
+    assert!(checker.is_some(), "checker sensor should appear in report");
+    if let Some(c) = checker {
+        assert_eq!(
+            c["truncated"].as_bool(),
+            Some(true),
+            "findings should be truncated"
+        );
+    }
+}
+
+// =============================================================================
+// Config with max_annotations = 0
+// =============================================================================
+
+/// Config max_annotations = 0 → no annotations in output.
+#[test]
+fn config_max_annotations_zero_respected() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+max_annotations = 0
+
+[sensors.alpha]
+blocking = true
+missing = "fail"
+"#,
+    );
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    assert_eq!(
+        json["policy"]["max_annotations"].as_u64(),
+        Some(0),
+        "report.policy should reflect max_annotations = 0"
+    );
+}
+
+// =============================================================================
+// Config from --config flag
+// =============================================================================
+
+/// --config flag loads a specific file from a non-default path.
+#[test]
+fn config_flag_loads_specific_file() {
+    let setup = TestSetup::new();
+    // Write config to a non-standard location
+    let custom_config = setup._temp_dir.path().join("custom").join("my-policy.toml");
+    fs::create_dir_all(custom_config.parent().unwrap()).expect("create custom dir");
+    fs::write(
+        &custom_config,
+        r#"[policy]
+warn_is_fail = true
+max_highlights = 2
+
+[sensors.alpha]
+blocking = true
+missing = "fail"
+"#,
+    )
+    .expect("write custom config");
+
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            custom_config.to_string_lossy().as_ref(),
+        ])
+        .assert()
+        .success();
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    assert_eq!(
+        json["policy"]["warn_is_fail"].as_bool(),
+        Some(true),
+        "should load warn_is_fail from custom config path"
+    );
+    assert_eq!(
+        json["policy"]["max_highlights"].as_u64(),
+        Some(2),
+        "should load max_highlights from custom config path"
+    );
+}
+
+// =============================================================================
+// Missing config from --config flag
+// =============================================================================
+
+/// --config pointing to a non-existent file → falls back to defaults (no error).
+#[test]
+fn config_flag_missing_file_falls_back_to_defaults() {
+    let setup = TestSetup::new();
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    let missing = setup._temp_dir.path().join("nowhere").join("missing.toml");
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            missing.to_string_lossy().as_ref(),
+        ])
+        .assert()
+        .success();
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    // Falls back to defaults
+    assert_eq!(json["policy"]["warn_is_fail"].as_bool(), Some(false));
+    assert_eq!(json["policy"]["max_highlights"].as_u64(), Some(7));
+}
+
+// =============================================================================
+// Config with all defaults → same as no config
+// =============================================================================
+
+/// Config with only [policy] (all defaults) produces identical policy to no config.
+#[test]
+fn config_all_defaults_matches_no_config() {
+    // Run 1: explicit config with only [policy]
+    let setup1 = TestSetup::new();
+    setup1.write_config("[policy]\n");
+    setup1.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup1.artifacts_arg(),
+            "--config",
+            &setup1.config_arg(),
+        ])
+        .assert()
+        .success();
+
+    let json1: serde_json::Value =
+        serde_json::from_str(&setup1.read_cockpit_report()).expect("parse run 1");
+
+    // Run 2: no config file
+    let setup2 = TestSetup::new();
+    setup2.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+    let nonexistent = setup2._temp_dir.path().join("nonexistent.toml");
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup2.artifacts_arg(),
+            "--config",
+            nonexistent.to_string_lossy().as_ref(),
+        ])
+        .assert()
+        .success();
+
+    let json2: serde_json::Value =
+        serde_json::from_str(&setup2.read_cockpit_report()).expect("parse run 2");
+
+    // Policy sections should be identical
+    assert_eq!(
+        json1["policy"]["warn_is_fail"], json2["policy"]["warn_is_fail"],
+        "warn_is_fail should match between default config and no config"
+    );
+    assert_eq!(
+        json1["policy"]["max_highlights"], json2["policy"]["max_highlights"],
+        "max_highlights should match"
+    );
+    assert_eq!(
+        json1["policy"]["max_per_sensor_findings"], json2["policy"]["max_per_sensor_findings"],
+        "max_per_sensor_findings should match"
+    );
+    assert_eq!(
+        json1["policy"]["max_annotations"], json2["policy"]["max_annotations"],
+        "max_annotations should match"
+    );
+}
+
+// =============================================================================
+// Empty config file → treated as defaults
+// =============================================================================
+
+/// Empty config file is treated as all-defaults (valid TOML, empty table).
+#[test]
+fn empty_config_file_uses_defaults() {
+    let setup = TestSetup::new();
+    setup.write_config("");
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    assert_eq!(json["policy"]["warn_is_fail"].as_bool(), Some(false));
+    assert_eq!(json["policy"]["max_highlights"].as_u64(), Some(7));
+    assert_eq!(json["policy"]["max_per_sensor_findings"].as_u64(), Some(20));
+    assert_eq!(json["policy"]["max_annotations"].as_u64(), Some(25));
+}
+
+// =============================================================================
+// Config with unknown fields → tolerated (forward-compatible)
+// =============================================================================
+
+/// Unknown fields in cockpit.toml are tolerated for forward compatibility.
+#[test]
+fn config_unknown_fields_tolerated() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+warn_is_fail = false
+future_field = "ignored"
+another_unknown = 42
+
+[sensors.alpha]
+blocking = true
+missing = "fail"
+future_sensor_field = true
+"#,
+    );
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    assert_eq!(json["verdict"]["status"].as_str(), Some("pass"));
+}
+
+// =============================================================================
+// CLI --disable-hooks → hooks not executed (precedence test)
+// =============================================================================
+
+/// --disable-hooks prevents hook execution even when config defines hooks.
+#[test]
+fn cli_disable_hooks_overrides_config() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.alpha]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    // Even if hooks were configured, --disable-hooks should suppress them.
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+            "--disable-hooks",
+        ])
+        .assert()
+        .success();
+
+    assert!(setup.cockpit_report_path().exists());
+    assert!(setup.cockpit_comment_path().exists());
+    // No hook output sidecar should exist.
+    let hook_output = setup.artifacts_dir.join("cockpit").join("hooks.json");
+    assert!(
+        !hook_output.exists(),
+        "hooks output should not exist when --disable-hooks is passed"
+    );
+}
+
+// =============================================================================
+// CLI --disable-buildfix → buildfix not executed (precedence test)
+// =============================================================================
+
+/// --disable-buildfix prevents buildfix even when config enables it.
+#[test]
+fn cli_disable_buildfix_overrides_config() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.alpha]
+blocking = false
+missing = "skip"
+
+[buildfix]
+auto_apply = true
+"#,
+    );
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+            "--disable-buildfix",
+        ])
+        .assert()
+        .success();
+
+    assert!(setup.cockpit_report_path().exists());
+    let sidecar = setup
+        .artifacts_dir
+        .join("cockpit")
+        .join("buildfix.apply.json");
+    assert!(
+        !sidecar.exists(),
+        "buildfix sidecar should not exist when --disable-buildfix is passed"
+    );
+}
+
+// =============================================================================
+// Config blocking sensors → policy applied
+// =============================================================================
+
+/// Config with custom blocking sensors: one failing blocking sensor → exit 2.
+#[test]
+fn config_custom_blocking_sensors_policy_applied() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.critical]
+blocking = true
+missing = "fail"
+
+[sensors.optional]
+blocking = false
+missing = "skip"
+"#,
+    );
+    // critical fails, optional passes → exit 2 because critical is blocking.
+    setup.write_sensor_report("critical", &fail_sensor_report("critical"));
+    setup.write_sensor_report("optional", &valid_sensor_report("optional"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .code(2);
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    assert_eq!(json["verdict"]["status"].as_str(), Some("fail"));
+
+    // Verify both sensors are in the report
+    let sensors = json["sensors"].as_array().expect("sensors");
+    let sensor_ids: Vec<&str> = sensors.iter().filter_map(|s| s["id"].as_str()).collect();
+    assert!(sensor_ids.contains(&"critical"));
+    assert!(sensor_ids.contains(&"optional"));
+}
+
+/// Config with custom blocking sensors: only non-blocking fails → exit 0.
+#[test]
+fn config_non_blocking_sensor_fail_exits_zero() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.critical]
+blocking = true
+missing = "fail"
+
+[sensors.optional]
+blocking = false
+missing = "skip"
+"#,
+    );
+    // critical passes, optional fails → exit 0 because optional is non-blocking.
+    setup.write_sensor_report("critical", &valid_sensor_report("critical"));
+    setup.write_sensor_report("optional", &fail_sensor_report("optional"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+}
+
+// =============================================================================
+// CLI --disable-hooks + --disable-buildfix combined → precedence
+// =============================================================================
+
+/// Both disable flags together still produce valid output.
+#[test]
+fn cli_both_disable_flags_combined() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.alpha]
+blocking = true
+missing = "fail"
+
+[buildfix]
+auto_apply = true
+"#,
+    );
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+            "--disable-hooks",
+            "--disable-buildfix",
+        ])
+        .assert()
+        .success();
+
+    assert!(setup.cockpit_report_path().exists());
+    assert!(setup.cockpit_comment_path().exists());
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    assert_eq!(json["verdict"]["status"].as_str(), Some("pass"));
+}
