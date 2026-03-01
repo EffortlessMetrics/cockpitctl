@@ -1,0 +1,30 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": {
+    "name": "secaudit",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T11:59:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "secaudit.sql_injection",
+      "message": "SQL injection vulnerability in query builder",
+      "location": {
+        "path": "src/db.rs",
+        "line": 88
+      }
+    }
+  ]
+}

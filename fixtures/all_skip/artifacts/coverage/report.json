@@ -1,0 +1,20 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": {
+    "name": "coverage",
+    "version": "1.2.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T11:59:00Z"
+  },
+  "verdict": {
+    "status": "skip",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 0
+    },
+    "reasons": ["no_baseline"]
+  },
+  "findings": []
+}

@@ -1,0 +1,12 @@
+[policy]
+warn_is_fail = false
+max_highlights = 7
+max_per_sensor_findings = 20
+max_annotations = 25
+section_order = ["Highlights", "Security", "Other"]
+
+[sensors.secaudit]
+blocking = true
+missing = "fail"
+section = "Security"
+repro = "secaudit scan --strict"

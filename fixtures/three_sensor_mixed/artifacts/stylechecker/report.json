@@ -1,0 +1,30 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": {
+    "name": "stylechecker",
+    "version": "2.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T11:59:10Z"
+  },
+  "verdict": {
+    "status": "warn",
+    "counts": {
+      "info": 0,
+      "warn": 1,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "findings": [
+    {
+      "severity": "warn",
+      "code": "stylechecker.long_line",
+      "message": "Line exceeds 120 character limit",
+      "location": {
+        "path": "src/main.rs",
+        "line": 55
+      }
+    }
+  ]
+}
