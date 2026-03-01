@@ -1,0 +1,13 @@
+---
+source: crates/cockpitctl-feature-grid/tests/feature_grid_snapshots.rs
+expression: "render_grid(&[])"
+---
+cli_args: []
+
+feature              compiled     runtime      grid_match
+--------------------------------------------------------
+hooks                true         true         true      
+buildfix             true         true         true      
+policy-signing       true         true         true      
+
+RuntimeFeatureState: hooks=true, buildfix=true, policy_signing=true
