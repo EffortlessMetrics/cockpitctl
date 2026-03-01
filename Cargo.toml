@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "crates/cockpitctl-types",
+  "crates/cockpitctl-ports",
   "crates/cockpitctl-domain",
   "crates/cockpitctl-ingest",
   "crates/cockpitctl-render",

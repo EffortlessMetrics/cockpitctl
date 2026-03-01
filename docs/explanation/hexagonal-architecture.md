@@ -70,32 +70,21 @@ Key responsibilities:
 - Derive fingerprints for findings without them
 - Normalize paths for display
 
+### cockpitctl-ports
+
+Hexagonal boundary contracts shared by orchestration and adapters.
+
+- Dependencies: `cockpitctl-types`
+- Defines ports: `ReceiptSource`, `PolicySource`, `OutputSink`, `SchemaValidator`
+- Defines boundary DTOs: discovery/read results + schema validation result
+
 ### cockpitctl-ingest
 
-Use case boundary with ports (traits).
+Use case orchestration and exit semantics.
 
-- Dependencies: `cockpitctl-types`, `cockpitctl-domain`
-- Defines ports (traits) that adapters implement
+- Dependencies: `cockpitctl-types`, `cockpitctl-domain`, `cockpitctl-ports`
+- Consumes ports (traits) without owning adapter implementations
 - Orchestrates the ingest flow
-
-**Ports:**
-
-```rust
-trait ReceiptSource {
-    fn list_sensors(&self) -> Vec<SensorId>;
-    fn read_report(&self, id: &SensorId) -> Result<Vec<u8>>;
-    fn has_comment(&self, id: &SensorId) -> bool;
-}
-
-trait PolicySource {
-    fn load(&self) -> Result<Policy>;
-}
-
-trait OutputSink {
-    fn write_report(&self, report: &CockpitReport) -> Result<()>;
-    fn write_comment(&self, comment: &str) -> Result<()>;
-}
-```
 
 ### cockpitctl-render
 
@@ -109,7 +98,7 @@ PR comment renderer with stable markers and truncation.
 
 Filesystem adapters implementing the ports.
 
-- Dependencies: `cockpitctl-ingest` (for port traits)
+- Dependencies: `cockpitctl-ports` (for port traits)
 - Implements `ReceiptSource`, `PolicySource`, `OutputSink`
 - Handles path safety, symlink checking, size limits
 

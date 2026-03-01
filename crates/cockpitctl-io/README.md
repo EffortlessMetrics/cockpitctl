@@ -3,7 +3,7 @@
 Filesystem adapters and operational safety boundaries for cockpitctl.
 
 ## Scope
-- Implements ingest ports using filesystem-backed adapters.
+- Implements `cockpitctl-ports` contracts using filesystem-backed adapters.
 - Resolves layout and canonical output paths under `artifacts/`.
 - Enforces safety controls (path traversal rejection, size caps, sensor count caps).
 - Provides JSON Schema validation adapters for strict mode.

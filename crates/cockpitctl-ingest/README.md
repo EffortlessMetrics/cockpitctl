@@ -1,6 +1,6 @@
 # cockpitctl-ingest
 
-Ingest use case and ports for composing sensor receipts into a cockpit report.
+Ingest use case orchestration for composing sensor receipts into a cockpit report.
 
 ## Scope
 - Defines the application flow from discovered receipts to deterministic outputs.
@@ -15,5 +15,4 @@ Ingest use case and ports for composing sensor receipts into a cockpit report.
 
 ## Key exports
 - `IngestUseCase`, `IngestRequest`, `IngestResult`
-- Port traits: `ReceiptSource`, `PolicySource`, `OutputSink`, `SchemaValidator`
-- Schema helpers: `SchemaValidationResult`, `NoOpSchemaValidator`
+- Port contracts are re-exported from `cockpitctl-ports` for compatibility

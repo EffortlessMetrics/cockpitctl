@@ -47,7 +47,8 @@ See: `docs/reference/config.md` for full reference.
 crates/
   cockpitctl-types     # stable DTOs + embedded schemas
   cockpitctl-domain    # pure policy logic, sorting, synthesis
-  cockpitctl-ingest    # use case + ports + exit semantics
+  cockpitctl-ports     # hexagonal port contracts + boundary DTOs
+  cockpitctl-ingest    # ingest orchestration + exit semantics
   cockpitctl-io        # filesystem adapters + safety guards
   cockpitctl-render    # deterministic markdown + annotation rendering
   cockpitctl-sarif     # SARIF v2.1.0 export
