@@ -6,7 +6,7 @@ expression: scenarios
     (
         "hooks",
         [],
-        false,
+        true,
     ),
     (
         "hooks",
@@ -18,7 +18,7 @@ expression: scenarios
     (
         "buildfix",
         [],
-        false,
+        true,
     ),
     (
         "buildfix",
@@ -30,7 +30,7 @@ expression: scenarios
     (
         "policy-signing",
         [],
-        false,
+        true,
     ),
     (
         "policy-signing",
