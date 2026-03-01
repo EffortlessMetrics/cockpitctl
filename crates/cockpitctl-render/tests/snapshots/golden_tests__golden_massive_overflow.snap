@@ -1,0 +1,16 @@
+---
+source: crates/cockpitctl-render/tests/golden_tests.rs
+expression: result.content
+---
+1. ❌ **scanner**: `MASS-0000` at `src/module_0.rs:1` — Message for MASS-0000
+2. ❌ **scanner**: `MASS-0050` at `src/module_0.rs:51` — Message for MASS-0050
+3. ❌ **scanner**: `MASS-0001` at `src/module_1.rs:2` — Message for MASS-0001
+4. ❌ **scanner**: `MASS-0051` at `src/module_1.rs:52` — Message for MASS-0051
+5. ❌ **scanner**: `MASS-0010` at `src/module_10.rs:11` — Message for MASS-0010
+6. ❌ **scanner**: `MASS-0060` at `src/module_10.rs:61` — Message for MASS-0060
+7. ❌ **scanner**: `MASS-0011` at `src/module_11.rs:12` — Message for MASS-0011
+8. ❌ **scanner**: `MASS-0061` at `src/module_11.rs:62` — Message for MASS-0061
+9. ❌ **scanner**: `MASS-0012` at `src/module_12.rs:13` — Message for MASS-0012
+10. ❌ **scanner**: `MASS-0062` at `src/module_12.rs:63` — Message for MASS-0062
+
+_Showing 10 of 1000 annotations (capped by `max_annotations`)._

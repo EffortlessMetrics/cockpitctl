@@ -1,0 +1,7 @@
+---
+source: crates/cockpitctl-render/tests/golden_tests.rs
+expression: "&result.content"
+---
+1. ❌ **lint**: `E001` at `src/auth.rs:10` — Message for E001
+2. ⚠️ **lint**: `W001` at `src/db.rs:20` — Message for W001
+3. ℹ️ **lint**: `I001` at `src/utils.rs:30` — Message for I001
