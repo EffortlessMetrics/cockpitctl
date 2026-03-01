@@ -1,0 +1,10 @@
+---
+source: crates/cockpitctl-domain-buildfix/tests/buildfix_tests.rs
+expression: summary
+---
+{
+  "fixes": [],
+  "total_fixes": 0,
+  "matched_count": 0,
+  "unmatched_count": 0
+}

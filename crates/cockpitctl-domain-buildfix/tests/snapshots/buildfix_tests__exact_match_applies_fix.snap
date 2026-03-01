@@ -1,0 +1,25 @@
+---
+source: crates/cockpitctl-domain-buildfix/tests/buildfix_tests.rs
+expression: summary
+---
+{
+  "fixes": [
+    {
+      "fix_id": "fix-exact",
+      "sensor_id": "sensor",
+      "safety": "safe",
+      "description": "description for fix-exact",
+      "matched_findings": [
+        {
+          "sensor_id": "sensor",
+          "code": "ERR001",
+          "fingerprint": "fp-1"
+        }
+      ],
+      "unmatched": false
+    }
+  ],
+  "total_fixes": 1,
+  "matched_count": 1,
+  "unmatched_count": 0
+}

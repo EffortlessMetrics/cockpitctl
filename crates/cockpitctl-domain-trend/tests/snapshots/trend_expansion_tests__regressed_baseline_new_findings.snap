@@ -1,0 +1,47 @@
+---
+source: crates/cockpitctl-domain-trend/tests/trend_expansion_tests.rs
+expression: trend
+---
+{
+  "verdict_change": {
+    "before": "pass",
+    "after": "fail"
+  },
+  "count_deltas": {
+    "info_delta": 0,
+    "warn_delta": 0,
+    "error_delta": 3
+  },
+  "new_findings": [
+    {
+      "sensor_id": "lint",
+      "code": "E001",
+      "message": "E001 message",
+      "path": "src/x.rs",
+      "line": 5,
+      "fingerprint": "fp-new-1",
+      "severity": "error"
+    },
+    {
+      "sensor_id": "lint",
+      "code": "E002",
+      "message": "E002 message",
+      "path": "src/y.rs",
+      "line": 15,
+      "fingerprint": "fp-new-2",
+      "severity": "error"
+    },
+    {
+      "sensor_id": "lint",
+      "code": "E003",
+      "message": "E003 message",
+      "path": "src/z.rs",
+      "line": 25,
+      "fingerprint": "fp-new-3",
+      "severity": "error"
+    }
+  ],
+  "fixed_findings": [],
+  "sensors_added": [],
+  "sensors_removed": []
+}

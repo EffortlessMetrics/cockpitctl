@@ -1,0 +1,67 @@
+---
+source: crates/cockpitctl-domain-buildfix/tests/buildfix_tests.rs
+expression: summary
+---
+{
+  "fixes": [
+    {
+      "fix_id": "fix-safe-a",
+      "sensor_id": "sensor",
+      "safety": "safe",
+      "description": "description for fix-safe-a",
+      "matched_findings": [
+        {
+          "sensor_id": "sensor",
+          "code": "W001",
+          "fingerprint": "fp-1"
+        }
+      ],
+      "unmatched": false
+    },
+    {
+      "fix_id": "fix-safe-b",
+      "sensor_id": "sensor",
+      "safety": "safe",
+      "description": "description for fix-safe-b",
+      "matched_findings": [
+        {
+          "sensor_id": "sensor",
+          "code": "W001",
+          "fingerprint": "fp-1"
+        }
+      ],
+      "unmatched": false
+    },
+    {
+      "fix_id": "fix-guarded",
+      "sensor_id": "sensor",
+      "safety": "guarded",
+      "description": "description for fix-guarded",
+      "matched_findings": [
+        {
+          "sensor_id": "sensor",
+          "code": "W001",
+          "fingerprint": "fp-1"
+        }
+      ],
+      "unmatched": false
+    },
+    {
+      "fix_id": "fix-unsafe",
+      "sensor_id": "sensor",
+      "safety": "unsafe",
+      "description": "description for fix-unsafe",
+      "matched_findings": [
+        {
+          "sensor_id": "sensor",
+          "code": "W001",
+          "fingerprint": "fp-1"
+        }
+      ],
+      "unmatched": false
+    }
+  ],
+  "total_fixes": 4,
+  "matched_count": 4,
+  "unmatched_count": 0
+}
