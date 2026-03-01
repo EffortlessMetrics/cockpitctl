@@ -10,6 +10,7 @@ members = [
   "crates/cockpitctl-core",
   "crates/cockpitctl-cli",
   "crates/cockpitctl-conform",
+  "crates/cockpitctl-conform-fs",
   "crates/conformctl",
   "xtask",
 ]

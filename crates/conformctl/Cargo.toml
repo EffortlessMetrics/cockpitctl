@@ -18,6 +18,7 @@ path = "src/main.rs"
 
 [dependencies]
 cockpitctl-conform = { path = "../cockpitctl-conform", version = "0.3.0" }
+cockpitctl-conform-fs = { path = "../cockpitctl-conform-fs", version = "0.3.0" }
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 anyhow.workspace = true
 clap.workspace = true

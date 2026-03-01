@@ -1,0 +1,17 @@
+[package]
+name = "cockpitctl-conform-fs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Filesystem orchestration for cockpitctl conformance checks."
+readme = "README.md"
+keywords = ["ci", "conformance", "filesystem", "receipts", "validation"]
+categories = ["development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+cockpitctl-conform = { path = "../cockpitctl-conform", version = "0.3.0" }

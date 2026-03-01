@@ -51,7 +51,8 @@ crates/
   cockpitctl-io        # filesystem adapters + safety guards
   cockpitctl-render    # deterministic markdown + annotation rendering
   cockpitctl-sarif     # SARIF v2.1.0 export
-  cockpitctl-conform   # conformance checking library
+  cockpitctl-conform   # pure conformance checks and schema logic
+  cockpitctl-conform-fs # filesystem conformance orchestration (shared by CLIs)
   cockpitctl-core      # facade crate (re-exports all microcrates)
   cockpitctl-cli       # `cockpitctl` CLI package (binary + compatibility lib)
   conformctl           # standalone conformance checker CLI
