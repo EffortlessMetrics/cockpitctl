@@ -68,7 +68,11 @@ mod tests {
     fn conform_minimally_valid_receipt() {
         let json = serde_json::to_string(&minimal_sensor_report()).unwrap();
         let result = conform_single(&json, "good-sensor", &all_checks()).unwrap();
-        assert!(result.is_pass(), "minimal valid receipt should pass: {:?}", result.violations);
+        assert!(
+            result.is_pass(),
+            "minimal valid receipt should pass: {:?}",
+            result.violations
+        );
     }
 
     // ---- Missing required fields ----
@@ -194,7 +198,11 @@ mod tests {
         ];
 
         let violations = check_path_hygiene(&report);
-        assert!(violations.len() >= 4, "expected >= 4 violations, got {:?}", violations);
+        assert!(
+            violations.len() >= 4,
+            "expected >= 4 violations, got {:?}",
+            violations
+        );
     }
 
     #[test]

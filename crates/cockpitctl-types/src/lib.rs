@@ -1013,10 +1013,22 @@ mod tests {
 
     #[test]
     fn verdict_status_json_values() {
-        assert_eq!(serde_json::to_string(&VerdictStatus::Pass).unwrap(), "\"pass\"");
-        assert_eq!(serde_json::to_string(&VerdictStatus::Warn).unwrap(), "\"warn\"");
-        assert_eq!(serde_json::to_string(&VerdictStatus::Fail).unwrap(), "\"fail\"");
-        assert_eq!(serde_json::to_string(&VerdictStatus::Skip).unwrap(), "\"skip\"");
+        assert_eq!(
+            serde_json::to_string(&VerdictStatus::Pass).unwrap(),
+            "\"pass\""
+        );
+        assert_eq!(
+            serde_json::to_string(&VerdictStatus::Warn).unwrap(),
+            "\"warn\""
+        );
+        assert_eq!(
+            serde_json::to_string(&VerdictStatus::Fail).unwrap(),
+            "\"fail\""
+        );
+        assert_eq!(
+            serde_json::to_string(&VerdictStatus::Skip).unwrap(),
+            "\"skip\""
+        );
     }
 
     #[test]
@@ -1032,12 +1044,19 @@ mod tests {
     fn severity_json_values() {
         assert_eq!(serde_json::to_string(&Severity::Info).unwrap(), "\"info\"");
         assert_eq!(serde_json::to_string(&Severity::Warn).unwrap(), "\"warn\"");
-        assert_eq!(serde_json::to_string(&Severity::Error).unwrap(), "\"error\"");
+        assert_eq!(
+            serde_json::to_string(&Severity::Error).unwrap(),
+            "\"error\""
+        );
     }
 
     #[test]
     fn missing_policy_serde_roundtrip() {
-        for mp in &[MissingPolicy::Skip, MissingPolicy::Warn, MissingPolicy::Fail] {
+        for mp in &[
+            MissingPolicy::Skip,
+            MissingPolicy::Warn,
+            MissingPolicy::Fail,
+        ] {
             let json = serde_json::to_string(mp).expect("serialize");
             let back: MissingPolicy = serde_json::from_str(&json).expect("deserialize");
             assert_eq!(mp, &back);
@@ -1145,9 +1164,15 @@ mod tests {
 
     #[test]
     fn verdict_status_rank_ordering() {
-        assert!(verdict_status_rank(&VerdictStatus::Fail) < verdict_status_rank(&VerdictStatus::Warn));
-        assert!(verdict_status_rank(&VerdictStatus::Warn) < verdict_status_rank(&VerdictStatus::Pass));
-        assert!(verdict_status_rank(&VerdictStatus::Pass) < verdict_status_rank(&VerdictStatus::Skip));
+        assert!(
+            verdict_status_rank(&VerdictStatus::Fail) < verdict_status_rank(&VerdictStatus::Warn)
+        );
+        assert!(
+            verdict_status_rank(&VerdictStatus::Warn) < verdict_status_rank(&VerdictStatus::Pass)
+        );
+        assert!(
+            verdict_status_rank(&VerdictStatus::Pass) < verdict_status_rank(&VerdictStatus::Skip)
+        );
     }
 
     #[test]

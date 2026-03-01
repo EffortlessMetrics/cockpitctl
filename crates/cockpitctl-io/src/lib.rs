@@ -365,7 +365,10 @@ mod tests {
                 assert_eq!(size as usize, cap + 1);
                 assert_eq!(c, cap);
             }
-            other => panic!("expected Oversized, got {:?}", std::mem::discriminant(&other)),
+            other => panic!(
+                "expected Oversized, got {:?}",
+                std::mem::discriminant(&other)
+            ),
         }
     }
 
@@ -470,8 +473,16 @@ mod tests {
         let src = FsReceiptSource::new(layout);
         let discovered = src.discovered_sensors().unwrap();
         assert_eq!(discovered.sensors, vec!["good-sensor"]);
-        assert!(discovered.invalid_sensor_ids.contains(&"bad.dot".to_string()));
-        assert!(discovered.invalid_sensor_ids.contains(&"has space".to_string()));
+        assert!(
+            discovered
+                .invalid_sensor_ids
+                .contains(&"bad.dot".to_string())
+        );
+        assert!(
+            discovered
+                .invalid_sensor_ids
+                .contains(&"has space".to_string())
+        );
     }
 
     #[test]
@@ -484,7 +495,10 @@ mod tests {
         let src = FsReceiptSource::new(layout);
         match src.read_report_bytes("../escape").unwrap() {
             ReportRead::UnsafePath => {}
-            other => panic!("expected UnsafePath, got {:?}", std::mem::discriminant(&other)),
+            other => panic!(
+                "expected UnsafePath, got {:?}",
+                std::mem::discriminant(&other)
+            ),
         }
     }
 
@@ -520,8 +534,8 @@ mod tests {
             fs::write(d.join("report.json"), minimal_report_json()).unwrap();
         }
 
-        let layout = FsLayout::new(&artifacts, tmp.path().join("cockpit.toml"))
-            .with_max_receipts(3);
+        let layout =
+            FsLayout::new(&artifacts, tmp.path().join("cockpit.toml")).with_max_receipts(3);
         let src = FsReceiptSource::new(layout);
         let discovered = src.discovered_sensors().unwrap();
         assert_eq!(discovered.sensors.len(), 3);

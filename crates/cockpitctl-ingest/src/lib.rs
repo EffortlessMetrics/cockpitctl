@@ -433,7 +433,10 @@ mod tests {
             }
         }
 
-        fn with_sensors(sensors: Vec<String>, reports: std::collections::HashMap<String, ReportRead>) -> Self {
+        fn with_sensors(
+            sensors: Vec<String>,
+            reports: std::collections::HashMap<String, ReportRead>,
+        ) -> Self {
             Self { sensors, reports }
         }
     }
@@ -595,9 +598,7 @@ mod tests {
         );
 
         let receipts = StubReceiptSource::empty();
-        let policy = StubPolicySource {
-            config: Some(cfg),
-        };
+        let policy = StubPolicySource { config: Some(cfg) };
         let output = StubOutputSink::new();
         let (tool, run) = make_tool_and_run();
 
@@ -656,10 +657,8 @@ mod tests {
         let mut reports = std::collections::HashMap::new();
         reports.insert("dup".to_string(), ReportRead::Bytes(bytes));
 
-        let receipts = StubReceiptSource::with_sensors(
-            vec!["dup".to_string(), "dup".to_string()],
-            reports,
-        );
+        let receipts =
+            StubReceiptSource::with_sensors(vec!["dup".to_string(), "dup".to_string()], reports);
         let policy = StubPolicySource { config: None };
         let output = StubOutputSink::new();
         let (tool, run) = make_tool_and_run();
@@ -719,9 +718,7 @@ mod tests {
 
         // Missing blocking sensor with missing=fail → policy fail
         let receipts = StubReceiptSource::empty();
-        let policy = StubPolicySource {
-            config: Some(cfg),
-        };
+        let policy = StubPolicySource { config: Some(cfg) };
         let output = StubOutputSink::new();
         let (tool, run) = make_tool_and_run();
 
