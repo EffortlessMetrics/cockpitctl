@@ -5,10 +5,12 @@
 //! `cockpitctl-core` crate instead of wiring individual microcrates.
 
 pub use cockpitctl_domain as domain;
+pub use cockpitctl_exec as exec;
 pub use cockpitctl_ingest as ingest;
 pub use cockpitctl_io as io;
 pub use cockpitctl_render as render;
 pub use cockpitctl_sarif as sarif;
+pub use cockpitctl_schema as schema;
 pub use cockpitctl_types as types;
 
 // Flatten the most-used ingest items.
@@ -29,6 +31,15 @@ pub use cockpitctl_domain::{
     CodeExplanation, all_codes, explain_code, policy_snapshot_sha256_hex, select_auto_apply_fixes,
     sign_policy_snapshot, sign_policy_snapshot_hmac_sha256,
 };
+
+// Flatten execution adapters.
+pub use cockpitctl_exec::{
+    CommentSection, OutputFile, PostProcessOutput, load_policy_signing_key, run_buildfix_actuator,
+    run_hooks,
+};
+
+// Flatten schema adapters.
+pub use cockpitctl_schema::JsonSchemaValidator;
 
 // Flatten SARIF export.
 pub use cockpitctl_sarif::{cockpit_report_to_sarif, cockpit_report_to_sarif_json};

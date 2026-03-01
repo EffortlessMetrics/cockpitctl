@@ -1,0 +1,23 @@
+[package]
+name = "cockpitctl-schema"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "JSON schema validation adapters for cockpitctl receipts and reports."
+keywords.workspace = true
+categories.workspace = true
+authors.workspace = true
+readme = "README.md"
+
+[dependencies]
+anyhow.workspace = true
+serde_json.workspace = true
+jsonschema.workspace = true
+cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
+
+[lints]
+workspace = true

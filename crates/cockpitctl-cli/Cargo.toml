@@ -32,6 +32,8 @@ cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.3.0" }
 cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
 cockpitctl-render = { path = "../cockpitctl-render", version = "0.3.0" }
 cockpitctl-io = { path = "../cockpitctl-io", version = "0.3.0" }
+cockpitctl-exec = { path = "../cockpitctl-exec", version = "0.3.0" }
+cockpitctl-schema = { path = "../cockpitctl-schema", version = "0.3.0" }
 cockpitctl-sarif = { path = "../cockpitctl-sarif", version = "0.3.0" }
 
 [dev-dependencies]

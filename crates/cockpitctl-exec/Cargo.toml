@@ -1,0 +1,25 @@
+[package]
+name = "cockpitctl-exec"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "External command execution adapters for cockpitctl hooks and buildfix actuators."
+keywords.workspace = true
+categories.workspace = true
+authors.workspace = true
+readme = "README.md"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+base64.workspace = true
+wait-timeout.workspace = true
+cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
+
+[lints]
+workspace = true
