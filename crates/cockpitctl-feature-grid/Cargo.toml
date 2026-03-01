@@ -17,3 +17,9 @@ cockpitctl-feature-state = { path = "../cockpitctl-feature-state", version = "0.
 
 [dev-dependencies]
 insta.workspace = true
+
+[features]
+default = ["feature-hooks", "feature-buildfix", "feature-policy-signing"]
+feature-hooks = ["cockpitctl-feature-state/feature-hooks"]
+feature-buildfix = ["cockpitctl-feature-state/feature-buildfix"]
+feature-policy-signing = ["cockpitctl-feature-state/feature-policy-signing"]

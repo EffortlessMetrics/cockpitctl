@@ -5,7 +5,7 @@ expression: results
 [
     (
         "hooks+[]=>Present",
-        false,
+        true,
     ),
     (
         "hooks+[\"--disable-hooks\"]=>Absent",
@@ -13,7 +13,7 @@ expression: results
     ),
     (
         "buildfix+[]=>Present",
-        false,
+        true,
     ),
     (
         "buildfix+[\"--disable-buildfix\"]=>Absent",
@@ -21,7 +21,7 @@ expression: results
     ),
     (
         "policy-signing+[]=>Present",
-        false,
+        true,
     ),
     (
         "policy-signing+[\"--disable-policy-signing\"]=>Absent",
