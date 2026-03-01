@@ -19,6 +19,7 @@ use cockpitctl_types::{
 };
 use sha2::{Digest, Sha256};
 
+/// The schema identifier for cockpit reports.
 pub const COCKPIT_SCHEMA_ID: &str = "cockpit.report.v1";
 
 /// Derive the policy outcome for a sensor given its blocking flag and verdict status.
@@ -227,6 +228,7 @@ pub fn derive_fingerprint(sensor_id: &str, finding: &Finding) -> String {
     hex::encode(out)
 }
 
+/// Build a deterministic sort key for a finding, enabling stable ordering.
 pub fn finding_sort_key(sensor_id: &str, f: &Finding) -> FindingSortKey {
     let (path, line) = match &f.location {
         Some(loc) => (
@@ -245,10 +247,12 @@ pub fn finding_sort_key(sensor_id: &str, f: &Finding) -> FindingSortKey {
     }
 }
 
+/// Sort findings deterministically: severity desc → sensor_id → path → line → code → message.
 pub fn sort_findings(sensor_id: &str, findings: &mut [Finding]) {
     findings.sort_by_key(|f| finding_sort_key(sensor_id, f));
 }
 
+/// Sort sensor summaries by section order (from config) then by sensor ID.
 pub fn sort_sensor_summaries(summaries: &mut [SensorSummary], cfg: &CockpitConfig) {
     // Order by section order, then by id.
     let mut section_rank = std::collections::BTreeMap::<String, usize>::new();
@@ -275,6 +279,7 @@ pub fn sort_sensor_summaries(summaries: &mut [SensorSummary], cfg: &CockpitConfi
     });
 }
 
+/// Select, deduplicate, sort, and cap highlights for the cockpit report.
 pub fn select_highlights(
     mut candidates: Vec<Highlight>,
     cfg: &CockpitConfig,
@@ -346,6 +351,7 @@ pub fn select_highlights(
     deduped
 }
 
+/// Capture the current policy configuration as a snapshot for the report.
 pub fn snapshot_policy(cfg: &CockpitConfig) -> PolicySnapshot {
     let mut sensors = Vec::new();
     for (id, p) in cfg.sensors.iter() {
@@ -368,6 +374,7 @@ pub fn snapshot_policy(cfg: &CockpitConfig) -> PolicySnapshot {
     }
 }
 
+/// Derive the overall cockpit verdict from blocking sensor summaries.
 pub fn overall_verdict(sensor_summaries: &[SensorSummary], cfg: &CockpitConfig) -> Verdict {
     // Overall verdict is derived from blocking sensors only.
     // Status ordering: fail > warn > pass > skip
@@ -405,6 +412,7 @@ pub fn overall_verdict(sensor_summaries: &[SensorSummary], cfg: &CockpitConfig) 
     }
 }
 
+/// Synthesize a sensor summary and optional highlight for a missing receipt.
 pub fn synthesize_missing_sensor(
     sensor_id: &str,
     policy: &SensorPolicy,
@@ -475,6 +483,7 @@ pub fn synthesize_missing_sensor(
     (summary, highlight)
 }
 
+/// Synthesize a sensor summary and highlight for an unparseable (invalid JSON) receipt.
 pub fn synthesize_invalid_sensor(
     sensor_id: &str,
     policy: &SensorPolicy,

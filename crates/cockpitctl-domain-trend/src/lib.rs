@@ -1,4 +1,7 @@
 //! Trend-domain boundary microcrate.
+//!
+//! Computes the delta between a baseline and current cockpit report,
+//! identifying new findings, fixed findings, and sensor-level changes.
 
 use std::collections::{BTreeMap, BTreeSet};
 

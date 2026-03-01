@@ -13,6 +13,7 @@ use cockpitctl_types::{CockpitReport, Highlight, Severity};
 // SARIF v2.1.0 types (hand-rolled, minimal subset)
 // ============================================================================
 
+/// Top-level SARIF v2.1.0 log object.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifLog {
@@ -22,6 +23,7 @@ pub struct SarifLog {
     pub runs: Vec<SarifRun>,
 }
 
+/// A single analysis run within a SARIF log.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifRun {
@@ -29,12 +31,14 @@ pub struct SarifRun {
     pub results: Vec<SarifResult>,
 }
 
+/// Tool metadata in SARIF format.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifTool {
     pub driver: SarifToolComponent,
 }
 
+/// Driver component describing the analysis tool.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifToolComponent {
@@ -44,6 +48,7 @@ pub struct SarifToolComponent {
     pub rules: Vec<SarifRule>,
 }
 
+/// A rule (check) definition referenced by SARIF results.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifRule {
@@ -52,12 +57,14 @@ pub struct SarifRule {
     pub short_description: Option<SarifMessage>,
 }
 
+/// A human-readable SARIF message.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifMessage {
     pub text: String,
 }
 
+/// A single analysis result (finding) in SARIF format.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifResult {
@@ -70,12 +77,14 @@ pub struct SarifResult {
     pub fingerprints: BTreeMap<String, String>,
 }
 
+/// Wrapper for a physical source location in SARIF.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifLocation {
     pub physical_location: SarifPhysicalLocation,
 }
 
+/// Physical location combining an artifact path and optional region.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifPhysicalLocation {
@@ -84,12 +93,14 @@ pub struct SarifPhysicalLocation {
     pub region: Option<SarifRegion>,
 }
 
+/// URI-based artifact location in SARIF.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifArtifactLocation {
     pub uri: String,
 }
 
+/// Line/column region within a source file.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifRegion {

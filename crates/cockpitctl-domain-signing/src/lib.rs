@@ -1,4 +1,7 @@
 //! Policy-signing domain boundary microcrate.
+//!
+//! Provides canonical serialisation of policy snapshots and HMAC-SHA256
+//! signing for tamper-evident policy evidence in the cockpit report.
 
 use anyhow::{Context, Result};
 use cockpitctl_types::{

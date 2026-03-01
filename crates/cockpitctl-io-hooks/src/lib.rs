@@ -1,4 +1,7 @@
 //! Hook adapter boundary extracted from `cockpitctl-io`.
+//!
+//! Runs post-processing hook commands after ingest, allowing external
+//! tools to contribute extra comment sections and sidecar files.
 
 use anyhow::{Context, Result};
 use cockpitctl_ingest::OutputSink;

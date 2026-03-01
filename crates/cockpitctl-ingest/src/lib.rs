@@ -138,6 +138,7 @@ pub struct IngestResult {
     pub buildfix: Option<BuildfixSummary>,
 }
 
+/// The core ingest use case, wiring ports (receipt source, policy, output, schema validation, renderer).
 pub struct IngestUseCase<R, P, O, S, RenderFn>
 where
     R: ReceiptSource,
@@ -161,6 +162,7 @@ where
     S: SchemaValidator,
     RenderFn: Fn(&CockpitReport, &CockpitConfig) -> String,
 {
+    /// Construct a new use case with the given adapters.
     pub fn new(receipts: R, policy: P, output: O, schema_validator: S, render: RenderFn) -> Self {
         Self {
             receipts,
@@ -171,6 +173,7 @@ where
         }
     }
 
+    /// Run the full ingest pipeline: discover sensors, evaluate policy, render outputs.
     pub fn execute(&self, req: IngestRequest) -> Result<IngestResult> {
         let discovery = self
             .receipts

@@ -1,4 +1,7 @@
 //! Schema validation adapter extracted from `cockpitctl-io`.
+//!
+//! Provides JSON Schema validation for sensor and cockpit reports using
+//! either embedded schema bytes or a user-supplied schema file path.
 
 use anyhow::{Context, Result};
 use cockpitctl_ingest::{SchemaValidationResult, SchemaValidator};
