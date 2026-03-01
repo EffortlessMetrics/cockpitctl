@@ -1,0 +1,33 @@
+---
+source: crates/cockpitctl-domain/tests/determinism_tests.rs
+expression: findings
+---
+[
+  {
+    "severity": "error",
+    "code": "SAME",
+    "message": "Aaa first",
+    "location": {
+      "path": "src/x.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "error",
+    "code": "SAME",
+    "message": "Mmm middle",
+    "location": {
+      "path": "src/x.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "error",
+    "code": "SAME",
+    "message": "Zzz last",
+    "location": {
+      "path": "src/x.rs",
+      "line": 10
+    }
+  }
+]

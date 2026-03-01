@@ -1,0 +1,45 @@
+---
+source: crates/cockpitctl-domain/tests/determinism_tests.rs
+expression: selected
+---
+[
+  {
+    "sensor_id": "sensor_a",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "Error in a",
+      "location": {
+        "path": "src/a.rs",
+        "line": 10
+      },
+      "fingerprint": "2c49f8386b353e8fdf818c5dd4b81e2870bb1d21b79ad403acc3f88ac77a6f8b"
+    }
+  },
+  {
+    "sensor_id": "sensor_b",
+    "finding": {
+      "severity": "error",
+      "code": "E2",
+      "message": "Error in b",
+      "location": {
+        "path": "src/b.rs",
+        "line": 1
+      },
+      "fingerprint": "e2160a6d8ff2a5622f7e5ab0fa2da7a4d321be47c90feb4cdb2d6c9e970f656d"
+    }
+  },
+  {
+    "sensor_id": "sensor_c",
+    "finding": {
+      "severity": "warn",
+      "code": "W1",
+      "message": "Warn in c",
+      "location": {
+        "path": "src/c.rs",
+        "line": 5
+      },
+      "fingerprint": "0e5591b1f350a3b7dcb3003d5c573784053c9e3bd94f0db0fd6400d3a066da23"
+    }
+  }
+]

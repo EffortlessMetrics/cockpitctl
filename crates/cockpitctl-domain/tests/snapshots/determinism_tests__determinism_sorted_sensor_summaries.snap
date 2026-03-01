@@ -1,0 +1,78 @@
+---
+source: crates/cockpitctl-domain/tests/determinism_tests.rs
+expression: reference
+---
+[
+  {
+    "id": "build",
+    "blocking": true,
+    "missing": "fail",
+    "presence": "present",
+    "report_path": "artifacts/build/report.json",
+    "verdict": {
+      "status": "pass",
+      "counts": {
+        "info": 0,
+        "warn": 0,
+        "error": 0
+      },
+      "reasons": []
+    },
+    "truncated": false,
+    "errors": []
+  },
+  {
+    "id": "coverage",
+    "blocking": false,
+    "missing": "fail",
+    "presence": "present",
+    "report_path": "artifacts/coverage/report.json",
+    "verdict": {
+      "status": "pass",
+      "counts": {
+        "info": 0,
+        "warn": 0,
+        "error": 0
+      },
+      "reasons": []
+    },
+    "truncated": false,
+    "errors": []
+  },
+  {
+    "id": "lint",
+    "blocking": true,
+    "missing": "fail",
+    "presence": "present",
+    "report_path": "artifacts/lint/report.json",
+    "verdict": {
+      "status": "warn",
+      "counts": {
+        "info": 0,
+        "warn": 0,
+        "error": 0
+      },
+      "reasons": []
+    },
+    "truncated": false,
+    "errors": []
+  },
+  {
+    "id": "security",
+    "blocking": true,
+    "missing": "fail",
+    "presence": "present",
+    "report_path": "artifacts/security/report.json",
+    "verdict": {
+      "status": "pass",
+      "counts": {
+        "info": 0,
+        "warn": 0,
+        "error": 0
+      },
+      "reasons": []
+    },
+    "truncated": false,
+    "errors": []
+  }
+]

@@ -1,0 +1,9 @@
+---
+source: crates/cockpitctl-domain/tests/determinism_tests.rs
+expression: reference
+---
+{
+  "info": 1,
+  "warn": 2,
+  "error": 3
+}

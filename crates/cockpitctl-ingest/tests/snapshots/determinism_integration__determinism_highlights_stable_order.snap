@@ -1,0 +1,146 @@
+---
+source: crates/cockpitctl-ingest/tests/determinism_integration.rs
+expression: report
+---
+{
+  "highlights": [
+    {
+      "finding": {
+        "code": "err/a1",
+        "fingerprint": "8c0aa656ab4d49927ef3f1996e1a0f5221320216fa658a41d9717a1348d6f999",
+        "location": {
+          "line": 10,
+          "path": "src/x.rs"
+        },
+        "message": "Error A1",
+        "severity": "error"
+      },
+      "sensor_id": "sensor_a"
+    },
+    {
+      "finding": {
+        "code": "err/a2",
+        "fingerprint": "ca8d58e17ae4b68a0e1b24491532c71c6d2b2592950fb797ab89d435a7cd1f6a",
+        "location": {
+          "line": 5,
+          "path": "src/y.rs"
+        },
+        "message": "Error A2",
+        "severity": "error"
+      },
+      "sensor_id": "sensor_a"
+    },
+    {
+      "finding": {
+        "code": "err/b1",
+        "fingerprint": "aa21af321de6c9bacaf9fc1df02ebb22348afd80b51464a1d7d406442c3687d5",
+        "location": {
+          "line": 1,
+          "path": "src/a.rs"
+        },
+        "message": "Error B1",
+        "severity": "error"
+      },
+      "sensor_id": "sensor_b"
+    },
+    {
+      "finding": {
+        "code": "warn/b1",
+        "fingerprint": "87363332be1de6d163f464ebfc8eebd58d7592ab80dec6a58ef9d08e55b8af4f",
+        "location": {
+          "line": 99,
+          "path": "src/z.rs"
+        },
+        "message": "Warning B1",
+        "severity": "warn"
+      },
+      "sensor_id": "sensor_b"
+    }
+  ],
+  "policy": {
+    "max_annotations": 25,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "blocking": true,
+        "id": "sensor_a",
+        "missing": "fail"
+      },
+      {
+        "blocking": true,
+        "id": "sensor_b",
+        "missing": "fail"
+      }
+    ],
+    "warn_is_fail": false
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "schema": "cockpit.report.v1",
+  "sensors": [
+    {
+      "blocking": true,
+      "errors": [],
+      "id": "sensor_a",
+      "missing": "fail",
+      "policy_outcome": "blocked",
+      "presence": "present",
+      "report_path": "artifacts/sensor_a/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 2,
+          "info": 0,
+          "warn": 0
+        },
+        "reasons": [],
+        "status": "fail"
+      }
+    },
+    {
+      "blocking": true,
+      "errors": [],
+      "id": "sensor_b",
+      "missing": "fail",
+      "policy_outcome": "blocked",
+      "presence": "present",
+      "report_path": "artifacts/sensor_b/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 1,
+          "info": 0,
+          "warn": 1
+        },
+        "reasons": [],
+        "status": "fail"
+      }
+    }
+  ],
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "verdict": {
+    "counts": {
+      "error": 3,
+      "info": 0,
+      "warn": 1
+    },
+    "reasons": [],
+    "status": "fail"
+  }
+}

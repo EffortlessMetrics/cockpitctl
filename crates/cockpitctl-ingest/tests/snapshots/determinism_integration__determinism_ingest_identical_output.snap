@@ -1,0 +1,149 @@
+---
+source: crates/cockpitctl-ingest/tests/determinism_integration.rs
+expression: report
+---
+{
+  "highlights": [
+    {
+      "finding": {
+        "code": "lint/unused",
+        "fingerprint": "3940dcf7cffb7afcd77f12460bff2ec3f0e98002ec1edbc609728ad43f3a6365",
+        "location": {
+          "line": 1,
+          "path": "src/lib.rs"
+        },
+        "message": "Unused import",
+        "severity": "warn"
+      },
+      "sensor_id": "lint"
+    },
+    {
+      "finding": {
+        "code": "lint/complexity",
+        "fingerprint": "753d38642c1d99183fafb8b4e66b7c77fce33066751800bb9ce950014d3889d3",
+        "location": {
+          "line": 42,
+          "path": "src/main.rs"
+        },
+        "message": "Function too complex",
+        "severity": "warn"
+      },
+      "sensor_id": "lint"
+    },
+    {
+      "finding": {
+        "code": "cov/report",
+        "fingerprint": "e44216095146a15ee5ea6e7d452614fd0213157ffc340365f2a906888f1b0845",
+        "message": "Coverage: 85%",
+        "severity": "info"
+      },
+      "sensor_id": "coverage"
+    }
+  ],
+  "policy": {
+    "max_annotations": 25,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "section_order": [
+      "Build",
+      "Quality"
+    ],
+    "sensors": [
+      {
+        "blocking": true,
+        "id": "build",
+        "missing": "fail",
+        "section": "Build"
+      },
+      {
+        "blocking": false,
+        "id": "coverage",
+        "missing": "warn",
+        "section": "Quality"
+      },
+      {
+        "blocking": true,
+        "id": "lint",
+        "missing": "fail",
+        "section": "Quality"
+      }
+    ],
+    "warn_is_fail": false
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "schema": "cockpit.report.v1",
+  "sensors": [
+    {
+      "blocking": true,
+      "errors": [],
+      "id": "build",
+      "missing": "fail",
+      "policy_outcome": "allowed",
+      "presence": "present",
+      "report_path": "artifacts/build/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 0,
+          "info": 0,
+          "warn": 0
+        },
+        "reasons": [],
+        "status": "pass"
+      }
+    },
+    {
+      "blocking": false,
+      "errors": [],
+      "id": "coverage",
+      "missing": "warn",
+      "policy_outcome": "informational",
+      "presence": "present",
+      "report_path": "artifacts/coverage/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 0,
+          "info": 1,
+          "warn": 0
+        },
+        "reasons": [],
+        "status": "pass"
+      }
+    },
+    {
+      "blocking": true,
+      "errors": [],
+      "id": "lint",
+      "missing": "fail",
+      "policy_outcome": "allowed",
+      "presence": "present",
+      "report_path": "artifacts/lint/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 0,
+          "info": 0,
+          "warn": 2
+        },
+        "reasons": [],
+        "status": "warn"
+      }
+    }
+  ],
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "verdict": {
+    "counts": {
+      "error": 0,
+      "info": 1,
+      "warn": 2
+    },
+    "reasons": [],
+    "status": "warn"
+  }
+}
