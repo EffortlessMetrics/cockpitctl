@@ -1,5 +1,5 @@
 [package]
-name = "cockpitctl-ingest"
+name = "cockpitctl-ports"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -7,14 +7,11 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "Ingest use case for composing sensor receipts into cockpit reports."
+description = "Hexagonal ports and IO contracts for cockpitctl ingest orchestration."
 readme = "README.md"
-keywords = ["ci", "ingest", "ports", "receipts", "orchestration"]
+keywords = ["ci", "cockpit", "ports", "hexagonal", "contracts"]
 categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true
-serde_json.workspace = true
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
-cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.3.0" }
-cockpitctl-ports = { path = "../cockpitctl-ports", version = "0.3.0" }

@@ -22,7 +22,7 @@ jsonschema.workspace = true
 wait-timeout.workspace = true
 base64.workspace = true
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
-cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
+cockpitctl-ports = { path = "../cockpitctl-ports", version = "0.3.0" }
 
 [dev-dependencies]
 tempfile.workspace = true

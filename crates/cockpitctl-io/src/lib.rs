@@ -3,7 +3,7 @@
 //! This crate is the boundary between IO and the ingest use case.
 
 use anyhow::{Context, Result};
-use cockpitctl_ingest::{
+use cockpitctl_ports::{
     CommentRead, DiscoveredSensors, OutputSink, PlanRead, PolicySource, ReceiptSource, ReportRead,
     SchemaValidationResult, SchemaValidator,
 };
