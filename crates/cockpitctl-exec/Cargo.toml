@@ -1,5 +1,5 @@
 [package]
-name = "cockpitctl-io"
+name = "cockpitctl-exec"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -7,20 +7,19 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "Filesystem adapters for cockpitctl ingest ports with path and size safety limits."
+description = "Process execution adapters for cockpitctl hooks, buildfix actuators, and signing key loading."
 readme = "README.md"
-keywords = ["ci", "filesystem", "adapters", "receipts", "security"]
-categories = ["development-tools", "filesystem"]
+keywords = ["ci", "adapters", "hooks", "buildfix", "security"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true
 serde.workspace = true
-toml.workspace = true
-walkdir.workspace = true
 serde_json.workspace = true
-jsonschema.workspace = true
-cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
+wait-timeout.workspace = true
+base64.workspace = true
 cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 
 [dev-dependencies]
 tempfile.workspace = true

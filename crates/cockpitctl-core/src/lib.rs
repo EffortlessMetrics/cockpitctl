@@ -5,6 +5,7 @@
 //! `cockpitctl-core` crate instead of wiring individual microcrates.
 
 pub use cockpitctl_domain as domain;
+pub use cockpitctl_exec as exec;
 pub use cockpitctl_ingest as ingest;
 pub use cockpitctl_io as io;
 pub use cockpitctl_render as render;

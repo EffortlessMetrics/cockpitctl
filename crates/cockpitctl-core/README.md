@@ -3,7 +3,7 @@
 Facade crate that re-exports cockpitctl microcrates through a single dependency.
 
 ## Scope
-- Re-exports `types`, `domain`, `ingest`, `io`, `render`, and `sarif` modules.
+- Re-exports `types`, `domain`, `ingest`, `io`, `exec`, `render`, and `sarif` modules.
 - Provides flattened access to commonly used types and helpers.
 
 ## When to use this crate
