@@ -1,0 +1,26 @@
+---
+source: crates/cockpitctl-io/tests/snapshot_tests.rs
+expression: paths
+---
+[
+    (
+        "artifacts_dir",
+        "artifacts",
+    ),
+    (
+        "out_dir",
+        "artifacts\\cockpit",
+    ),
+    (
+        "config_path",
+        "cockpit.toml",
+    ),
+    (
+        "max_receipt_bytes",
+        "2097152",
+    ),
+    (
+        "max_receipts",
+        "100",
+    ),
+]

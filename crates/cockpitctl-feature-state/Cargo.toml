@@ -12,6 +12,9 @@ readme = "README.md"
 keywords = ["ci", "feature-flags", "interop", "testing", "ingest"]
 categories = ["development-tools", "filesystem"]
 
+[dev-dependencies]
+insta = { workspace = true }
+
 [features]
 default = []
 feature-hooks = []

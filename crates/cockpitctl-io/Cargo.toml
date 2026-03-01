@@ -23,5 +23,6 @@ cockpitctl-io-policy-signing = { path = "../cockpitctl-io-policy-signing", versi
 cockpitctl-io-schema = { path = "../cockpitctl-io-schema", version = "0.3.0" }
 
 [dev-dependencies]
+insta = { workspace = true }
 tempfile.workspace = true
 serde_json.workspace = true

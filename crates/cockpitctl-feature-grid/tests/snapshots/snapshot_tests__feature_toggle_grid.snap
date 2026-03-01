@@ -1,0 +1,12 @@
+---
+source: crates/cockpitctl-feature-grid/tests/snapshot_tests.rs
+expression: grid
+---
+[
+    "feature=hooks args=[] expected=Present",
+    "feature=hooks args=[\"--disable-hooks\"] expected=Absent",
+    "feature=buildfix args=[] expected=Present",
+    "feature=buildfix args=[\"--disable-buildfix\"] expected=Absent",
+    "feature=policy-signing args=[] expected=Present",
+    "feature=policy-signing args=[\"--disable-policy-signing\"] expected=Absent",
+]

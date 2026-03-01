@@ -1,0 +1,22 @@
+---
+source: crates/cockpitctl-io/tests/snapshot_tests.rs
+expression: paths
+---
+[
+    (
+        "sensor_dir",
+        "artifacts\\clippy",
+    ),
+    (
+        "report_file",
+        "artifacts\\clippy\\report.json",
+    ),
+    (
+        "comment_file",
+        "artifacts\\clippy\\comment.md",
+    ),
+    (
+        "plan_file",
+        "artifacts\\clippy\\plan.json",
+    ),
+]

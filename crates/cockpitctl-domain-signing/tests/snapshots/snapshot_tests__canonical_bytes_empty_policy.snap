@@ -1,0 +1,12 @@
+---
+source: crates/cockpitctl-domain-signing/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "max_annotations": 0,
+  "max_highlights": 0,
+  "max_per_sensor_findings": 0,
+  "section_order": [],
+  "sensors": [],
+  "warn_is_fail": false
+}

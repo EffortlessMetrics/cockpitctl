@@ -1,0 +1,18 @@
+---
+source: crates/cockpitctl-io/tests/snapshot_tests.rs
+expression: paths
+---
+[
+    (
+        "cockpit_report",
+        "artifacts\\cockpit\\report.json",
+    ),
+    (
+        "cockpit_comment",
+        "artifacts\\cockpit\\comment.md",
+    ),
+    (
+        "sarif_report",
+        "artifacts\\cockpit\\sarif.json",
+    ),
+]

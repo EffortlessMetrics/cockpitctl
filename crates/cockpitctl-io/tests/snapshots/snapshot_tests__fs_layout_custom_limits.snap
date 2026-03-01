@@ -1,0 +1,14 @@
+---
+source: crates/cockpitctl-io/tests/snapshot_tests.rs
+expression: limits
+---
+[
+    (
+        "max_receipts",
+        "50",
+    ),
+    (
+        "max_receipt_bytes",
+        "1048576",
+    ),
+]

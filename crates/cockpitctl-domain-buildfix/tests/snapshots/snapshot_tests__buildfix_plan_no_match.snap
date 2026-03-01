@@ -1,0 +1,19 @@
+---
+source: crates/cockpitctl-domain-buildfix/tests/snapshot_tests.rs
+expression: summary
+---
+{
+  "fixes": [
+    {
+      "fix_id": "fix-1",
+      "sensor_id": "sensor",
+      "safety": "safe",
+      "description": "description for fix-1",
+      "matched_findings": [],
+      "unmatched": true
+    }
+  ],
+  "total_fixes": 1,
+  "matched_count": 0,
+  "unmatched_count": 1
+}
