@@ -288,6 +288,33 @@ pub fn append_comment_sections(comment_md: &str, sections: &[(String, String)]) 
 /// Annotations are rendered as a markdown list of findings with file locations.
 /// The total number of annotations is capped by `max_annotations` from policy.
 /// Deterministic ordering is maintained: severity desc -> blocking-first -> sensor_id -> path -> line -> code.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_render::render_annotations;
+/// use cockpitctl_types::{CockpitConfig, Finding, Highlight, Severity};
+/// use std::collections::BTreeMap;
+///
+/// let highlights = vec![Highlight {
+///     sensor_id: "builddiag".into(),
+///     finding: Finding {
+///         severity: Severity::Error,
+///         check_id: None,
+///         code: "E001".into(),
+///         message: "build failed".into(),
+///         location: None,
+///         help: None, url: None, fingerprint: None, data: None,
+///     },
+/// }];
+///
+/// let cfg = CockpitConfig::default();
+/// let blocking = BTreeMap::from([("builddiag".to_string(), true)]);
+/// let result = render_annotations(&highlights, &cfg, &blocking);
+/// assert_eq!(result.total_count, 1);
+/// assert!(!result.truncated);
+/// assert!(result.content.contains("E001"));
+/// ```
 pub fn render_annotations(
     highlights: &[Highlight],
     cfg: &CockpitConfig,
@@ -650,6 +677,33 @@ fn gh_level(s: &Severity) -> &'static str {
 /// `::error file={path},line={line},col={col},title=[{sensor_id}] {code}::{message}`
 ///
 /// Capped by `max_annotations` from policy. Same deterministic sort as markdown annotations.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_render::render_github_annotations;
+/// use cockpitctl_types::{CockpitConfig, Finding, Highlight, Location, Severity};
+/// use std::collections::BTreeMap;
+///
+/// let highlights = vec![Highlight {
+///     sensor_id: "clippy".into(),
+///     finding: Finding {
+///         severity: Severity::Warn,
+///         check_id: None,
+///         code: "unused_var".into(),
+///         message: "unused variable `x`".into(),
+///         location: Some(Location { path: Some("src/lib.rs".into()), line: Some(10), col: None }),
+///         help: None, url: None, fingerprint: None, data: None,
+///     },
+/// }];
+///
+/// let cfg = CockpitConfig::default();
+/// let blocking = BTreeMap::new();
+/// let result = render_github_annotations(&highlights, &cfg, &blocking);
+/// assert_eq!(result.lines.len(), 1);
+/// assert!(result.lines[0].starts_with("::warning"));
+/// assert!(result.lines[0].contains("file=src/lib.rs"));
+/// ```
 pub fn render_github_annotations(
     highlights: &[Highlight],
     cfg: &CockpitConfig,

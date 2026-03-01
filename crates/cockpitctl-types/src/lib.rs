@@ -28,6 +28,18 @@ pub const COCKPIT_PROMOTE_V1_SCHEMA_JSON: &str = include_str!("../schemas/cockpi
 pub type SchemaId = String;
 
 /// Overall status of a sensor or cockpit verdict.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::VerdictStatus;
+///
+/// let status = VerdictStatus::Pass;
+/// assert_eq!(serde_json::to_string(&status).unwrap(), "\"pass\"");
+///
+/// let parsed: VerdictStatus = serde_json::from_str("\"fail\"").unwrap();
+/// assert_eq!(parsed, VerdictStatus::Fail);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum VerdictStatus {
@@ -69,6 +81,21 @@ pub struct VerdictCounts {
 }
 
 /// Combined verdict including status, counts, and reason tokens.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::{Verdict, VerdictCounts, VerdictStatus};
+///
+/// let verdict = Verdict {
+///     status: VerdictStatus::Fail,
+///     counts: VerdictCounts { info: 0, warn: 1, error: 2, suppressed: 0 },
+///     reasons: vec!["missing_receipt".to_string()],
+/// };
+/// assert_eq!(verdict.status, VerdictStatus::Fail);
+/// assert_eq!(verdict.counts.error, 2);
+/// assert_eq!(verdict.reasons.len(), 1);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Verdict {
     pub status: VerdictStatus,
@@ -167,6 +194,18 @@ pub struct RunInfo {
 }
 
 /// Finding severity level.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::Severity;
+///
+/// let sev = Severity::Error;
+/// assert_eq!(serde_json::to_string(&sev).unwrap(), "\"error\"");
+///
+/// let parsed: Severity = serde_json::from_str("\"warn\"").unwrap();
+/// assert_eq!(parsed, Severity::Warn);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Severity {
@@ -190,6 +229,26 @@ pub struct Location {
 }
 
 /// A single diagnostic finding produced by a sensor.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::{Finding, Location, Severity};
+///
+/// let finding = Finding {
+///     severity: Severity::Error,
+///     check_id: Some("clippy.warning".into()),
+///     code: "unused_var".into(),
+///     message: "unused variable `x`".into(),
+///     location: Some(Location { path: Some("src/lib.rs".into()), line: Some(42), col: None }),
+///     help: Some("consider prefixing with `_`".into()),
+///     url: None,
+///     fingerprint: None,
+///     data: None,
+/// };
+/// assert_eq!(finding.severity, Severity::Error);
+/// assert_eq!(finding.location.as_ref().unwrap().line, Some(42));
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Finding {
     pub severity: Severity,
@@ -213,6 +272,37 @@ pub struct Finding {
 }
 
 /// The shared receipt envelope for sensors.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::{SensorReport, ToolInfo, RunInfo, Verdict, VerdictCounts, VerdictStatus};
+/// use std::collections::BTreeMap;
+///
+/// let report = SensorReport {
+///     schema: "sensor.report.v1".into(),
+///     tool: ToolInfo { name: "builddiag".into(), version: "1.0.0".into(), commit: None },
+///     run: RunInfo {
+///         started_at: "2026-01-01T00:00:00Z".into(),
+///         ended_at: None, duration_ms: None, host: None,
+///         git: None, ci: None, capabilities: BTreeMap::new(),
+///     },
+///     verdict: Verdict {
+///         status: VerdictStatus::Pass,
+///         counts: VerdictCounts::default(),
+///         reasons: vec![],
+///     },
+///     findings: vec![],
+///     artifacts: vec![],
+///     data: None,
+/// };
+///
+/// // Round-trip through JSON
+/// let json = serde_json::to_string(&report).unwrap();
+/// let parsed: SensorReport = serde_json::from_str(&json).unwrap();
+/// assert_eq!(parsed.schema, "sensor.report.v1");
+/// assert_eq!(parsed.verdict.status, VerdictStatus::Pass);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SensorReport {
     pub schema: SchemaId,
@@ -435,6 +525,18 @@ impl Default for Policy {
 }
 
 /// Top-level cockpit configuration deserialized from `cockpit.toml`.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::CockpitConfig;
+///
+/// // Default config provides sensible defaults.
+/// let cfg = CockpitConfig::default();
+/// assert_eq!(cfg.policy.max_highlights, 7);
+/// assert_eq!(cfg.policy.max_per_sensor_findings, 20);
+/// assert!(!cfg.policy.warn_is_fail);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct CockpitConfig {
     #[serde(default)]
@@ -471,6 +573,26 @@ pub struct SensorSummary {
 }
 
 /// A finding surfaced as a highlight in the cockpit report.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::{Finding, Highlight, Severity};
+///
+/// let highlight = Highlight {
+///     sensor_id: "builddiag".into(),
+///     finding: Finding {
+///         severity: Severity::Error,
+///         check_id: None,
+///         code: "build_error".into(),
+///         message: "compilation failed".into(),
+///         location: None,
+///         help: None, url: None, fingerprint: None, data: None,
+///     },
+/// };
+/// assert_eq!(highlight.sensor_id, "builddiag");
+/// assert_eq!(highlight.finding.severity, Severity::Error);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Highlight {
     pub sensor_id: String,
