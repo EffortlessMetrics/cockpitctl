@@ -422,3 +422,328 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cockpitctl_types::*;
+    use std::collections::BTreeMap;
+
+    // ---- Stub implementations of ports ----
+
+    struct StubReceiptSource {
+        sensors: Vec<String>,
+        reports: std::collections::HashMap<String, ReportRead>,
+    }
+
+    impl StubReceiptSource {
+        fn empty() -> Self {
+            Self {
+                sensors: vec![],
+                reports: std::collections::HashMap::new(),
+            }
+        }
+
+        fn with_sensors(
+            sensors: Vec<String>,
+            reports: std::collections::HashMap<String, ReportRead>,
+        ) -> Self {
+            Self { sensors, reports }
+        }
+    }
+
+    impl ReceiptSource for StubReceiptSource {
+        fn discovered_sensors(&self) -> Result<DiscoveredSensors> {
+            Ok(DiscoveredSensors {
+                sensors: self.sensors.clone(),
+                truncated: false,
+                total_found: self.sensors.len(),
+                invalid_sensor_ids: vec![],
+            })
+        }
+
+        fn read_report_bytes(&self, sensor_id: &str) -> Result<ReportRead> {
+            match self.reports.get(sensor_id) {
+                Some(ReportRead::Bytes(b)) => Ok(ReportRead::Bytes(b.clone())),
+                Some(ReportRead::Missing) => Ok(ReportRead::Missing),
+                Some(ReportRead::UnsafePath) => Ok(ReportRead::UnsafePath),
+                Some(ReportRead::Oversized { size, cap }) => Ok(ReportRead::Oversized {
+                    size: *size,
+                    cap: *cap,
+                }),
+                None => Ok(ReportRead::Missing),
+            }
+        }
+
+        fn report_path(&self, sensor_id: &str) -> String {
+            format!("artifacts/{}/report.json", sensor_id)
+        }
+
+        fn comment_path_if_present(&self, _sensor_id: &str) -> Result<CommentRead> {
+            Ok(CommentRead::Missing)
+        }
+    }
+
+    struct StubPolicySource {
+        config: Option<CockpitConfig>,
+    }
+
+    impl PolicySource for StubPolicySource {
+        fn load_config(&self) -> Result<Option<CockpitConfig>> {
+            Ok(self.config.clone())
+        }
+    }
+
+    struct StubOutputSink {
+        report: std::cell::RefCell<String>,
+        comment: std::cell::RefCell<String>,
+    }
+
+    impl StubOutputSink {
+        fn new() -> Self {
+            Self {
+                report: std::cell::RefCell::new(String::new()),
+                comment: std::cell::RefCell::new(String::new()),
+            }
+        }
+    }
+
+    impl OutputSink for StubOutputSink {
+        fn write_cockpit_report(&self, json: &str) -> Result<()> {
+            *self.report.borrow_mut() = json.to_string();
+            Ok(())
+        }
+        fn write_cockpit_comment(&self, md: &str) -> Result<()> {
+            *self.comment.borrow_mut() = md.to_string();
+            Ok(())
+        }
+    }
+
+    fn stub_render(_report: &CockpitReport, _cfg: &CockpitConfig) -> String {
+        "<!-- rendered -->".to_string()
+    }
+
+    fn make_tool_and_run() -> (ToolInfo, RunInfo) {
+        (
+            ToolInfo {
+                name: "cockpitctl".to_string(),
+                version: "0.1.0".to_string(),
+                commit: None,
+            },
+            RunInfo {
+                started_at: "2026-01-01T00:00:00Z".to_string(),
+                ended_at: None,
+                duration_ms: None,
+                host: None,
+                git: None,
+                ci: None,
+                capabilities: BTreeMap::new(),
+            },
+        )
+    }
+
+    fn minimal_sensor_report_bytes(status: VerdictStatus) -> Vec<u8> {
+        let report = SensorReport {
+            schema: "sensor.report.v1".to_string(),
+            tool: ToolInfo {
+                name: "test".to_string(),
+                version: "1.0.0".to_string(),
+                commit: None,
+            },
+            run: RunInfo {
+                started_at: "2026-01-01T00:00:00Z".to_string(),
+                ended_at: None,
+                duration_ms: None,
+                host: None,
+                git: None,
+                ci: None,
+                capabilities: BTreeMap::new(),
+            },
+            verdict: Verdict {
+                status,
+                counts: VerdictCounts::default(),
+                reasons: vec![],
+            },
+            findings: vec![],
+            artifacts: vec![],
+            data: None,
+        };
+        serde_json::to_vec(&report).unwrap()
+    }
+
+    // ---- Tests ----
+
+    #[test]
+    fn ingest_zero_sensors() {
+        let receipts = StubReceiptSource::empty();
+        let policy = StubPolicySource { config: None };
+        let output = StubOutputSink::new();
+        let (tool, run) = make_tool_and_run();
+
+        let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, stub_render);
+        let result = uc
+            .execute(IngestRequest {
+                labels: vec![],
+                tool,
+                run,
+                schema_validation_override: None,
+            })
+            .unwrap();
+
+        assert_eq!(result.exit_code, 0);
+        assert!(result.report.sensors.is_empty());
+        assert!(result.report.highlights.is_empty());
+    }
+
+    #[test]
+    fn ingest_sensor_with_no_report_json() {
+        // Sensor is declared in policy but has no report file
+        let mut cfg = CockpitConfig::default();
+        cfg.sensors.insert(
+            "missing-sensor".to_string(),
+            SensorPolicy {
+                blocking: false,
+                missing: MissingPolicy::Warn,
+                ..Default::default()
+            },
+        );
+
+        let receipts = StubReceiptSource::empty();
+        let policy = StubPolicySource { config: Some(cfg) };
+        let output = StubOutputSink::new();
+        let (tool, run) = make_tool_and_run();
+
+        let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, stub_render);
+        let result = uc
+            .execute(IngestRequest {
+                labels: vec![],
+                tool,
+                run,
+                schema_validation_override: None,
+            })
+            .unwrap();
+
+        assert_eq!(result.report.sensors.len(), 1);
+        assert_eq!(result.report.sensors[0].presence, Presence::Missing);
+    }
+
+    #[test]
+    fn ingest_all_verdicts_skip() {
+        let mut reports = std::collections::HashMap::new();
+        for name in &["s1", "s2", "s3"] {
+            reports.insert(
+                name.to_string(),
+                ReportRead::Bytes(minimal_sensor_report_bytes(VerdictStatus::Skip)),
+            );
+        }
+        let receipts = StubReceiptSource::with_sensors(
+            vec!["s1".to_string(), "s2".to_string(), "s3".to_string()],
+            reports,
+        );
+        let policy = StubPolicySource { config: None };
+        let output = StubOutputSink::new();
+        let (tool, run) = make_tool_and_run();
+
+        let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, stub_render);
+        let result = uc
+            .execute(IngestRequest {
+                labels: vec![],
+                tool,
+                run,
+                schema_validation_override: None,
+            })
+            .unwrap();
+
+        assert_eq!(result.exit_code, 0);
+        // All sensors should be present with skip verdict
+        for sensor in &result.report.sensors {
+            assert_eq!(sensor.verdict.status, VerdictStatus::Skip);
+        }
+    }
+
+    #[test]
+    fn ingest_duplicate_sensor_ids_in_discovery() {
+        // When discovered list has duplicates (shouldn't normally happen, but test robustness)
+        let bytes = minimal_sensor_report_bytes(VerdictStatus::Pass);
+        let mut reports = std::collections::HashMap::new();
+        reports.insert("dup".to_string(), ReportRead::Bytes(bytes));
+
+        let receipts =
+            StubReceiptSource::with_sensors(vec!["dup".to_string(), "dup".to_string()], reports);
+        let policy = StubPolicySource { config: None };
+        let output = StubOutputSink::new();
+        let (tool, run) = make_tool_and_run();
+
+        let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, stub_render);
+        let result = uc
+            .execute(IngestRequest {
+                labels: vec![],
+                tool,
+                run,
+                schema_validation_override: None,
+            })
+            .unwrap();
+
+        // Both "dup" entries should produce sensor summaries
+        assert_eq!(result.report.sensors.len(), 2);
+    }
+
+    #[test]
+    fn ingest_invalid_json_receipt_produces_finding() {
+        let mut reports = std::collections::HashMap::new();
+        reports.insert(
+            "bad-json".to_string(),
+            ReportRead::Bytes(b"not valid json{{{".to_vec()),
+        );
+        let receipts = StubReceiptSource::with_sensors(vec!["bad-json".to_string()], reports);
+        let policy = StubPolicySource { config: None };
+        let output = StubOutputSink::new();
+        let (tool, run) = make_tool_and_run();
+
+        let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, stub_render);
+        let result = uc
+            .execute(IngestRequest {
+                labels: vec![],
+                tool,
+                run,
+                schema_validation_override: None,
+            })
+            .unwrap();
+
+        assert_eq!(result.report.sensors.len(), 1);
+        assert_eq!(result.report.sensors[0].presence, Presence::Invalid);
+        assert!(!result.report.highlights.is_empty());
+    }
+
+    #[test]
+    fn ingest_blocking_fail_produces_exit_code_2() {
+        let mut cfg = CockpitConfig::default();
+        cfg.sensors.insert(
+            "blocker".to_string(),
+            SensorPolicy {
+                blocking: true,
+                missing: MissingPolicy::Fail,
+                ..Default::default()
+            },
+        );
+
+        // Missing blocking sensor with missing=fail → policy fail
+        let receipts = StubReceiptSource::empty();
+        let policy = StubPolicySource { config: Some(cfg) };
+        let output = StubOutputSink::new();
+        let (tool, run) = make_tool_and_run();
+
+        let uc = IngestUseCase::new(receipts, policy, output, NoOpSchemaValidator, stub_render);
+        let result = uc
+            .execute(IngestRequest {
+                labels: vec![],
+                tool,
+                run,
+                schema_validation_override: None,
+            })
+            .unwrap();
+
+        assert_eq!(result.exit_code, 2);
+        assert_eq!(result.report.verdict.status, VerdictStatus::Fail);
+    }
+}

@@ -865,3 +865,319 @@ pub struct HookConfig {
 fn default_hook_timeout_ms() -> u64 {
     default_buildfix_actuator_timeout_ms()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- is_valid_sensor_id edge cases ----
+
+    #[test]
+    fn sensor_id_empty() {
+        assert!(!is_valid_sensor_id(""));
+    }
+
+    #[test]
+    fn sensor_id_single_char() {
+        assert!(is_valid_sensor_id("a"));
+        assert!(is_valid_sensor_id("Z"));
+        assert!(is_valid_sensor_id("0"));
+        assert!(is_valid_sensor_id("_"));
+        assert!(is_valid_sensor_id("-"));
+    }
+
+    #[test]
+    fn sensor_id_long_string() {
+        let long = "a".repeat(256);
+        assert!(is_valid_sensor_id(&long));
+    }
+
+    #[test]
+    fn sensor_id_special_chars_rejected() {
+        assert!(!is_valid_sensor_id("bad/path"));
+        assert!(!is_valid_sensor_id("bad\\path"));
+        assert!(!is_valid_sensor_id("has space"));
+        assert!(!is_valid_sensor_id("has.dot"));
+        assert!(!is_valid_sensor_id("has@at"));
+        assert!(!is_valid_sensor_id("has!bang"));
+        assert!(!is_valid_sensor_id("tab\there"));
+        assert!(!is_valid_sensor_id("new\nline"));
+    }
+
+    #[test]
+    fn sensor_id_unicode_rejected() {
+        assert!(!is_valid_sensor_id("café"));
+        assert!(!is_valid_sensor_id("日本語"));
+        assert!(!is_valid_sensor_id("emoji🚀"));
+    }
+
+    #[test]
+    fn sensor_id_path_traversal_attempts() {
+        assert!(!is_valid_sensor_id("../bad"));
+        assert!(!is_valid_sensor_id("foo/../bar"));
+        assert!(!is_valid_sensor_id(".."));
+        assert!(!is_valid_sensor_id("..."));
+    }
+
+    #[test]
+    fn sensor_id_dots_only() {
+        assert!(!is_valid_sensor_id("."));
+        assert!(!is_valid_sensor_id(".."));
+        assert!(!is_valid_sensor_id("..."));
+    }
+
+    #[test]
+    fn sensor_id_reserved_names() {
+        // These contain only valid chars, so they should pass
+        assert!(is_valid_sensor_id("CON"));
+        assert!(is_valid_sensor_id("NUL"));
+        assert!(is_valid_sensor_id("PRN"));
+    }
+
+    #[test]
+    fn sensor_id_valid_typical() {
+        assert!(is_valid_sensor_id("builddiag"));
+        assert!(is_valid_sensor_id("my-sensor_v2"));
+        assert!(is_valid_sensor_id("UPPER"));
+        assert!(is_valid_sensor_id("MiXeD-CaSe_123"));
+    }
+
+    // ---- VerdictCounts arithmetic overflow ----
+
+    #[test]
+    fn verdict_counts_max_values() {
+        let counts = VerdictCounts {
+            info: u64::MAX,
+            warn: u64::MAX,
+            error: u64::MAX,
+            suppressed: u64::MAX,
+        };
+        assert_eq!(counts.info, u64::MAX);
+        assert_eq!(counts.warn, u64::MAX);
+        assert_eq!(counts.error, u64::MAX);
+        assert_eq!(counts.suppressed, u64::MAX);
+    }
+
+    #[test]
+    fn verdict_counts_serializes_max_values() {
+        let counts = VerdictCounts {
+            info: u64::MAX,
+            warn: u64::MAX,
+            error: u64::MAX,
+            suppressed: u64::MAX,
+        };
+        let json = serde_json::to_string(&counts).expect("serialize");
+        let back: VerdictCounts = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(counts, back);
+    }
+
+    #[test]
+    fn verdict_counts_suppressed_zero_omitted() {
+        let counts = VerdictCounts {
+            info: 1,
+            warn: 0,
+            error: 0,
+            suppressed: 0,
+        };
+        let json = serde_json::to_string(&counts).expect("serialize");
+        assert!(!json.contains("suppressed"));
+    }
+
+    #[test]
+    fn verdict_counts_suppressed_nonzero_included() {
+        let counts = VerdictCounts {
+            info: 0,
+            warn: 0,
+            error: 0,
+            suppressed: 1,
+        };
+        let json = serde_json::to_string(&counts).expect("serialize");
+        assert!(json.contains("suppressed"));
+    }
+
+    // ---- Enum serde round-trips ----
+
+    #[test]
+    fn verdict_status_serde_roundtrip() {
+        for status in &[
+            VerdictStatus::Pass,
+            VerdictStatus::Warn,
+            VerdictStatus::Fail,
+            VerdictStatus::Skip,
+        ] {
+            let json = serde_json::to_string(status).expect("serialize");
+            let back: VerdictStatus = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(status, &back);
+        }
+    }
+
+    #[test]
+    fn verdict_status_json_values() {
+        assert_eq!(
+            serde_json::to_string(&VerdictStatus::Pass).unwrap(),
+            "\"pass\""
+        );
+        assert_eq!(
+            serde_json::to_string(&VerdictStatus::Warn).unwrap(),
+            "\"warn\""
+        );
+        assert_eq!(
+            serde_json::to_string(&VerdictStatus::Fail).unwrap(),
+            "\"fail\""
+        );
+        assert_eq!(
+            serde_json::to_string(&VerdictStatus::Skip).unwrap(),
+            "\"skip\""
+        );
+    }
+
+    #[test]
+    fn severity_serde_roundtrip() {
+        for sev in &[Severity::Info, Severity::Warn, Severity::Error] {
+            let json = serde_json::to_string(sev).expect("serialize");
+            let back: Severity = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(sev, &back);
+        }
+    }
+
+    #[test]
+    fn severity_json_values() {
+        assert_eq!(serde_json::to_string(&Severity::Info).unwrap(), "\"info\"");
+        assert_eq!(serde_json::to_string(&Severity::Warn).unwrap(), "\"warn\"");
+        assert_eq!(
+            serde_json::to_string(&Severity::Error).unwrap(),
+            "\"error\""
+        );
+    }
+
+    #[test]
+    fn missing_policy_serde_roundtrip() {
+        for mp in &[
+            MissingPolicy::Skip,
+            MissingPolicy::Warn,
+            MissingPolicy::Fail,
+        ] {
+            let json = serde_json::to_string(mp).expect("serialize");
+            let back: MissingPolicy = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(mp, &back);
+        }
+    }
+
+    #[test]
+    fn presence_serde_roundtrip() {
+        for p in &[Presence::Present, Presence::Missing, Presence::Invalid] {
+            let json = serde_json::to_string(p).expect("serialize");
+            let back: Presence = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(p, &back);
+        }
+    }
+
+    #[test]
+    fn policy_outcome_serde_roundtrip() {
+        for po in &[
+            PolicyOutcome::Blocked,
+            PolicyOutcome::Allowed,
+            PolicyOutcome::Informational,
+        ] {
+            let json = serde_json::to_string(po).expect("serialize");
+            let back: PolicyOutcome = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(po, &back);
+        }
+    }
+
+    #[test]
+    fn capability_status_serde_roundtrip() {
+        for cs in &[
+            CapabilityStatus::Available,
+            CapabilityStatus::Unavailable,
+            CapabilityStatus::Skipped,
+        ] {
+            let json = serde_json::to_string(cs).expect("serialize");
+            let back: CapabilityStatus = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(cs, &back);
+        }
+    }
+
+    #[test]
+    fn safety_level_serde_roundtrip() {
+        for sl in &[SafetyLevel::Safe, SafetyLevel::Guarded, SafetyLevel::Unsafe] {
+            let json = serde_json::to_string(sl).expect("serialize");
+            let back: SafetyLevel = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(sl, &back);
+        }
+    }
+
+    #[test]
+    fn schema_validation_serde_roundtrip() {
+        for sv in &[SchemaValidation::Lax, SchemaValidation::Strict] {
+            let json = serde_json::to_string(sv).expect("serialize");
+            let back: SchemaValidation = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(sv, &back);
+        }
+    }
+
+    #[test]
+    fn trend_change_serde_roundtrip() {
+        for tc in &[TrendChange::New, TrendChange::Fixed] {
+            let json = serde_json::to_string(tc).expect("serialize");
+            let back: TrendChange = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(tc, &back);
+        }
+    }
+
+    #[test]
+    fn hook_when_serde_roundtrip() {
+        let hw = HookWhen::AfterIngest;
+        let json = serde_json::to_string(&hw).expect("serialize");
+        let back: HookWhen = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(hw, back);
+    }
+
+    #[test]
+    fn buildfix_apply_status_serde_roundtrip() {
+        for s in &[
+            BuildfixApplyStatus::Skipped,
+            BuildfixApplyStatus::Applied,
+            BuildfixApplyStatus::Failed,
+        ] {
+            let json = serde_json::to_string(s).expect("serialize");
+            let back: BuildfixApplyStatus = serde_json::from_str(&json).expect("deserialize");
+            assert_eq!(s, &back);
+        }
+    }
+
+    #[test]
+    fn policy_signature_algorithm_serde_roundtrip() {
+        let alg = PolicySignatureAlgorithm::HmacSha256;
+        let json = serde_json::to_string(&alg).expect("serialize");
+        let back: PolicySignatureAlgorithm = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(alg, back);
+    }
+
+    // ---- Ranking helpers ----
+
+    #[test]
+    fn severity_rank_ordering() {
+        assert!(severity_rank(&Severity::Error) < severity_rank(&Severity::Warn));
+        assert!(severity_rank(&Severity::Warn) < severity_rank(&Severity::Info));
+    }
+
+    #[test]
+    fn verdict_status_rank_ordering() {
+        assert!(
+            verdict_status_rank(&VerdictStatus::Fail) < verdict_status_rank(&VerdictStatus::Warn)
+        );
+        assert!(
+            verdict_status_rank(&VerdictStatus::Warn) < verdict_status_rank(&VerdictStatus::Pass)
+        );
+        assert!(
+            verdict_status_rank(&VerdictStatus::Pass) < verdict_status_rank(&VerdictStatus::Skip)
+        );
+    }
+
+    #[test]
+    fn safety_level_rank_ordering() {
+        assert!(safety_level_rank(&SafetyLevel::Safe) < safety_level_rank(&SafetyLevel::Guarded));
+        assert!(safety_level_rank(&SafetyLevel::Guarded) < safety_level_rank(&SafetyLevel::Unsafe));
+    }
+}
