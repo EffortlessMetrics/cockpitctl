@@ -1,0 +1,14 @@
+---
+source: crates/cockpitctl-cli/tests/e2e_snapshots.rs
+assertion_line: 66
+expression: normalize(&stdout)
+---
+Validate a receipt file can be parsed (developer tool)
+
+Usage: cockpitctl validate [OPTIONS] --input <INPUT>
+
+Options:
+      --input <INPUT>  Path to a JSON receipt or cockpit report
+      --strict         Perform strict JSON Schema validation (default)
+      --lax            Skip JSON Schema validation; only parse as JSON
+  -h, --help           Print help

@@ -1,0 +1,19 @@
+---
+source: crates/cockpitctl-cli/tests/e2e_snapshots.rs
+assertion_line: 89
+expression: normalize(&stderr)
+---
+Receipt-ingesting PR cockpit director
+
+Usage: cockpitctl <COMMAND>
+
+Commands:
+  ingest    Ingest sensor receipts under artifacts/ and render a cockpit report + comment
+  init      Write a starter cockpit.toml (does not overwrite)
+  validate  Validate a receipt file can be parsed (developer tool)
+  explain   Explain a cockpit finding code (e.g. cockpit.missing_receipt)
+  help      Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
