@@ -49,6 +49,8 @@ crates/
   cockpitctl-domain    # pure policy logic, sorting, synthesis
   cockpitctl-ingest    # use case + ports + exit semantics
   cockpitctl-io        # filesystem adapters + safety guards
+  cockpitctl-ops       # hook + actuator execution adapters
+  cockpitctl-schema    # JSON Schema validation adapters
   cockpitctl-render    # deterministic markdown + annotation rendering
   cockpitctl-sarif     # SARIF v2.1.0 export
   cockpitctl-conform   # conformance checking library

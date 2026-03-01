@@ -1,0 +1,25 @@
+[package]
+name = "cockpitctl-ops"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Operational command adapters for cockpitctl hooks, actuators, and signing keys."
+readme = "README.md"
+keywords = ["ci", "hooks", "actuator", "operations"]
+categories = ["development-tools"]
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+wait-timeout.workspace = true
+base64.workspace = true
+cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
+
+[dev-dependencies]
+tempfile.workspace = true

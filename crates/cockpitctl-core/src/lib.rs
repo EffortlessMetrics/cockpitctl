@@ -7,8 +7,10 @@
 pub use cockpitctl_domain as domain;
 pub use cockpitctl_ingest as ingest;
 pub use cockpitctl_io as io;
+pub use cockpitctl_ops as ops;
 pub use cockpitctl_render as render;
 pub use cockpitctl_sarif as sarif;
+pub use cockpitctl_schema as schema;
 pub use cockpitctl_types as types;
 
 // Flatten the most-used ingest items.
