@@ -11,6 +11,7 @@ description = "CLI for ingesting sensor receipts into cockpit.report.v1 and dete
 readme = "README.md"
 keywords = ["ci", "cockpit", "receipts", "cli", "policy"]
 categories = ["command-line-utilities", "development-tools"]
+exclude = ["tests/"]
 
 [lib]
 name = "cockpitctl"
