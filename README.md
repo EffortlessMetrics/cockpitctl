@@ -90,3 +90,49 @@ Before announcing a release, validate it using only published artifacts:
 See [`docs/how-to/smoke-test-release.md`](docs/how-to/smoke-test-release.md) for details.
 
 See `CHANGELOG.md` for recent changes, `ROADMAP.md` for planned work, and `docs/` for full documentation.
+
+## GitHub Action
+
+Use cockpitctl as a reusable GitHub Action to aggregate sensor receipts and
+post a cockpit PR comment automatically.
+
+```yaml
+- uses: EffortlessMetrics/cockpitctl@v0
+  with:
+    artifacts-path: artifacts          # default: artifacts
+    config-path: cockpit.toml         # default: cockpit.toml
+    schema-validation: strict         # optional: lax (default) or strict
+    github-annotations: 'true'       # optional: emit ::error/::warning annotations
+    labels: 'security,performance'   # optional: comma-separated PR labels
+    version: latest                  # optional: version tag or "latest"
+    post-comment: 'true'             # optional: post/update the PR comment
+    fail-on-error: 'true'            # optional: fail the step on non-zero exit
+```
+
+### Outputs
+
+| Output         | Description                                        |
+| -------------- | -------------------------------------------------- |
+| `exit-code`    | Exit code from cockpitctl (0=pass, 2=policy fail)  |
+| `verdict`      | Overall verdict (`pass`, `warn`, `fail`, `skip`)   |
+| `report-path`  | Path to the generated `report.json`                |
+| `comment-path` | Path to the generated `comment.md`                 |
+
+### Example workflow
+
+```yaml
+name: Cockpit
+on: [pull_request]
+jobs:
+  cockpit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # ... run your sensors, producing artifacts/<sensor>/report.json ...
+      - uses: EffortlessMetrics/cockpitctl@v0
+        id: cockpit
+        with:
+          artifacts-path: artifacts
+          config-path: cockpit.toml
+      - run: echo "Verdict was ${{ steps.cockpit.outputs.verdict }}"
+```

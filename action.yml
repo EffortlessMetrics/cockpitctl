@@ -38,6 +38,14 @@ inputs:
     description: 'Fail the action if cockpitctl returns a non-zero exit code'
     required: false
     default: 'true'
+  schema-validation:
+    description: 'Schema validation mode for sensor receipts ("lax" or "strict")'
+    required: false
+    default: ''
+  github-annotations:
+    description: 'Emit GitHub Actions workflow annotations (::error, ::warning, ::notice)'
+    required: false
+    default: 'true'
   toolpack:
     description: 'Path to toolpack.json for manifest-based installation'
     required: false
@@ -297,6 +305,16 @@ print(tp.get('tools',{}).get('cockpitctl',{}).get('assets',{}).get(sys.argv[2],{
           --artifacts "${{ inputs.artifacts-path }}"
           --config "${{ inputs.config-path }}"
         )
+
+        # Add schema-validation if provided
+        if [[ -n "${{ inputs.schema-validation }}" ]]; then
+          CMD+=(--schema-validation "${{ inputs.schema-validation }}")
+        fi
+
+        # Add github-annotations if enabled
+        if [[ "${{ inputs.github-annotations }}" == "true" ]]; then
+          CMD+=(--github-annotations)
+        fi
 
         # Add labels if provided (inputs.labels is comma-separated)
         if [[ -n "${{ inputs.labels }}" ]]; then
