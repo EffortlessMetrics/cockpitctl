@@ -1,0 +1,79 @@
+Feature: Error handling
+
+  cockpitctl must handle error conditions gracefully, producing
+  valid output and useful diagnostics rather than crashing.
+
+  Background:
+    Given a clean output directory
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Missing Artifacts Directory
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: ingest with nonexistent artifacts directory still produces output
+    Given a temporary directory
+    And a minimal cockpit config
+    When I run "cockpitctl ingest --artifacts nonexistent_dir --config cockpit.toml"
+    Then the exit code is 0
+
+  Scenario: ingest with missing config uses defaults gracefully
+    Given a temporary directory
+    When I run "cockpitctl ingest --artifacts . --config nonexistent.toml"
+    Then the exit code is 0
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Corrupt Receipts
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: corrupt receipt produces valid cockpit output with finding
+    Given a fixture "invalid_receipt"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the cockpit report is valid JSON
+    And the report schema is "cockpit.report.v1"
+    And the cockpit report contains a highlight "cockpit.invalid_receipt"
+    And the file "artifacts/cockpit/comment.md" exists
+
+  Scenario: oversized receipt produces a finding rather than crashing
+    Given a fixture "receipt_oversized"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the cockpit report is valid JSON
+    And the report schema is "cockpit.report.v1"
+    And the cockpit report contains a highlight "cockpit.receipt_oversized"
+    And the file "artifacts/cockpit/comment.md" exists
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Path Traversal Attempts
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: hostile path traversal in sensor IDs is handled safely
+    Given a fixture "hostile_pointers"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the cockpit report is valid JSON
+    And the report schema is "cockpit.report.v1"
+    And the highlights array is empty
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Missing Expected Receipts
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: missing expected receipt produces finding not crash
+    Given a fixture "missing_receipt"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the cockpit report is valid JSON
+    And the cockpit report contains a highlight "cockpit.missing_receipt"
+    And the verdict status is "fail"
+    And the file "artifacts/cockpit/comment.md" exists
+
+  Scenario: tool error sensor does not crash the pipeline
+    Given a fixture "tool_error"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the cockpit report is valid JSON
+    And the sensor "linter" has verdict status "fail"
+    And the sensor "builddiag" has verdict status "pass"
+    And the file "artifacts/cockpit/report.json" exists
+    And the file "artifacts/cockpit/comment.md" exists
