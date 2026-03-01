@@ -1,0 +1,15 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: loc
+---
+Location {
+    path: Some(
+        "src/lib.rs",
+    ),
+    line: Some(
+        10,
+    ),
+    col: Some(
+        5,
+    ),
+}

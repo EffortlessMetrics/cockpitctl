@@ -1,0 +1,12 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_tests.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "path_hygiene",
+            message: "finding[0]: path traversal (contains ..): ../../../etc/passwd",
+        },
+    ],
+}

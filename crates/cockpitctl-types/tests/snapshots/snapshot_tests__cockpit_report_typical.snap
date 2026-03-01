@@ -1,0 +1,120 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.5.0",
+    "commit": "def5678"
+  },
+  "run": {
+    "started_at": "2025-01-15T10:00:00Z",
+    "ended_at": "2025-01-15T10:01:30Z",
+    "duration_ms": 90000,
+    "host": {
+      "os": "linux",
+      "arch": "x86_64",
+      "hostname": "ci-runner-42"
+    },
+    "git": {
+      "repo": "octocat/hello-world",
+      "base_ref": "main",
+      "head_ref": "feature/foo",
+      "base_sha": "aaa1111",
+      "head_sha": "bbb2222",
+      "merge_base": "ccc3333"
+    },
+    "ci": {
+      "provider": "github",
+      "run_id": "12345",
+      "run_url": "https://github.com/octocat/hello-world/actions/runs/12345",
+      "job": "build"
+    },
+    "capabilities": {
+      "baseline": {
+        "status": "unavailable",
+        "reason": "no baseline found"
+      },
+      "git": {
+        "status": "available"
+      }
+    }
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 1,
+      "warn": 2,
+      "error": 3
+    },
+    "reasons": [
+      "3 errors found"
+    ]
+  },
+  "sensors": [
+    {
+      "id": "builddiag",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/builddiag/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 1,
+          "warn": 2,
+          "error": 3
+        },
+        "reasons": [
+          "3 errors found"
+        ]
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "builddiag",
+      "finding": {
+        "severity": "error",
+        "check_id": "CK001",
+        "code": "null-deref",
+        "message": "Potential null dereference",
+        "location": {
+          "path": "src/main.rs",
+          "line": 42,
+          "col": 10
+        },
+        "help": "Add a null check before accessing",
+        "url": "https://example.com/rules/null-deref",
+        "fingerprint": "fp-abc123",
+        "data": {
+          "extra": "detail"
+        }
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Diagnostics"
+    ],
+    "sensors": [
+      {
+        "id": "builddiag",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Diagnostics",
+        "repro": "cargo build 2>&1"
+      }
+    ]
+  }
+}

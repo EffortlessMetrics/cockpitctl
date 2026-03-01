@@ -1,6 +1,17 @@
 use cockpitctl_types::{CockpitReport, FindingSortKey, Presence, SensorReport, severity_rank};
 
 /// Check if a reason token matches `^[a-z0-9_]+$`.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_conform::is_valid_reason_token;
+///
+/// assert!(is_valid_reason_token("tool_error"));
+/// assert!(is_valid_reason_token("missing_receipt"));
+/// assert!(!is_valid_reason_token("Bad-Token"));
+/// assert!(!is_valid_reason_token(""));
+/// ```
 pub fn is_valid_reason_token(s: &str) -> bool {
     !s.is_empty()
         && s.bytes()
@@ -126,6 +137,17 @@ pub fn check_tool_error_identity(report: &SensorReport) -> Vec<String> {
 }
 
 /// Validate sensor ID matches `[a-zA-Z0-9_-]+`.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_conform::check_sensor_id_format;
+///
+/// assert!(check_sensor_id_format("builddiag").is_empty());
+/// assert!(check_sensor_id_format("my-sensor_v2").is_empty());
+/// assert!(!check_sensor_id_format("bad.id").is_empty());
+/// assert!(!check_sensor_id_format("").is_empty());
+/// ```
 pub fn check_sensor_id_format(sensor_id: &str) -> Vec<String> {
     let mut violations = Vec::new();
     let valid = !sensor_id.is_empty()

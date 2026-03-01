@@ -1,0 +1,23 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: "Policy::default()"
+---
+{
+  "warn_is_fail": false,
+  "max_highlights": 7,
+  "max_per_sensor_findings": 20,
+  "max_annotations": 25,
+  "section_order": [
+    "Highlights",
+    "Repo contract",
+    "Dependencies",
+    "Policy",
+    "Tests",
+    "Diagnostics",
+    "Performance",
+    "Environment",
+    "Other"
+  ],
+  "schema_validation": "lax",
+  "max_receipt_size_bytes": 2097152
+}

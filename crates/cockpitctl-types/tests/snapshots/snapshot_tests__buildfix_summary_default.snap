@@ -1,0 +1,10 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: "BuildfixSummary::default()"
+---
+{
+  "fixes": [],
+  "total_fixes": 0,
+  "matched_count": 0,
+  "unmatched_count": 0
+}

@@ -1,0 +1,10 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: ap
+---
+{
+  "id": "coverage",
+  "path": "artifacts/cov/lcov.info",
+  "mime": "text/plain",
+  "schema": "coverage.lcov.v1"
+}

@@ -251,8 +251,175 @@ Feature: cockpitctl ingest
     And the report field "data._policy_signature.key_id" equals "ci-key"
     And the comment contains "### Policy Signature"
 
+  # --------------------------------------------------------------------------
+  # Feature Gate Matrix
+  # --------------------------------------------------------------------------
+
+  Scenario Outline: hook feature is runtime-gated
+    Given a fixture "happy_path"
+    And a hook script is configured
+    When I run "cockpitctl ingest" on the fixture with "<args>"
+    Then the exit code is 0
+    And the feature "hooks" is "<state>"
+
+    Examples:
+      | args                                     | state   |
+      | --format cockpit                         | present |
+      | --disable-hooks --format cockpit         | absent  |
+
+  Scenario Outline: buildfix feature is runtime-gated
+    Given a fixture "buildfix_plan"
+    When I run "cockpitctl ingest" on the fixture with "<args>"
+    Then the exit code is 0
+    And the feature "buildfix" is "<state>"
+
+    Examples:
+      | args                                        | state   |
+      | --format cockpit                            | present |
+      | --disable-buildfix --format cockpit         | absent  |
+
+  Scenario Outline: policy-signing feature is runtime-gated
+    Given a fixture "happy_path"
+    And a policy signing key file
+    When I run "cockpitctl ingest" on the fixture with "<args>"
+    Then the exit code is 0
+    And the feature "policy-signing" is "<state>"
+
+    Examples:
+      | args                                                                                                         | state   |
+      | --policy-sign --policy-sign-key-path {policy_sign_key} --policy-sign-key-id ci-key --format cockpit          | present |
+      | --disable-policy-signing --policy-sign --policy-sign-key-path {policy_sign_key} --policy-sign-key-id ci-key --format cockpit | absent  |
+
   # ─────────────────────────────────────────────────────────────────────────────
-  # Determinism
+  # Multi-Error Scenarios
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: multiple findings across severities are all surfaced
+    Given a fixture "multi_error"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the verdict status is "fail"
+    And the highlights count is exactly 3
+    And the cockpit report contains a highlight "multierr.error"
+    And the cockpit report contains a highlight "multierr.warn"
+    And the cockpit report contains a highlight "multierr.note"
+    And the highlights are ordered by severity descending
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Safety Scenarios
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: hostile artifact pointers with path traversal are handled safely
+    Given a fixture "hostile_pointers"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "pass"
+    And the highlights array is empty
+    And the cockpit report is valid JSON
+
+  Scenario: oversized receipt surfaces a finding rather than crashing
+    Given a fixture "receipt_oversized"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the verdict status is "fail"
+    And the cockpit report contains a highlight "cockpit.receipt_oversized"
+    And the cockpit report is valid JSON
+    And the report schema is "cockpit.report.v1"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Cockpit Hints and Sensor Extensions
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: cockpit hints from sensor are reflected in highlights
+    Given a fixture "cockpit_hints"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "warn"
+    And the cockpit report contains a highlight "hintsensor.threshold"
+    And the highlights count is exactly 1
+
+  Scenario: reference sensor with rich metadata produces valid output
+    Given a fixture "reference_sensor"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "warn"
+    And the cockpit report contains a highlight "refsensor.complexity"
+    And the cockpit report contains a highlight "refsensor.note"
+    And the highlights count is exactly 2
+    And the highlights are ordered by severity descending
+
+  Scenario: artifact pointer sensor produces valid output
+    Given a fixture "artifact_pointers"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "pass"
+    And the highlights array is empty
+    And the sensors count is exactly 1
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Schema Validation Mode Scenarios
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: lax schema validation skips schema violations
+    Given a fixture "schema_violation"
+    When I run "cockpitctl ingest" on the fixture with "--schema-validation lax"
+    Then the exit code is 0
+    And the cockpit report does not contain a highlight "cockpit.schema_violation"
+    And the cockpit report is valid JSON
+
+  Scenario: strict schema validation catches schema violations
+    Given a fixture "schema_violation"
+    When I run "cockpitctl ingest" on the fixture with "--schema-validation strict"
+    Then the exit code is 2
+    And the cockpit report contains a highlight "cockpit.schema_violation"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Policy Evaluation Scenarios
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: warn-is-fail disabled allows warnings to pass
+    Given a fixture "happy_path"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "warn"
+
+  Scenario: label-gated sensor with multiple labels
+    Given a fixture "label_gated"
+    When I run "cockpitctl ingest" on the fixture with "--label some-other-label"
+    Then the exit code is 0
+    And the verdict status is "pass"
+    And the sensor "perftest" has verdict status "skip"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Output Structure Scenarios
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: cockpit report always has cockpit.report.v1 schema
+    Given a fixture "mixed_verdicts"
+    When I run "cockpitctl ingest" on the fixture
+    Then the report schema is "cockpit.report.v1"
+
+  Scenario: cockpit report output files always exist even on failure
+    Given a fixture "missing_receipt"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the file "artifacts/cockpit/report.json" exists
+    And the file "artifacts/cockpit/comment.md" exists
+
+  Scenario: comment always has stable begin and end markers
+    Given a fixture "mixed_verdicts"
+    When I run "cockpitctl ingest" on the fixture
+    Then the comment contains "<!-- cockpit:begin -->"
+    And the comment contains "<!-- cockpit:end -->"
+
+  Scenario: multi-error report has correct sensors summary
+    Given a fixture "multi_error"
+    When I run "cockpitctl ingest" on the fixture
+    Then the sensors count is exactly 1
+    And the sensor "multierr" has verdict status "fail"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Determinism Scenarios
   # ─────────────────────────────────────────────────────────────────────────────
 
   Scenario: output is deterministic across runs
@@ -261,3 +428,45 @@ Feature: cockpitctl ingest
     And I capture the report
     And I run "cockpitctl ingest" on the fixture again
     Then the reports are identical
+
+  Scenario: determinism with mixed verdicts across runs
+    Given a fixture "mixed_verdicts"
+    When I run "cockpitctl ingest" on the fixture
+    And I capture the report
+    And I run "cockpitctl ingest" on the fixture again
+    Then the reports are identical
+
+  Scenario: determinism with multi-error across runs
+    Given a fixture "multi_error"
+    When I run "cockpitctl ingest" on the fixture
+    And I capture the report
+    And I run "cockpitctl ingest" on the fixture again
+    Then the reports are identical
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Error Handling Scenarios
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: invalid receipt produces valid cockpit output
+    Given a fixture "invalid_receipt"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the cockpit report is valid JSON
+    And the report schema is "cockpit.report.v1"
+    And the file "artifacts/cockpit/comment.md" exists
+
+  Scenario: missing receipt produces a finding with correct code
+    Given a fixture "missing_receipt"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the verdict status is "fail"
+    And the cockpit report contains a highlight "cockpit.missing_receipt"
+    And the cockpit report is valid JSON
+
+  Scenario: tool error sensor shows correct per-sensor verdict
+    Given a fixture "tool_error"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the sensor "linter" has verdict status "fail"
+    And the sensor "builddiag" has verdict status "pass"
+    And the cockpit report is valid JSON

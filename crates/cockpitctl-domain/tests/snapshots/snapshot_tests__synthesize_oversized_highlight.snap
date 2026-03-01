@@ -1,0 +1,15 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: highlight
+---
+{
+  "sensor_id": "_cockpit",
+  "finding": {
+    "severity": "error",
+    "check_id": "cockpit.receipt_oversized",
+    "code": "cockpit.receipt_oversized",
+    "message": "Receipt for sensor `bigdata` exceeds size limit (5000000 bytes > 2097152 bytes) at `artifacts/bigdata/report.json`.",
+    "help": "Reduce receipt size or increase the max receipt size limit.",
+    "fingerprint": "cockpit.receipt_oversized:bigdata:5000000"
+  }
+}

@@ -1,0 +1,85 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: report
+---
+{
+  "schema": "sensor.report.v1",
+  "tool": {
+    "name": "builddiag",
+    "version": "1.2.3",
+    "commit": "abc1234"
+  },
+  "run": {
+    "started_at": "2025-01-15T10:00:00Z",
+    "ended_at": "2025-01-15T10:01:30Z",
+    "duration_ms": 90000,
+    "host": {
+      "os": "linux",
+      "arch": "x86_64",
+      "hostname": "ci-runner-42"
+    },
+    "git": {
+      "repo": "octocat/hello-world",
+      "base_ref": "main",
+      "head_ref": "feature/foo",
+      "base_sha": "aaa1111",
+      "head_sha": "bbb2222",
+      "merge_base": "ccc3333"
+    },
+    "ci": {
+      "provider": "github",
+      "run_id": "12345",
+      "run_url": "https://github.com/octocat/hello-world/actions/runs/12345",
+      "job": "build"
+    },
+    "capabilities": {
+      "baseline": {
+        "status": "unavailable",
+        "reason": "no baseline found"
+      },
+      "git": {
+        "status": "available"
+      }
+    }
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 1,
+      "warn": 2,
+      "error": 3
+    },
+    "reasons": [
+      "3 errors found"
+    ]
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "check_id": "CK001",
+      "code": "null-deref",
+      "message": "Potential null dereference",
+      "location": {
+        "path": "src/main.rs",
+        "line": 42,
+        "col": 10
+      },
+      "help": "Add a null check before accessing",
+      "url": "https://example.com/rules/null-deref",
+      "fingerprint": "fp-abc123",
+      "data": {
+        "extra": "detail"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "coverage-lcov",
+      "path": "artifacts/builddiag/coverage.lcov",
+      "mime": "text/plain"
+    }
+  ],
+  "data": {
+    "custom_key": "custom_value"
+  }
+}

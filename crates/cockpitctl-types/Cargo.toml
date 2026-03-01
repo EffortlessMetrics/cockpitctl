@@ -18,5 +18,12 @@ serde_json.workspace = true
 time.workspace = true
 
 [dev-dependencies]
+insta = { workspace = true }
 pretty_assertions.workspace = true
 proptest.workspace = true
+criterion.workspace = true
+rand.workspace = true
+
+[[bench]]
+name = "types_benches"
+harness = false

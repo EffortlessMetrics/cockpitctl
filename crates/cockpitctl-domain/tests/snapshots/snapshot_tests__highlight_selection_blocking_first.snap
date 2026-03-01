@@ -1,0 +1,45 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: selected
+---
+[
+  {
+    "sensor_id": "blocker",
+    "finding": {
+      "severity": "error",
+      "code": "E2",
+      "message": "Message for E2",
+      "location": {
+        "path": "src/b.rs",
+        "line": 20
+      },
+      "fingerprint": "e7e3c16657e0abd66b6069d7c043f24225619383d42cc945cff0dcbed07d6e29"
+    }
+  },
+  {
+    "sensor_id": "nonblocking",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "Message for E1",
+      "location": {
+        "path": "src/a.rs",
+        "line": 10
+      },
+      "fingerprint": "c5d7e28a7be858f400354ae00a0959491a80ccda2dd9b484cefd310f7bd5283e"
+    }
+  },
+  {
+    "sensor_id": "blocker",
+    "finding": {
+      "severity": "warn",
+      "code": "W1",
+      "message": "Message for W1",
+      "location": {
+        "path": "src/c.rs",
+        "line": 5
+      },
+      "fingerprint": "ad6aecd53fde22a1d30184036a22799c58b50036b13680e186ecf16745c82db1"
+    }
+  }
+]

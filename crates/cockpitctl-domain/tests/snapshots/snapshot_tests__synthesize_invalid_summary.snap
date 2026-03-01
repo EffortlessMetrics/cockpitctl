@@ -1,0 +1,27 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: summary
+---
+{
+  "id": "builddiag",
+  "blocking": true,
+  "missing": "fail",
+  "presence": "invalid",
+  "report_path": "artifacts/builddiag/report.json",
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": [
+      "invalid_receipt"
+    ]
+  },
+  "truncated": false,
+  "errors": [
+    "unexpected EOF"
+  ],
+  "policy_outcome": "blocked"
+}

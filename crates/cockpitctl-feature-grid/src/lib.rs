@@ -1,0 +1,378 @@
+//! Shared feature-grid definitions for BDD and feature flag parity.
+
+use cockpitctl_feature_state::Feature;
+
+/// Expected feature presence in a BDD matrix cell.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum FeatureGridState {
+    Present,
+    Absent,
+}
+
+impl FeatureGridState {
+    pub const fn is_present(self) -> bool {
+        match self {
+            Self::Present => true,
+            Self::Absent => false,
+        }
+    }
+}
+
+/// A single row in the feature runtime matrix.
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct FeatureGridCase {
+    pub feature: Feature,
+    pub args: &'static [&'static str],
+    pub expected: FeatureGridState,
+}
+
+impl FeatureGridCase {
+    pub const fn new(
+        feature: Feature,
+        args: &'static [&'static str],
+        expected: FeatureGridState,
+    ) -> Self {
+        Self {
+            feature,
+            args,
+            expected,
+        }
+    }
+
+    pub fn expected_present<S: AsRef<str>>(self, cli_args: &[S]) -> bool {
+        let runtime = feature_runtime_present(self.feature, cli_args);
+        self.expected.is_present() == runtime
+    }
+
+    pub fn matches_row<S: AsRef<str>>(self, cli_args: &[S]) -> bool {
+        self.expected_present(cli_args)
+    }
+}
+
+const NO_ARGS: &[&str] = &[];
+const DISABLE_HOOKS: &[&str] = &["--disable-hooks"];
+const DISABLE_BUILDFIX: &[&str] = &["--disable-buildfix"];
+const DISABLE_POLICY_SIGNING: &[&str] = &["--disable-policy-signing"];
+
+/// Canonical feature matrix used by the BDD suite.
+pub const FEATURE_TOGGLE_GRID: &[FeatureGridCase] = &[
+    FeatureGridCase::new(Feature::Hooks, NO_ARGS, FeatureGridState::Present),
+    FeatureGridCase::new(Feature::Hooks, DISABLE_HOOKS, FeatureGridState::Absent),
+    FeatureGridCase::new(Feature::Buildfix, NO_ARGS, FeatureGridState::Present),
+    FeatureGridCase::new(
+        Feature::Buildfix,
+        DISABLE_BUILDFIX,
+        FeatureGridState::Absent,
+    ),
+    FeatureGridCase::new(Feature::PolicySigning, NO_ARGS, FeatureGridState::Present),
+    FeatureGridCase::new(
+        Feature::PolicySigning,
+        DISABLE_POLICY_SIGNING,
+        FeatureGridState::Absent,
+    ),
+];
+
+/// Feature-toggle runtime helper for BDD and CLI assertions.
+pub fn feature_runtime_present<S: AsRef<str>>(feature: Feature, cli_args: &[S]) -> bool {
+    if !feature.is_available() {
+        return false;
+    }
+    let disable_flag = feature.disable_flag();
+    !cli_args.iter().any(|arg| arg.as_ref() == disable_flag)
+}
+
+/// Parse a BDD feature-state token into a boolean presence expectation.
+pub fn parse_feature_state(token: &str) -> Option<bool> {
+    match token.to_ascii_lowercase().as_str() {
+        "present" | "enabled" | "on" => Some(true),
+        "absent" | "disabled" | "off" => Some(false),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── FeatureGridState ────────────────────────────────────────────
+
+    #[test]
+    fn state_present_is_present() {
+        assert!(FeatureGridState::Present.is_present());
+    }
+
+    #[test]
+    fn state_absent_is_not_present() {
+        assert!(!FeatureGridState::Absent.is_present());
+    }
+
+    #[test]
+    fn state_equality() {
+        assert_eq!(FeatureGridState::Present, FeatureGridState::Present);
+        assert_eq!(FeatureGridState::Absent, FeatureGridState::Absent);
+        assert_ne!(FeatureGridState::Present, FeatureGridState::Absent);
+    }
+
+    #[test]
+    fn state_clone() {
+        let s = FeatureGridState::Present;
+        let s2 = s;
+        assert_eq!(s, s2);
+    }
+
+    #[test]
+    fn state_debug_format() {
+        assert_eq!(format!("{:?}", FeatureGridState::Present), "Present");
+        assert_eq!(format!("{:?}", FeatureGridState::Absent), "Absent");
+    }
+
+    // ── FeatureGridCase construction ────────────────────────────────
+
+    #[test]
+    fn case_new_stores_fields() {
+        let case = FeatureGridCase::new(
+            Feature::Hooks,
+            &["--disable-hooks"],
+            FeatureGridState::Absent,
+        );
+        assert_eq!(case.feature, Feature::Hooks);
+        assert_eq!(case.args, &["--disable-hooks"]);
+        assert_eq!(case.expected, FeatureGridState::Absent);
+    }
+
+    #[test]
+    fn case_new_empty_args() {
+        let case = FeatureGridCase::new(Feature::Buildfix, &[], FeatureGridState::Present);
+        assert!(case.args.is_empty());
+        assert_eq!(case.expected, FeatureGridState::Present);
+    }
+
+    #[test]
+    fn case_clone_and_eq() {
+        let a = FeatureGridCase::new(Feature::PolicySigning, &[], FeatureGridState::Present);
+        let b = a;
+        assert_eq!(a, b);
+    }
+
+    // ── FeatureGridCase::expected_present / matches_row ─────────────
+
+    #[test]
+    fn case_expected_present_with_matching_args() {
+        let case = FeatureGridCase::new(Feature::Hooks, &[], FeatureGridState::Present);
+        // No disable flag → feature present → matches Present expectation
+        assert!(case.expected_present::<&str>(&[]));
+    }
+
+    #[test]
+    fn case_expected_present_disabled() {
+        let case = FeatureGridCase::new(
+            Feature::Hooks,
+            &["--disable-hooks"],
+            FeatureGridState::Absent,
+        );
+        assert!(case.expected_present(&["--disable-hooks"]));
+    }
+
+    #[test]
+    fn case_expected_present_mismatch() {
+        // Expect Present, but runtime is disabled → should return false
+        let case = FeatureGridCase::new(Feature::Hooks, &[], FeatureGridState::Present);
+        assert!(!case.expected_present(&["--disable-hooks"]));
+    }
+
+    #[test]
+    fn matches_row_delegates_to_expected_present() {
+        let case = FeatureGridCase::new(Feature::Buildfix, &[], FeatureGridState::Present);
+        assert_eq!(
+            case.matches_row::<&str>(&[]),
+            case.expected_present::<&str>(&[]),
+        );
+    }
+
+    #[test]
+    fn matches_row_with_unrelated_flag() {
+        // An unrelated flag should not disable Hooks
+        let case = FeatureGridCase::new(Feature::Hooks, &[], FeatureGridState::Present);
+        assert!(case.matches_row(&["--disable-buildfix"]));
+    }
+
+    // ── FEATURE_TOGGLE_GRID ─────────────────────────────────────────
+
+    #[test]
+    fn feature_grid_grid_rows_are_self_consistent() {
+        for case in FEATURE_TOGGLE_GRID {
+            assert!(
+                case.matches_row(case.args),
+                "feature grid case mismatch for {:?}",
+                case.feature
+            );
+        }
+    }
+
+    #[test]
+    fn grid_has_expected_row_count() {
+        // 3 features × 2 states (present + absent) = 6 rows
+        assert_eq!(FEATURE_TOGGLE_GRID.len(), 6);
+    }
+
+    #[test]
+    fn grid_covers_all_features() {
+        let features: Vec<Feature> = FEATURE_TOGGLE_GRID.iter().map(|c| c.feature).collect();
+        assert!(features.contains(&Feature::Hooks));
+        assert!(features.contains(&Feature::Buildfix));
+        assert!(features.contains(&Feature::PolicySigning));
+    }
+
+    #[test]
+    fn grid_each_feature_has_present_and_absent() {
+        for feature in [Feature::Hooks, Feature::Buildfix, Feature::PolicySigning] {
+            let states: Vec<FeatureGridState> = FEATURE_TOGGLE_GRID
+                .iter()
+                .filter(|c| c.feature == feature)
+                .map(|c| c.expected)
+                .collect();
+            assert!(
+                states.contains(&FeatureGridState::Present),
+                "{feature:?} missing Present row"
+            );
+            assert!(
+                states.contains(&FeatureGridState::Absent),
+                "{feature:?} missing Absent row"
+            );
+        }
+    }
+
+    #[test]
+    fn grid_absent_rows_carry_matching_disable_flag() {
+        for case in FEATURE_TOGGLE_GRID {
+            if case.expected == FeatureGridState::Absent {
+                assert!(
+                    case.args.contains(&case.feature.disable_flag()),
+                    "{:?} absent row should carry its disable flag",
+                    case.feature
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn grid_present_rows_have_empty_args() {
+        for case in FEATURE_TOGGLE_GRID {
+            if case.expected == FeatureGridState::Present {
+                assert!(
+                    case.args.is_empty(),
+                    "{:?} present row should have empty args",
+                    case.feature
+                );
+            }
+        }
+    }
+
+    // ── feature_runtime_present ─────────────────────────────────────
+
+    #[test]
+    fn runtime_present_no_args() {
+        assert!(feature_runtime_present::<&str>(Feature::Hooks, &[]));
+        assert!(feature_runtime_present::<&str>(Feature::Buildfix, &[]));
+        assert!(feature_runtime_present::<&str>(Feature::PolicySigning, &[]));
+    }
+
+    #[test]
+    fn runtime_present_with_own_disable_flag() {
+        assert!(!feature_runtime_present(
+            Feature::Hooks,
+            &["--disable-hooks"]
+        ));
+        assert!(!feature_runtime_present(
+            Feature::Buildfix,
+            &["--disable-buildfix"]
+        ));
+        assert!(!feature_runtime_present(
+            Feature::PolicySigning,
+            &["--disable-policy-signing"]
+        ));
+    }
+
+    #[test]
+    fn runtime_present_unrelated_flag_does_not_disable() {
+        assert!(feature_runtime_present(
+            Feature::Hooks,
+            &["--disable-buildfix"]
+        ));
+        assert!(feature_runtime_present(
+            Feature::Buildfix,
+            &["--disable-hooks"]
+        ));
+        assert!(feature_runtime_present(
+            Feature::PolicySigning,
+            &["--disable-hooks"]
+        ));
+    }
+
+    #[test]
+    fn runtime_present_multiple_flags() {
+        let args = ["--disable-hooks", "--disable-buildfix"];
+        assert!(!feature_runtime_present(Feature::Hooks, &args));
+        assert!(!feature_runtime_present(Feature::Buildfix, &args));
+        assert!(feature_runtime_present(Feature::PolicySigning, &args));
+    }
+
+    #[test]
+    fn runtime_present_works_with_string_vec() {
+        let args: Vec<String> = vec!["--disable-hooks".to_owned()];
+        assert!(!feature_runtime_present(Feature::Hooks, &args));
+        assert!(feature_runtime_present(Feature::Buildfix, &args));
+    }
+
+    #[test]
+    fn runtime_present_extra_noise_args_ignored() {
+        let args = ["--verbose", "--config=foo.toml", "--disable-hooks"];
+        assert!(!feature_runtime_present(Feature::Hooks, &args));
+        assert!(feature_runtime_present(Feature::Buildfix, &args));
+    }
+
+    // ── parse_feature_state ─────────────────────────────────────────
+
+    #[test]
+    fn parse_feature_state_present_variants() {
+        assert_eq!(parse_feature_state("present"), Some(true));
+        assert_eq!(parse_feature_state("enabled"), Some(true));
+        assert_eq!(parse_feature_state("on"), Some(true));
+    }
+
+    #[test]
+    fn parse_feature_state_absent_variants() {
+        assert_eq!(parse_feature_state("absent"), Some(false));
+        assert_eq!(parse_feature_state("disabled"), Some(false));
+        assert_eq!(parse_feature_state("off"), Some(false));
+    }
+
+    #[test]
+    fn parse_feature_state_case_insensitive() {
+        assert_eq!(parse_feature_state("PRESENT"), Some(true));
+        assert_eq!(parse_feature_state("Absent"), Some(false));
+        assert_eq!(parse_feature_state("ON"), Some(true));
+        assert_eq!(parse_feature_state("Off"), Some(false));
+        assert_eq!(parse_feature_state("Enabled"), Some(true));
+        assert_eq!(parse_feature_state("DISABLED"), Some(false));
+    }
+
+    #[test]
+    fn parse_feature_state_unknown_returns_none() {
+        assert_eq!(parse_feature_state("weird"), None);
+        assert_eq!(parse_feature_state(""), None);
+        assert_eq!(parse_feature_state("yes"), None);
+        assert_eq!(parse_feature_state("no"), None);
+        assert_eq!(parse_feature_state("true"), None);
+        assert_eq!(parse_feature_state("false"), None);
+        assert_eq!(parse_feature_state("1"), None);
+        assert_eq!(parse_feature_state("0"), None);
+    }
+
+    #[test]
+    fn parse_feature_state_whitespace_not_trimmed() {
+        // Leading/trailing whitespace should not match
+        assert_eq!(parse_feature_state(" present"), None);
+        assert_eq!(parse_feature_state("present "), None);
+    }
+}

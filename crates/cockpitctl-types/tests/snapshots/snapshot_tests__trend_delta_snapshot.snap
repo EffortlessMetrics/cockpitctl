@@ -1,0 +1,31 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: delta
+---
+{
+  "verdict_change": {
+    "before": "pass",
+    "after": "fail"
+  },
+  "count_deltas": {
+    "info_delta": 0,
+    "warn_delta": 1,
+    "error_delta": 2
+  },
+  "new_findings": [
+    {
+      "sensor_id": "builddiag",
+      "code": "null-deref",
+      "message": "Potential null dereference",
+      "path": "src/main.rs",
+      "line": 42,
+      "fingerprint": "fp-new",
+      "severity": "error"
+    }
+  ],
+  "fixed_findings": [],
+  "sensors_added": [
+    "new-sensor"
+  ],
+  "sensors_removed": []
+}

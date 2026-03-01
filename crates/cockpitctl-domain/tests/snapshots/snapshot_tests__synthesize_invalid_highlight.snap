@@ -1,0 +1,14 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: highlight
+---
+{
+  "sensor_id": "builddiag",
+  "finding": {
+    "severity": "error",
+    "check_id": "cockpit.invalid_receipt",
+    "code": "cockpit.invalid_receipt",
+    "message": "Invalid receipt for sensor `builddiag` at `artifacts/builddiag/report.json`: unexpected EOF",
+    "help": "Validate that the sensor wrote JSON matching sensor.report.v1."
+  }
+}

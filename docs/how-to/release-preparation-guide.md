@@ -80,7 +80,7 @@ grep "version = " Cargo.toml
 ```
 
 Files to verify:
-- [`Cargo.toml`](../../Cargo.toml:17) — `[workspace.package]` version
+- [`Cargo.toml`](../../Cargo.toml) — `[workspace.package]` version
 - [`CHANGELOG.md`](../../CHANGELOG.md) — Version heading format
 
 ### 3. Changelog Update
@@ -212,7 +212,7 @@ git tag v0.3.0
 git push origin v0.3.0
 ```
 
-**Note**: The tag format must be `v*` (e.g., `v0.3.0`, `v1.0.0`). The workflow will verify that the tag version matches the version in [`Cargo.toml`](../../Cargo.toml:17).
+**Note**: The tag format must be `v*` (e.g., `v0.3.0`, `v1.0.0`). The workflow will verify that the tag version matches the version in [`Cargo.toml`](../../Cargo.toml).
 
 ### 2. Monitor Release Workflow
 

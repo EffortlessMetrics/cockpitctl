@@ -21,6 +21,8 @@ libfuzzer-sys = "0.4.10"
 serde_json = "1.0.149"
 toml = "0.9.8"
 cockpitctl-types = { path = "../crates/cockpitctl-types" }
+cockpitctl-sarif = { path = "../crates/cockpitctl-sarif" }
+cockpitctl-render = { path = "../crates/cockpitctl-render" }
 
 # Prevent this from interfering with workspaces
 [workspace]
@@ -36,6 +38,20 @@ bench = false
 [[bin]]
 name = "parse_config"
 path = "fuzz_targets/parse_config.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sarif_convert"
+path = "fuzz_targets/sarif_convert.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "render_comment"
+path = "fuzz_targets/render_comment.rs"
 test = false
 doc = false
 bench = false

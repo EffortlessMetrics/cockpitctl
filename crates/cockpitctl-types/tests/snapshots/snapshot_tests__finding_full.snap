@@ -1,0 +1,21 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: sample_finding_full()
+---
+{
+  "severity": "error",
+  "check_id": "CK001",
+  "code": "null-deref",
+  "message": "Potential null dereference",
+  "location": {
+    "path": "src/main.rs",
+    "line": 42,
+    "col": 10
+  },
+  "help": "Add a null check before accessing",
+  "url": "https://example.com/rules/null-deref",
+  "fingerprint": "fp-abc123",
+  "data": {
+    "extra": "detail"
+  }
+}

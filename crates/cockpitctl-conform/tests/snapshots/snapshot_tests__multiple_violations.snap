@@ -1,0 +1,24 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_tests.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "path_hygiene",
+            message: "finding[0]: path traversal (contains ..): ../traversal/path.rs",
+        },
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[0]: invalid token \"Bad-Token\"",
+        },
+        Violation {
+            check: "sensor_id_format",
+            message: "sensor_id \"bad.sensor.id\" does not match [a-zA-Z0-9_-]+",
+        },
+        Violation {
+            check: "artifact_pointers",
+            message: "artifacts[0]: path is absolute (starts with / or \\): /absolute/path.txt",
+        },
+    ],
+}

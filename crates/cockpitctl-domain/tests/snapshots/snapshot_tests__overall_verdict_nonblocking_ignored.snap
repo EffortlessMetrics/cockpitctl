@@ -1,0 +1,13 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: verdict
+---
+{
+  "status": "pass",
+  "counts": {
+    "info": 0,
+    "warn": 0,
+    "error": 5
+  },
+  "reasons": []
+}

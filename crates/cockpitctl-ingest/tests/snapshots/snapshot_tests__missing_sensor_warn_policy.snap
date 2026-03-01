@@ -1,0 +1,85 @@
+---
+source: crates/cockpitctl-ingest/tests/snapshot_tests.rs
+assertion_line: 447
+expression: result.report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "warn",
+    "counts": {
+      "info": 0,
+      "warn": 1,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "expected-sensor",
+      "blocking": true,
+      "missing": "warn",
+      "presence": "missing",
+      "report_path": "artifacts/expected-sensor/report.json",
+      "verdict": {
+        "status": "warn",
+        "counts": {
+          "info": 0,
+          "warn": 1,
+          "error": 0
+        },
+        "reasons": [
+          "missing_receipt"
+        ]
+      },
+      "truncated": false,
+      "errors": [],
+      "missing_policy_applied": "warn",
+      "policy_outcome": "allowed"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "expected-sensor",
+      "finding": {
+        "severity": "warn",
+        "check_id": "cockpit.missing_receipt",
+        "code": "cockpit.missing_receipt",
+        "message": "Expected receipt for sensor `expected-sensor` but it was not found at `artifacts/expected-sensor/report.json`.",
+        "help": "Ensure the sensor ran and wrote artifacts/<sensor>/report.json.",
+        "fingerprint": "4a311f7d7f37f25735431b5d1edfcb671757830ed50c5aa79a00565ca7681c7e"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "expected-sensor",
+        "blocking": true,
+        "missing": "warn"
+      }
+    ]
+  }
+}

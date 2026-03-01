@@ -40,6 +40,20 @@ fn is_zero(v: &u64) -> bool {
     *v == 0
 }
 
+/// Counts of findings by severity.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::VerdictCounts;
+///
+/// let counts = VerdictCounts { info: 3, warn: 1, error: 0, suppressed: 0 };
+/// assert_eq!(counts.info, 3);
+/// assert_eq!(counts.warn, 1);
+///
+/// let default = VerdictCounts::default();
+/// assert_eq!(default.info, 0);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct VerdictCounts {
     pub info: u64,
@@ -486,6 +500,18 @@ pub struct FindingSortKey {
     pub message: String,
 }
 
+/// Returns a numeric rank for a [`Severity`], where lower means more severe.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::{Severity, severity_rank};
+///
+/// assert_eq!(severity_rank(&Severity::Error), 0);
+/// assert_eq!(severity_rank(&Severity::Warn), 1);
+/// assert_eq!(severity_rank(&Severity::Info), 2);
+/// assert!(severity_rank(&Severity::Error) < severity_rank(&Severity::Warn));
+/// ```
 pub fn severity_rank(s: &Severity) -> u8 {
     match s {
         Severity::Error => 0,
@@ -494,6 +520,17 @@ pub fn severity_rank(s: &Severity) -> u8 {
     }
 }
 
+/// Returns a numeric rank for a [`VerdictStatus`], where lower means worse.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::{VerdictStatus, verdict_status_rank};
+///
+/// assert_eq!(verdict_status_rank(&VerdictStatus::Fail), 0);
+/// assert_eq!(verdict_status_rank(&VerdictStatus::Pass), 2);
+/// assert!(verdict_status_rank(&VerdictStatus::Fail) < verdict_status_rank(&VerdictStatus::Pass));
+/// ```
 pub fn verdict_status_rank(s: &VerdictStatus) -> u8 {
     match s {
         VerdictStatus::Fail => 0,
@@ -504,6 +541,22 @@ pub fn verdict_status_rank(s: &VerdictStatus) -> u8 {
 }
 
 /// Validate a sensor ID for safe path usage.
+///
+/// Returns `true` if the ID is non-empty, contains no path separators or
+/// traversal sequences, and consists only of ASCII alphanumerics, hyphens,
+/// and underscores.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::is_valid_sensor_id;
+///
+/// assert!(is_valid_sensor_id("builddiag"));
+/// assert!(is_valid_sensor_id("my-sensor_v2"));
+/// assert!(!is_valid_sensor_id(""));
+/// assert!(!is_valid_sensor_id("../escape"));
+/// assert!(!is_valid_sensor_id("bad/path"));
+/// ```
 pub fn is_valid_sensor_id(id: &str) -> bool {
     !id.is_empty()
         && !id.contains("..")
@@ -532,6 +585,17 @@ pub enum SafetyLevel {
 
 /// Rank a safety level for deterministic ordering and gating.
 /// Lower is safer.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_types::{SafetyLevel, safety_level_rank};
+///
+/// assert_eq!(safety_level_rank(&SafetyLevel::Safe), 0);
+/// assert_eq!(safety_level_rank(&SafetyLevel::Guarded), 1);
+/// assert_eq!(safety_level_rank(&SafetyLevel::Unsafe), 2);
+/// assert!(safety_level_rank(&SafetyLevel::Safe) < safety_level_rank(&SafetyLevel::Unsafe));
+/// ```
 pub fn safety_level_rank(s: &SafetyLevel) -> u8 {
     match s {
         SafetyLevel::Safe => 0,

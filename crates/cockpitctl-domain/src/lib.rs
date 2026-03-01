@@ -5,18 +5,39 @@
 //!
 //! No filesystem, no clap, no network.
 
-use anyhow::Context;
+pub use cockpitctl_domain_buildfix::{match_buildfix_plan, select_auto_apply_fixes};
+pub use cockpitctl_domain_signing::{
+    canonical_policy_snapshot_bytes, policy_snapshot_sha256_hex, sign_policy_snapshot,
+    sign_policy_snapshot_hmac_sha256,
+};
+pub use cockpitctl_domain_trend::compute_trend;
 use cockpitctl_types::{
-    CockpitConfig, CockpitReport, CountDeltas, Finding, FindingSortKey, Highlight, MissingPolicy,
-    PolicyOutcome, PolicySensorSnapshot, PolicySnapshot, Presence, RunInfo, SensorPolicy,
-    SensorReport, SensorSummary, Severity, ToolInfo, TrendDelta, TrendFinding, Verdict,
-    VerdictChange, VerdictCounts, VerdictStatus, severity_rank, verdict_status_rank,
+    CockpitConfig, CockpitReport, Finding, FindingSortKey, Highlight, MissingPolicy, PolicyOutcome,
+    PolicySensorSnapshot, PolicySnapshot, Presence, RunInfo, SensorPolicy, SensorReport,
+    SensorSummary, Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus, severity_rank,
+    verdict_status_rank,
 };
 use sha2::{Digest, Sha256};
 
 pub const COCKPIT_SCHEMA_ID: &str = "cockpit.report.v1";
 
 /// Derive the policy outcome for a sensor given its blocking flag and verdict status.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::compute_policy_outcome;
+/// use cockpitctl_types::{PolicyOutcome, VerdictStatus};
+///
+/// // Non-blocking sensors are always informational.
+/// assert_eq!(compute_policy_outcome(false, &VerdictStatus::Fail), PolicyOutcome::Informational);
+///
+/// // Blocking sensor with fail → blocked.
+/// assert_eq!(compute_policy_outcome(true, &VerdictStatus::Fail), PolicyOutcome::Blocked);
+///
+/// // Blocking sensor with pass → allowed.
+/// assert_eq!(compute_policy_outcome(true, &VerdictStatus::Pass), PolicyOutcome::Allowed);
+/// ```
 pub fn compute_policy_outcome(blocking: bool, status: &VerdictStatus) -> PolicyOutcome {
     if !blocking {
         PolicyOutcome::Informational
@@ -53,6 +74,17 @@ pub struct CodeExplanation {
 }
 
 /// Look up an explanation for a cockpit finding code.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::explain_code;
+///
+/// let explanation = explain_code("cockpit.missing_receipt").unwrap();
+/// assert_eq!(explanation.title, "Missing Receipt");
+///
+/// assert!(explain_code("nonexistent.code").is_none());
+/// ```
 pub fn explain_code(code: &str) -> Option<CodeExplanation> {
     all_codes().into_iter().find(|e| e.code == code)
 }
@@ -124,6 +156,42 @@ pub fn cap_findings(mut findings: Vec<Finding>, max: usize) -> (Vec<Finding>, bo
 }
 
 /// Compute counts from findings.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::compute_counts;
+/// use cockpitctl_types::{Finding, Severity};
+///
+/// let findings = vec![
+///     Finding {
+///         severity: Severity::Error,
+///         check_id: None,
+///         code: "E1".to_string(),
+///         message: "err".to_string(),
+///         location: None,
+///         help: None,
+///         url: None,
+///         fingerprint: None,
+///         data: None,
+///     },
+///     Finding {
+///         severity: Severity::Warn,
+///         check_id: None,
+///         code: "W1".to_string(),
+///         message: "warn".to_string(),
+///         location: None,
+///         help: None,
+///         url: None,
+///         fingerprint: None,
+///         data: None,
+///     },
+/// ];
+/// let counts = compute_counts(&findings);
+/// assert_eq!(counts.error, 1);
+/// assert_eq!(counts.warn, 1);
+/// assert_eq!(counts.info, 0);
+/// ```
 pub fn compute_counts(findings: &[Finding]) -> VerdictCounts {
     let mut c = VerdictCounts::default();
     for f in findings {
@@ -790,337 +858,4 @@ pub fn summarize_sensor_report(
     }
 
     (summary, highlights)
-}
-
-// ============================================================================
-// Trend tracking (baseline comparison)
-// ============================================================================
-
-/// Index key for matching findings between baseline and current.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct FindingKey {
-    sensor_id: String,
-    code: String,
-    path: String,
-    line: u32,
-}
-
-fn finding_to_key(sensor_id: &str, f: &Finding) -> FindingKey {
-    FindingKey {
-        sensor_id: sensor_id.to_string(),
-        code: f.code.clone(),
-        path: f
-            .location
-            .as_ref()
-            .and_then(|l| l.path.clone())
-            .unwrap_or_default(),
-        line: f.location.as_ref().and_then(|l| l.line).unwrap_or(0),
-    }
-}
-
-fn highlight_to_trend_finding(h: &Highlight) -> TrendFinding {
-    TrendFinding {
-        sensor_id: h.sensor_id.clone(),
-        code: h.finding.code.clone(),
-        message: h.finding.message.clone(),
-        path: h.finding.location.as_ref().and_then(|l| l.path.clone()),
-        line: h.finding.location.as_ref().and_then(|l| l.line),
-        fingerprint: h.finding.fingerprint.clone(),
-        severity: h.finding.severity.clone(),
-    }
-}
-
-/// Compute the trend delta between a baseline and current cockpit report.
-pub fn compute_trend(baseline: &CockpitReport, current: &CockpitReport) -> TrendDelta {
-    // Index baseline findings by fingerprint then by composite key.
-    let mut baseline_by_fp: std::collections::BTreeMap<String, &Highlight> =
-        std::collections::BTreeMap::new();
-    let mut baseline_by_key: std::collections::BTreeMap<FindingKey, &Highlight> =
-        std::collections::BTreeMap::new();
-    for h in &baseline.highlights {
-        if let Some(fp) = &h.finding.fingerprint {
-            baseline_by_fp.insert(fp.clone(), h);
-        }
-        let key = finding_to_key(&h.sensor_id, &h.finding);
-        baseline_by_key.insert(key, h);
-    }
-
-    let mut current_by_fp: std::collections::BTreeMap<String, &Highlight> =
-        std::collections::BTreeMap::new();
-    let mut current_by_key: std::collections::BTreeMap<FindingKey, &Highlight> =
-        std::collections::BTreeMap::new();
-    for h in &current.highlights {
-        if let Some(fp) = &h.finding.fingerprint {
-            current_by_fp.insert(fp.clone(), h);
-        }
-        let key = finding_to_key(&h.sensor_id, &h.finding);
-        current_by_key.insert(key, h);
-    }
-
-    // New findings: in current but not in baseline.
-    let mut new_findings = Vec::new();
-    for h in &current.highlights {
-        let matched = if let Some(fp) = &h.finding.fingerprint {
-            baseline_by_fp.contains_key(fp)
-        } else {
-            let key = finding_to_key(&h.sensor_id, &h.finding);
-            baseline_by_key.contains_key(&key)
-        };
-        if !matched {
-            new_findings.push(highlight_to_trend_finding(h));
-        }
-    }
-
-    // Fixed findings: in baseline but not in current.
-    let mut fixed_findings = Vec::new();
-    for h in &baseline.highlights {
-        let matched = if let Some(fp) = &h.finding.fingerprint {
-            current_by_fp.contains_key(fp)
-        } else {
-            let key = finding_to_key(&h.sensor_id, &h.finding);
-            current_by_key.contains_key(&key)
-        };
-        if !matched {
-            fixed_findings.push(highlight_to_trend_finding(h));
-        }
-    }
-
-    // Verdict change.
-    let verdict_change = if baseline.verdict.status != current.verdict.status {
-        Some(VerdictChange {
-            before: baseline.verdict.status.clone(),
-            after: current.verdict.status.clone(),
-        })
-    } else {
-        None
-    };
-
-    // Count deltas.
-    let count_deltas = CountDeltas {
-        info_delta: current.verdict.counts.info as i64 - baseline.verdict.counts.info as i64,
-        warn_delta: current.verdict.counts.warn as i64 - baseline.verdict.counts.warn as i64,
-        error_delta: current.verdict.counts.error as i64 - baseline.verdict.counts.error as i64,
-    };
-
-    // Sensors added/removed.
-    let baseline_sensors: std::collections::BTreeSet<String> =
-        baseline.sensors.iter().map(|s| s.id.clone()).collect();
-    let current_sensors: std::collections::BTreeSet<String> =
-        current.sensors.iter().map(|s| s.id.clone()).collect();
-    let sensors_added: Vec<String> = current_sensors
-        .difference(&baseline_sensors)
-        .cloned()
-        .collect();
-    let sensors_removed: Vec<String> = baseline_sensors
-        .difference(&current_sensors)
-        .cloned()
-        .collect();
-
-    TrendDelta {
-        verdict_change,
-        count_deltas,
-        new_findings,
-        fixed_findings,
-        sensors_added,
-        sensors_removed,
-    }
-}
-
-// ============================================================================
-// Buildfix plan matching
-// ============================================================================
-
-use cockpitctl_types::{
-    BuildfixPlan, BuildfixSummary, FixSummary, MatchedFinding, SafetyLevel, safety_level_rank,
-};
-
-/// Rank a safety level for sorting: safe=0, guarded=1, unsafe=2.
-fn safety_rank(s: &SafetyLevel) -> u8 {
-    safety_level_rank(s)
-}
-
-/// Match fixes from a buildfix plan to findings in the report.
-///
-/// A fix matches a finding when:
-/// - `FindingRef.sensor_id` matches the sensor
-/// - If `fingerprint` is set, it must match
-/// - If `code` is set, it must match
-pub fn match_buildfix_plan(
-    sensor_id: &str,
-    plan: &BuildfixPlan,
-    highlights: &[Highlight],
-) -> BuildfixSummary {
-    let mut fixes = Vec::new();
-
-    for fix in &plan.fixes {
-        let mut matched_findings = Vec::new();
-        let mut any_matched = false;
-
-        for fref in &fix.finding_refs {
-            if fref.sensor_id != sensor_id {
-                continue;
-            }
-            for h in highlights {
-                if h.sensor_id != sensor_id {
-                    continue;
-                }
-                let fp_match = match (&fref.fingerprint, &h.finding.fingerprint) {
-                    (Some(ref_fp), Some(finding_fp)) => ref_fp == finding_fp,
-                    (Some(_), None) => false,
-                    (None, _) => true,
-                };
-                let code_match = match &fref.code {
-                    Some(ref_code) => ref_code == &h.finding.code,
-                    None => true,
-                };
-                if fp_match && code_match {
-                    matched_findings.push(MatchedFinding {
-                        sensor_id: h.sensor_id.clone(),
-                        code: h.finding.code.clone(),
-                        fingerprint: h.finding.fingerprint.clone(),
-                    });
-                    any_matched = true;
-                }
-            }
-        }
-
-        fixes.push(FixSummary {
-            fix_id: fix.id.clone(),
-            sensor_id: sensor_id.to_string(),
-            safety: fix.safety,
-            description: fix.description.clone(),
-            matched_findings,
-            unmatched: !any_matched,
-        });
-    }
-
-    // Sort: safety_rank → sensor_id → fix_id.
-    fixes.sort_by(|a, b| {
-        let a_key = (safety_rank(&a.safety), &a.sensor_id, &a.fix_id);
-        let b_key = (safety_rank(&b.safety), &b.sensor_id, &b.fix_id);
-        a_key.cmp(&b_key)
-    });
-
-    let total_fixes = fixes.len();
-    let unmatched_count = fixes.iter().filter(|f| f.unmatched).count();
-    let matched_count = total_fixes - unmatched_count;
-
-    BuildfixSummary {
-        fixes,
-        total_fixes,
-        matched_count,
-        unmatched_count,
-    }
-}
-
-/// Select fixes eligible for auto-apply under the configured safety gate.
-///
-/// Selection is deterministic and preserves the existing sorted order from
-/// `BuildfixSummary` (`safe` -> `guarded` -> `unsafe`, then sensor/fix id).
-pub fn select_auto_apply_fixes(
-    summary: &BuildfixSummary,
-    max_auto_apply_safety: SafetyLevel,
-    require_matched_finding: bool,
-) -> Vec<FixSummary> {
-    let max_rank = safety_rank(&max_auto_apply_safety);
-    summary
-        .fixes
-        .iter()
-        .filter(|fix| {
-            safety_rank(&fix.safety) <= max_rank && (!require_matched_finding || !fix.unmatched)
-        })
-        .cloned()
-        .collect()
-}
-
-// ============================================================================
-// Policy snapshot signing
-// ============================================================================
-
-use cockpitctl_types::{
-    POLICY_SIGNATURE_SCHEMA_ID, PolicySignatureAlgorithm, PolicySignatureEvidence,
-};
-
-/// Canonical policy snapshot bytes used for hashing/signing.
-///
-/// Canonicalization is the compact serde JSON encoding of `PolicySnapshot`.
-/// Determinism relies on stable field ordering and pre-sorted vectors.
-pub fn canonical_policy_snapshot_bytes(policy: &PolicySnapshot) -> Result<Vec<u8>, anyhow::Error> {
-    serde_json::to_vec(policy).context("serialize policy snapshot for signing")
-}
-
-/// Compute SHA-256 digest (hex) of the canonical policy snapshot bytes.
-pub fn policy_snapshot_sha256_hex(policy: &PolicySnapshot) -> Result<String, anyhow::Error> {
-    let payload = canonical_policy_snapshot_bytes(policy)?;
-    Ok(hex::encode(Sha256::digest(payload)))
-}
-
-/// Sign the policy snapshot with the configured algorithm.
-pub fn sign_policy_snapshot(
-    policy: &PolicySnapshot,
-    algorithm: PolicySignatureAlgorithm,
-    key: &[u8],
-    key_id: Option<String>,
-) -> Result<PolicySignatureEvidence, anyhow::Error> {
-    match algorithm {
-        PolicySignatureAlgorithm::HmacSha256 => {
-            sign_policy_snapshot_hmac_sha256(policy, key, key_id)
-        }
-    }
-}
-
-/// Sign the policy snapshot using HMAC-SHA256.
-pub fn sign_policy_snapshot_hmac_sha256(
-    policy: &PolicySnapshot,
-    key: &[u8],
-    key_id: Option<String>,
-) -> Result<PolicySignatureEvidence, anyhow::Error> {
-    if key.is_empty() {
-        anyhow::bail!("policy signing key is empty");
-    }
-
-    let payload = canonical_policy_snapshot_bytes(policy)?;
-    let policy_sha256 = hex::encode(Sha256::digest(&payload));
-    let signature = hex::encode(hmac_sha256(key, &payload));
-
-    Ok(PolicySignatureEvidence {
-        schema: POLICY_SIGNATURE_SCHEMA_ID.to_string(),
-        algorithm: PolicySignatureAlgorithm::HmacSha256,
-        policy_sha256,
-        signature,
-        key_id,
-    })
-}
-
-fn hmac_sha256(key: &[u8], message: &[u8]) -> [u8; 32] {
-    const BLOCK: usize = 64; // SHA-256 block size.
-    let mut key_block = [0u8; BLOCK];
-
-    if key.len() > BLOCK {
-        let hashed = Sha256::digest(key);
-        key_block[..32].copy_from_slice(&hashed);
-    } else {
-        key_block[..key.len()].copy_from_slice(key);
-    }
-
-    let mut ipad = [0x36u8; BLOCK];
-    let mut opad = [0x5cu8; BLOCK];
-    for i in 0..BLOCK {
-        ipad[i] ^= key_block[i];
-        opad[i] ^= key_block[i];
-    }
-
-    let mut inner = Sha256::new();
-    inner.update(ipad);
-    inner.update(message);
-    let inner_digest = inner.finalize();
-
-    let mut outer = Sha256::new();
-    outer.update(opad);
-    outer.update(inner_digest);
-    let digest = outer.finalize();
-
-    let mut out = [0u8; 32];
-    out.copy_from_slice(&digest);
-    out
 }

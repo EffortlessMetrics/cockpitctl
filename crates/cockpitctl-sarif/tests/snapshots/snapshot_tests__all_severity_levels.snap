@@ -1,0 +1,105 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_tests.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "ERR001",
+              "shortDescription": {
+                "text": "[sensor-a] ERR001"
+              }
+            },
+            {
+              "id": "INFO001",
+              "shortDescription": {
+                "text": "[sensor-b] INFO001"
+              }
+            },
+            {
+              "id": "WARN001",
+              "shortDescription": {
+                "text": "[sensor-a] WARN001"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "ERR001",
+          "level": "error",
+          "message": {
+            "text": "critical failure detected"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/critical.rs"
+                },
+                "region": {
+                  "startLine": 100,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_err"
+          }
+        },
+        {
+          "ruleId": "WARN001",
+          "level": "warning",
+          "message": {
+            "text": "deprecated API usage"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/compat.rs"
+                },
+                "region": {
+                  "startLine": 55
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "INFO001",
+          "level": "note",
+          "message": {
+            "text": "consider using a constant here"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/config.rs"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 1
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_info"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -58,3 +58,32 @@ Feature: cockpitctl CLI commands
     When I run "cockpitctl explain cockpit.no_such_code"
     Then the exit code is 1
     And stderr contains "unknown code: cockpit.no_such_code"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Validate Command — Additional Scenarios
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: validate passes for a reference sensor receipt
+    Given a fixture "reference_sensor"
+    When I run "cockpitctl validate" with input "artifacts/refsensor/report.json"
+    Then the exit code is 0
+
+  Scenario: validate passes for empty findings receipt
+    Given a fixture "empty_findings"
+    When I run "cockpitctl validate" with input "artifacts/emptycheck/report.json"
+    Then the exit code is 0
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Explain Command — Additional Scenarios
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: explain shows details for invalid receipt code
+    Given a temporary directory
+    When I run "cockpitctl explain cockpit.invalid_receipt"
+    Then the exit code is 0
+    And stdout contains "Invalid Receipt"
+
+  Scenario: explain shows details for schema violation code
+    Given a temporary directory
+    When I run "cockpitctl explain cockpit.schema_violation"
+    Then the exit code is 0

@@ -14,15 +14,14 @@ categories = ["development-tools", "filesystem"]
 
 [dependencies]
 anyhow.workspace = true
-serde.workspace = true
 toml.workspace = true
-walkdir.workspace = true
-serde_json.workspace = true
-jsonschema.workspace = true
-wait-timeout.workspace = true
-base64.workspace = true
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
+cockpitctl-io-buildfix = { path = "../cockpitctl-io-buildfix", version = "0.3.0" }
+cockpitctl-io-hooks = { path = "../cockpitctl-io-hooks", version = "0.3.0" }
+cockpitctl-io-policy-signing = { path = "../cockpitctl-io-policy-signing", version = "0.3.0" }
+cockpitctl-io-schema = { path = "../cockpitctl-io-schema", version = "0.3.0" }
 
 [dev-dependencies]
 tempfile.workspace = true
+serde_json.workspace = true

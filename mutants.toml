@@ -1,8 +1,29 @@
-# cargo-mutants configuration (optional).
+# cargo-mutants configuration.
 #
-# Recommended focus:
-# - cockpitctl-domain (policy + highlight selection)
-# - cockpitctl-ingest (use case branching)
+# Covered crates (all have meaningful test suites):
+#
+#   Domain layer:
+#     cockpitctl-domain          — policy + highlight selection
+#     cockpitctl-domain-signing  — signing logic (30 tests)
+#     cockpitctl-domain-buildfix — build-fix logic (31 tests)
+#     cockpitctl-domain-trend    — trend analysis (33 tests)
+#
+#   Feature layer:
+#     cockpitctl-feature-state   — feature state tracking (35 tests)
+#     cockpitctl-feature-grid    — grid computation (30 tests)
+#
+#   IO layer:
+#     cockpitctl-io-hooks        — hook execution (22 tests)
+#     cockpitctl-io-schema       — schema loading (31 tests)
+#     cockpitctl-io-buildfix     — build-fix I/O (13 tests)
+#     cockpitctl-io-policy-signing — policy signing I/O (19 tests)
+#
+#   Core/shared:
+#     cockpitctl-types           — DTOs and ordering (12+ tests)
+#     cockpitctl-ingest          — use case branching
+#     cockpitctl-conform         — conformance checking (132 tests)
+#     cockpitctl-render          — PR comment renderer (32+ tests)
+#     cockpitctl-sarif           — SARIF conversion (30+ tests)
 #
 # You can run:
 #   cargo mutants --workspace --exclude cockpitctl-io --exclude xtask
@@ -11,6 +32,26 @@
 
 [mutants]
 timeout = 60
+
+# Crates to mutate — only those with adequate test coverage.
+examine_globs = [
+  "crates/cockpitctl-domain/src/**",
+  "crates/cockpitctl-domain-signing/src/**",
+  "crates/cockpitctl-domain-buildfix/src/**",
+  "crates/cockpitctl-domain-trend/src/**",
+  "crates/cockpitctl-feature-state/src/**",
+  "crates/cockpitctl-feature-grid/src/**",
+  "crates/cockpitctl-io-hooks/src/**",
+  "crates/cockpitctl-io-schema/src/**",
+  "crates/cockpitctl-io-buildfix/src/**",
+  "crates/cockpitctl-io-policy-signing/src/**",
+  "crates/cockpitctl-types/src/**",
+  "crates/cockpitctl-ingest/src/**",
+  "crates/cockpitctl-conform/src/**",
+  "crates/cockpitctl-render/src/**",
+  "crates/cockpitctl-sarif/src/**",
+]
+
 exclude_globs = [
   "fixtures/**",
   "schemas/**",

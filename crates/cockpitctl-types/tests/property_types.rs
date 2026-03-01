@@ -3,9 +3,13 @@
 //! Tests invariants for ranking functions, sort keys, and type conversions.
 
 use cockpitctl_types::{
-    FindingSortKey, Severity, VerdictStatus, severity_rank, verdict_status_rank,
+    ArtifactPointer, CockpitReport, Finding, FindingSortKey, Highlight, Location, MissingPolicy,
+    PolicyOutcome, PolicySensorSnapshot, PolicySnapshot, Presence, RunInfo, SensorReport,
+    SensorSummary, Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus, severity_rank,
+    verdict_status_rank,
 };
 use proptest::prelude::*;
+use std::collections::BTreeMap;
 
 // ============================================================================
 // Strategies for generating arbitrary values
@@ -255,5 +259,366 @@ proptest! {
         prop_assert!(error_key < warn_key, "Error severity must sort before Warn");
         prop_assert!(warn_key < info_key, "Warn severity must sort before Info");
         prop_assert!(error_key < info_key, "Error severity must sort before Info");
+    }
+}
+
+// ============================================================================
+// Strategies for generating full report types (serialization roundtrips)
+// ============================================================================
+
+fn any_tool_info() -> impl Strategy<Value = ToolInfo> {
+    (
+        "[a-z][a-z0-9-]{0,15}",
+        "[0-9]{1,2}\\.[0-9]{1,2}\\.[0-9]{1,2}",
+        prop::option::of("[a-f0-9]{7}"),
+    )
+        .prop_map(|(name, version, commit)| ToolInfo {
+            name,
+            version,
+            commit,
+        })
+}
+
+fn any_run_info() -> impl Strategy<Value = RunInfo> {
+    "2024-0[1-9]-[012][1-9]T[01][0-9]:[0-5][0-9]:[0-5][0-9]Z".prop_map(|started_at| RunInfo {
+        started_at,
+        ended_at: None,
+        duration_ms: None,
+        host: None,
+        git: None,
+        ci: None,
+        capabilities: BTreeMap::new(),
+    })
+}
+
+fn any_verdict_counts() -> impl Strategy<Value = VerdictCounts> {
+    (0u64..100, 0u64..100, 0u64..100, 0u64..10).prop_map(|(info, warn, error, suppressed)| {
+        VerdictCounts {
+            info,
+            warn,
+            error,
+            suppressed,
+        }
+    })
+}
+
+fn any_verdict() -> impl Strategy<Value = Verdict> {
+    (
+        any_verdict_status(),
+        any_verdict_counts(),
+        prop::collection::vec(".{0,20}", 0..3),
+    )
+        .prop_map(|(status, counts, reasons)| Verdict {
+            status,
+            counts,
+            reasons,
+        })
+}
+
+fn any_location() -> impl Strategy<Value = Option<Location>> {
+    prop::option::of(
+        (
+            prop::option::of("[a-z/_.-]{1,30}"),
+            prop::option::of(1u32..10000),
+            prop::option::of(1u32..500),
+        )
+            .prop_map(|(path, line, col)| Location { path, line, col }),
+    )
+}
+
+fn any_finding() -> impl Strategy<Value = Finding> {
+    (
+        any_severity(),
+        prop::option::of("[A-Z][A-Z0-9_]{0,10}"),
+        "[A-Z][A-Z0-9_]{0,15}",
+        ".{1,50}",
+        any_location(),
+        prop::option::of(".{0,30}"),
+        prop::option::of("https://example\\.com"),
+        prop::option::of("[a-f0-9]{64}"),
+    )
+        .prop_map(
+            |(severity, check_id, code, message, location, help, url, fingerprint)| Finding {
+                severity,
+                check_id,
+                code,
+                message,
+                location,
+                help,
+                url,
+                fingerprint,
+                data: None,
+            },
+        )
+}
+
+fn any_artifact_pointer() -> impl Strategy<Value = ArtifactPointer> {
+    (
+        "[a-z][a-z0-9_]{0,10}",
+        "[a-z/._]{1,20}",
+        Just("application/json".to_string()),
+        prop::option::of("[a-z._]{1,10}"),
+    )
+        .prop_map(|(id, path, mime, schema)| ArtifactPointer {
+            id,
+            path,
+            mime,
+            schema,
+        })
+}
+
+fn any_sensor_report() -> impl Strategy<Value = SensorReport> {
+    (
+        any_tool_info(),
+        any_run_info(),
+        any_verdict(),
+        prop::collection::vec(any_finding(), 0..5),
+        prop::collection::vec(any_artifact_pointer(), 0..2),
+    )
+        .prop_map(|(tool, run, verdict, findings, artifacts)| SensorReport {
+            schema: "sensor.report.v1".to_string(),
+            tool,
+            run,
+            verdict,
+            findings,
+            artifacts,
+            data: None,
+        })
+}
+
+fn any_missing_policy() -> impl Strategy<Value = MissingPolicy> {
+    prop_oneof![
+        Just(MissingPolicy::Skip),
+        Just(MissingPolicy::Warn),
+        Just(MissingPolicy::Fail),
+    ]
+}
+
+fn any_presence() -> impl Strategy<Value = Presence> {
+    prop_oneof![
+        Just(Presence::Present),
+        Just(Presence::Missing),
+        Just(Presence::Invalid),
+    ]
+}
+
+fn any_policy_outcome() -> impl Strategy<Value = PolicyOutcome> {
+    prop_oneof![
+        Just(PolicyOutcome::Blocked),
+        Just(PolicyOutcome::Allowed),
+        Just(PolicyOutcome::Informational),
+    ]
+}
+
+fn any_sensor_summary() -> impl Strategy<Value = SensorSummary> {
+    (
+        "[a-z_][a-z0-9_]{0,10}",
+        any::<bool>(),
+        any_missing_policy(),
+        any_presence(),
+        any_verdict(),
+        any::<bool>(),
+        prop::option::of(any_missing_policy()),
+        prop::option::of(any_policy_outcome()),
+    )
+        .prop_map(
+            |(
+                id,
+                blocking,
+                missing,
+                presence,
+                verdict,
+                truncated,
+                missing_applied,
+                policy_outcome,
+            )| {
+                SensorSummary {
+                    id: id.clone(),
+                    blocking,
+                    missing,
+                    presence,
+                    report_path: format!("artifacts/{}/report.json", id),
+                    comment_path: None,
+                    verdict,
+                    truncated,
+                    errors: vec![],
+                    missing_policy_applied: missing_applied,
+                    policy_outcome,
+                }
+            },
+        )
+}
+
+fn any_highlight() -> impl Strategy<Value = Highlight> {
+    ("[a-z_][a-z0-9_]{0,10}", any_finding())
+        .prop_map(|(sensor_id, finding)| Highlight { sensor_id, finding })
+}
+
+fn any_policy_sensor_snapshot() -> impl Strategy<Value = PolicySensorSnapshot> {
+    ("[a-z_][a-z0-9_]{0,10}", any::<bool>(), any_missing_policy()).prop_map(
+        |(id, blocking, missing)| PolicySensorSnapshot {
+            id,
+            blocking,
+            missing,
+            section: None,
+            require_label: None,
+            repro: None,
+        },
+    )
+}
+
+fn any_policy_snapshot() -> impl Strategy<Value = PolicySnapshot> {
+    (
+        any::<bool>(),
+        1usize..20,
+        1usize..50,
+        1usize..50,
+        prop::collection::vec(any_policy_sensor_snapshot(), 0..5),
+    )
+        .prop_map(
+            |(warn_is_fail, max_highlights, max_per_sensor, max_annotations, sensors)| {
+                PolicySnapshot {
+                    warn_is_fail,
+                    max_highlights,
+                    max_per_sensor_findings: max_per_sensor,
+                    max_annotations,
+                    section_order: vec![],
+                    sensors,
+                }
+            },
+        )
+}
+
+fn any_cockpit_report() -> impl Strategy<Value = CockpitReport> {
+    (
+        any_tool_info(),
+        any_run_info(),
+        any_verdict(),
+        prop::collection::vec(any_sensor_summary(), 0..5),
+        prop::collection::vec(any_highlight(), 0..5),
+        any_policy_snapshot(),
+    )
+        .prop_map(
+            |(tool, run, verdict, sensors, highlights, policy)| CockpitReport {
+                schema: "cockpit.report.v1".to_string(),
+                tool,
+                run,
+                verdict,
+                sensors,
+                highlights,
+                policy,
+                data: None,
+            },
+        )
+}
+
+// ============================================================================
+// Serialization roundtrip properties
+// ============================================================================
+
+proptest! {
+    /// SensorReport survives a JSON roundtrip: serialize → deserialize preserves all fields.
+    #[test]
+    fn sensor_report_json_roundtrip(report in any_sensor_report()) {
+        let json = serde_json::to_string(&report).expect("serialize");
+        let parsed: SensorReport = serde_json::from_str(&json).expect("deserialize");
+        prop_assert_eq!(report, parsed);
+    }
+
+    /// CockpitReport survives a JSON roundtrip: serialize → deserialize preserves all fields.
+    #[test]
+    fn cockpit_report_json_roundtrip(report in any_cockpit_report()) {
+        let json = serde_json::to_string(&report).expect("serialize");
+        let parsed: CockpitReport = serde_json::from_str(&json).expect("deserialize");
+        prop_assert_eq!(report, parsed);
+    }
+}
+
+// ============================================================================
+// Finding sort stability property
+// ============================================================================
+
+proptest! {
+    /// Sorting FindingSortKeys is stable: elements with equal keys retain their original order.
+    #[test]
+    fn finding_sort_key_sort_is_stable(keys in prop::collection::vec(any_finding_sort_key(), 0..50)) {
+        let mut tagged: Vec<(usize, FindingSortKey)> = keys.into_iter().enumerate().collect();
+        tagged.sort_by(|a, b| a.1.cmp(&b.1));
+        for window in tagged.windows(2) {
+            if window[0].1 == window[1].1 {
+                prop_assert!(
+                    window[0].0 < window[1].0,
+                    "stable sort must preserve original order for equal keys"
+                );
+            }
+        }
+    }
+}
+
+// ============================================================================
+// VerdictStatus ordering property
+// ============================================================================
+
+proptest! {
+    /// For any pair of verdict statuses, the ranking function is injective and antisymmetric.
+    #[test]
+    fn verdict_status_ordering_any_pair(a in any_verdict_status(), b in any_verdict_status()) {
+        let ra = verdict_status_rank(&a);
+        let rb = verdict_status_rank(&b);
+        if ra == rb {
+            prop_assert_eq!(a, b, "equal ranks must correspond to the same variant");
+        }
+        if ra < rb {
+            prop_assert!(rb > ra, "ranking must be antisymmetric");
+        }
+    }
+
+    /// Ranking is transitive across any three verdict statuses.
+    #[test]
+    fn verdict_status_ranking_transitive(
+        a in any_verdict_status(),
+        b in any_verdict_status(),
+        c in any_verdict_status()
+    ) {
+        let ra = verdict_status_rank(&a);
+        let rb = verdict_status_rank(&b);
+        let rc = verdict_status_rank(&c);
+        if ra <= rb && rb <= rc {
+            prop_assert!(ra <= rc, "ranking must be transitive");
+        }
+    }
+}
+
+// ============================================================================
+// Severity ordering property
+// ============================================================================
+
+proptest! {
+    /// For any pair of severities, the ranking function is injective and antisymmetric.
+    #[test]
+    fn severity_ordering_any_pair(a in any_severity(), b in any_severity()) {
+        let ra = severity_rank(&a);
+        let rb = severity_rank(&b);
+        if ra == rb {
+            prop_assert_eq!(a, b, "equal ranks must correspond to the same variant");
+        }
+        if ra < rb {
+            prop_assert!(rb > ra, "ranking must be antisymmetric");
+        }
+    }
+
+    /// Ranking is transitive across any three severities.
+    #[test]
+    fn severity_ranking_transitive(
+        a in any_severity(),
+        b in any_severity(),
+        c in any_severity()
+    ) {
+        let ra = severity_rank(&a);
+        let rb = severity_rank(&b);
+        let rc = severity_rank(&c);
+        if ra <= rb && rb <= rc {
+            prop_assert!(ra <= rc, "ranking must be transitive");
+        }
     }
 }

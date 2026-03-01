@@ -1,0 +1,27 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: summary
+---
+{
+  "id": "../escape",
+  "blocking": true,
+  "missing": "fail",
+  "presence": "missing",
+  "report_path": "artifacts/../escape/report.json",
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": [
+      "path_traversal"
+    ]
+  },
+  "truncated": false,
+  "errors": [
+    "unsafe path rejected: artifacts/../escape/report.json"
+  ],
+  "policy_outcome": "blocked"
+}

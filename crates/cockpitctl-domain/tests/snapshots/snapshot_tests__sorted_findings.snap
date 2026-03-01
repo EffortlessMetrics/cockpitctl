@@ -1,0 +1,51 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: findings
+---
+[
+  {
+    "severity": "error",
+    "code": "E2",
+    "message": "Message for E2",
+    "location": {
+      "path": "src/a.rs",
+      "line": 5
+    }
+  },
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "Message for E1",
+    "location": {
+      "path": "src/a.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "W2",
+    "message": "Message for W2",
+    "location": {
+      "path": "src/a.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "W1",
+    "message": "Message for W1",
+    "location": {
+      "path": "src/b.rs",
+      "line": 20
+    }
+  },
+  {
+    "severity": "info",
+    "code": "I1",
+    "message": "Message for I1",
+    "location": {
+      "path": "src/c.rs",
+      "line": 5
+    }
+  }
+]

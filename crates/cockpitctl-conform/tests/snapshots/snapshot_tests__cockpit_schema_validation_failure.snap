@@ -1,0 +1,34 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_tests.rs
+expression: violations
+---
+[
+    Violation {
+        check: "schema",
+        message: "\"schema\" is a required property",
+    },
+    Violation {
+        check: "schema",
+        message: "\"tool\" is a required property",
+    },
+    Violation {
+        check: "schema",
+        message: "\"run\" is a required property",
+    },
+    Violation {
+        check: "schema",
+        message: "\"verdict\" is a required property",
+    },
+    Violation {
+        check: "schema",
+        message: "\"sensors\" is a required property",
+    },
+    Violation {
+        check: "schema",
+        message: "\"highlights\" is a required property",
+    },
+    Violation {
+        check: "schema",
+        message: "\"policy\" is a required property",
+    },
+]
