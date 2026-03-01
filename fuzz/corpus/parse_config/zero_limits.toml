@@ -1,0 +1,15 @@
+[policy]
+warn_is_fail = true
+max_highlights = 0
+max_per_sensor_findings = 0
+max_annotations = 0
+schema_validation = "strict"
+max_receipt_size_bytes = 1
+section_order = []
+
+[buildfix]
+auto_apply = true
+max_auto_apply_safety = "safe"
+require_matched_finding = false
+
+[sensors]

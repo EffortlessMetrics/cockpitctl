@@ -1,0 +1,5 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": "cockpitctl" },
+  "verdict": { "status": "pass" }
+}

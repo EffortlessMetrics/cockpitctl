@@ -1,0 +1,21 @@
+[policy]
+schema_validation = "strict"
+
+[buildfix]
+auto_apply = true
+max_auto_apply_safety = "safe"
+require_matched_finding = true
+
+[buildfix.actuator]
+command = "cargo fix --allow-dirty"
+timeout_ms = 60000
+
+[sensors.builddiag]
+blocking = true
+missing = "fail"
+section = "Repo contract"
+repro = "builddiag check"
+
+[[hooks]]
+name = "notify"
+command = "echo done"

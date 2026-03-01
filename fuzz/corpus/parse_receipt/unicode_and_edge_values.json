@@ -1,0 +1,25 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "builddiag", "version": "1.0.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": {
+    "status": "fail",
+    "counts": { "info": 0, "warn": 0, "error": 1 }
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "unicode.path",
+      "message": "文件路径包含Unicode字符 — ñoño — αβγδ — 🦀🔥💥",
+      "location": {
+        "path": "src/módulo/файл.rs",
+        "line": 4294967295,
+        "col": 0
+      },
+      "help": "Use ASCII paths for portability",
+      "fingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+      "data": { "nested": { "deep": { "array": [1, 2, 3, null, true, false, ""] } } }
+    }
+  ],
+  "data": { "_cockpit": { "schema": "cockpit.promote.v1", "cards": [], "suggested_highlights": [], "suggested_artifacts": [] } }
+}

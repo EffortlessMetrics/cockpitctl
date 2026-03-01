@@ -1,0 +1,23 @@
+[policy]
+warn_is_fail = false
+max_highlights = 999999999
+max_per_sensor_findings = 999999999
+max_annotations = 999999999
+max_receipt_size_bytes = 999999999999
+section_order = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"]
+
+[sensors.sensor-with-all-fields]
+blocking = true
+missing = "fail"
+section = "Diagnostics"
+require_label = "needs-review"
+repro = "run --check --verbose --output /dev/null"
+
+[sensors.sensor-2]
+blocking = false
+missing = "skip"
+
+[sensors.sensor-3]
+blocking = false
+missing = "warn"
+section = "Other"

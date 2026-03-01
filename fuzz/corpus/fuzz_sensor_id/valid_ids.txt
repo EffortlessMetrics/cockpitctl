@@ -1,0 +1,10 @@
+builddiag
+diffguard
+clippy-lint
+test-runner
+my_sensor_v2
+perf-check-01
+coverage
+sast
+dast
+license-audit

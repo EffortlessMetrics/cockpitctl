@@ -1,0 +1,59 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.3.0"
+  },
+  "run": {
+    "started_at": "2026-03-15T08:30:00Z",
+    "ended_at": "2026-03-15T08:31:00Z",
+    "duration_ms": 60000
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": { "info": 0, "warn": 0, "error": 0 },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "builddiag",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/builddiag/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": { "info": 0, "warn": 0, "error": 0 },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": []
+    },
+    {
+      "id": "clippy",
+      "blocking": false,
+      "missing": "skip",
+      "presence": "present",
+      "report_path": "artifacts/clippy/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": { "info": 0, "warn": 0, "error": 0 },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": []
+    }
+  ],
+  "highlights": [],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": ["Highlights", "Repo contract"],
+    "sensors": [
+      { "id": "builddiag", "blocking": true, "missing": "fail" },
+      { "id": "clippy", "blocking": false, "missing": "skip" }
+    ]
+  }
+}
