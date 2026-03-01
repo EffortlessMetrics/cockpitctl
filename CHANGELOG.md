@@ -7,7 +7,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- Extract 9 new microcrates for clean SRP architecture:
+
+#### Architecture
+- Extract 9 new microcrates for clean SRP architecture (PR #9):
   - `cockpitctl-domain-buildfix` — Buildfix domain logic
   - `cockpitctl-domain-signing` — Policy signing domain logic
   - `cockpitctl-domain-trend` — Trend analysis domain logic
@@ -17,8 +19,37 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   - `cockpitctl-io-policy-signing` — Policy signing I/O adapters
   - `cockpitctl-feature-state` — Feature flag state management
   - `cockpitctl-feature-grid` — BDD feature toggle grid
-- Comprehensive test suite: 947 tests across unit, snapshot, proptest, integration, E2E, and BDD
-- Feature-gated builds: hooks, buildfix, policy-signing, and schema are opt-in features
+- Feature-gated builds: hooks, buildfix, policy-signing, and schema are opt-in
+  features (`default = []`, opt-in from CLI)
+
+#### Testing expansion
+- Comprehensive unit tests across all 19 microcrates (PR #9)
+- Doc tests across all public API crates (PR #25)
+- Edge case and error path coverage for safety-critical code (PR #26)
+- Cross-crate integration tests: full pipeline, determinism, and safety (PR #29)
+- Fuzz testing expansion: 6 targets covering receipt parsing, policy evaluation,
+  and rendering (PR #30)
+- Property-based testing (proptest) across 5 core crates — types, domain,
+  ingest, render, and IO (PR #31)
+- Golden/snapshot test expansion: 29 test functions, 34 snapshot files covering
+  normal, edge, error, and multi-sensor scenarios (PR #32)
+- Runnable examples for `cockpitctl-core` and `cockpitctl-types` crates (PR #33)
+- E2E test expansion: 47 new end-to-end tests covering CLI invocations, config
+  precedence, exit codes, and output validation (PR #34)
+
+#### CI hardening
+- No-default-features build and test steps in CI (PR #11)
+- Security audit workflow: weekly schedule plus on dependency changes (PR #27)
+- MSRV (minimum supported Rust version) verification in CI (PR #27)
+
+#### Documentation
+- Architecture documentation aligned with 19-crate layout (PR #10)
+- Per-crate `README.md` files for crates.io readiness (PR #28)
+- Runnable doc-tested examples for core and types crates (PR #33)
+
+#### Release infrastructure
+- 9-tier dependency-ordered publish in release workflow
+- CI packaging verification for all 19 crates
 
 ### Fixed
 - Feature gating: feature flags now properly propagate from CLI to feature-state crate
