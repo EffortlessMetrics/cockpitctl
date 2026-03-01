@@ -242,6 +242,7 @@ fn golden_schema_validation_lax() {
 
 // 5. Schema validation strict — receipt with extra field rejected → exit 2.
 #[test]
+#[cfg(feature = "feature-schema")]
 fn golden_schema_validation_strict() {
     let fixture = workspace_root().join("fixtures/schema_violation");
     let (report, comment) = run_ingest_expecting(&fixture, 2);
