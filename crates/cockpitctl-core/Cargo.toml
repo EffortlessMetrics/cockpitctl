@@ -30,6 +30,7 @@ cockpitctl-domain-signing = { path = "../cockpitctl-domain-signing", version = "
 cockpitctl-domain-trend = { path = "../cockpitctl-domain-trend", version = "0.3.0" }
 
 [dev-dependencies]
+anyhow.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 toml.workspace = true
