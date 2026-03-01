@@ -1,0 +1,12 @@
+[policy]
+warn_is_fail = false
+max_highlights = 7
+max_per_sensor_findings = 20
+max_annotations = 25
+section_order = ["Highlights", "Token budgets", "Other"]
+
+[sensors.tokmd]
+blocking = false
+missing = "skip"
+section = "Token budgets"
+repro = "tokmd check --budget 5000"
