@@ -1,6 +1,6 @@
-use cockpitctl_domain::{
+use cockpitctl_domain::snapshot_policy;
+use cockpitctl_policy::{
     policy_snapshot_sha256_hex, sign_policy_snapshot, sign_policy_snapshot_hmac_sha256,
-    snapshot_policy,
 };
 use cockpitctl_types::{CockpitConfig, PolicySignatureAlgorithm};
 

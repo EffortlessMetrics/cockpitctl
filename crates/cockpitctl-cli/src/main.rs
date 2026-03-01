@@ -437,7 +437,7 @@ fn cmd_ingest(opts: IngestOptions) -> Result<i32> {
             .buildfix
             .as_ref()
             .map(|bf| {
-                cockpitctl_domain::select_auto_apply_fixes(
+                cockpitctl_buildfix::select_auto_apply_fixes(
                     bf,
                     effective_buildfix.max_auto_apply_safety,
                     effective_buildfix.require_matched_finding,
@@ -541,7 +541,7 @@ fn cmd_ingest(opts: IngestOptions) -> Result<i32> {
                 )
             })?;
 
-        let signature = cockpitctl_domain::sign_policy_snapshot(
+        let signature = cockpitctl_policy::sign_policy_snapshot(
             &result.report.policy,
             effective_policy_signing.algorithm,
             &key,

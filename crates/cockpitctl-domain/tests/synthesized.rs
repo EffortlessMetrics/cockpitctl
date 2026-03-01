@@ -1,9 +1,10 @@
+use cockpitctl_buildfix::select_auto_apply_fixes;
 use cockpitctl_domain::{
-    COCKPIT_SCHEMA_ID, build_cockpit_report, compute_policy_outcome, select_auto_apply_fixes,
-    summarize_sensor_report, synthesize_invalid_sensor, synthesize_missing_sensor,
-    synthesize_path_traversal_highlight, synthesize_path_traversal_sensor,
-    synthesize_receipt_inconsistent, synthesize_receipt_oversized_sensor,
-    synthesize_schema_violation_sensor, synthesize_sensors_truncated,
+    COCKPIT_SCHEMA_ID, build_cockpit_report, compute_policy_outcome, summarize_sensor_report,
+    synthesize_invalid_sensor, synthesize_missing_sensor, synthesize_path_traversal_highlight,
+    synthesize_path_traversal_sensor, synthesize_receipt_inconsistent,
+    synthesize_receipt_oversized_sensor, synthesize_schema_violation_sensor,
+    synthesize_sensors_truncated,
 };
 use cockpitctl_types::{
     BuildfixSummary, CockpitConfig, Finding, FixSummary, Location, MissingPolicy, PolicyOutcome,

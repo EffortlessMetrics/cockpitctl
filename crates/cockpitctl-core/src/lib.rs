@@ -4,9 +4,11 @@
 //! (including the substrate-bridge / in-memory path) can depend on a single
 //! `cockpitctl-core` crate instead of wiring individual microcrates.
 
+pub use cockpitctl_buildfix as buildfix;
 pub use cockpitctl_domain as domain;
 pub use cockpitctl_ingest as ingest;
 pub use cockpitctl_io as io;
+pub use cockpitctl_policy as policy;
 pub use cockpitctl_render as render;
 pub use cockpitctl_sarif as sarif;
 pub use cockpitctl_types as types;
@@ -25,9 +27,15 @@ pub use cockpitctl_types::{
 };
 
 // Flatten domain helpers.
-pub use cockpitctl_domain::{
-    CodeExplanation, all_codes, explain_code, policy_snapshot_sha256_hex, select_auto_apply_fixes,
-    sign_policy_snapshot, sign_policy_snapshot_hmac_sha256,
+pub use cockpitctl_domain::{CodeExplanation, all_codes, explain_code};
+
+// Flatten buildfix helpers.
+pub use cockpitctl_buildfix::{match_buildfix_plan, select_auto_apply_fixes};
+
+// Flatten policy signing helpers.
+pub use cockpitctl_policy::{
+    canonical_policy_snapshot_bytes, policy_snapshot_sha256_hex, sign_policy_snapshot,
+    sign_policy_snapshot_hmac_sha256,
 };
 
 // Flatten SARIF export.

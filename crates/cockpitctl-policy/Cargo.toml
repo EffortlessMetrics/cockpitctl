@@ -1,5 +1,5 @@
 [package]
-name = "cockpitctl-ingest"
+name = "cockpitctl-policy"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -7,14 +7,17 @@ rust-version.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
-description = "Ingest use case and ports for composing sensor receipts into cockpit reports."
+description = "Policy snapshot canonicalization, digesting, and signing."
 readme = "README.md"
-keywords = ["ci", "ingest", "ports", "receipts", "orchestration"]
+keywords = ["policy", "signing", "deterministic", "ci"]
 categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true
+sha2.workspace = true
+hex.workspace = true
 serde_json.workspace = true
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
+
+[dev-dependencies]
 cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.3.0" }
-cockpitctl-buildfix = { path = "../cockpitctl-buildfix", version = "0.3.0" }

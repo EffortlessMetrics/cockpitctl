@@ -4,12 +4,12 @@
 //! It does not touch filesystem directly; adapters provide IO.
 
 use anyhow::{Context, Result};
+use cockpitctl_buildfix::match_buildfix_plan;
 use cockpitctl_domain::{
-    build_cockpit_report, match_buildfix_plan, select_highlights, sort_sensor_summaries,
-    summarize_sensor_report, synthesize_invalid_sensor, synthesize_missing_sensor,
-    synthesize_path_traversal_highlight, synthesize_path_traversal_sensor,
-    synthesize_receipt_oversized_sensor, synthesize_schema_violation_sensor,
-    synthesize_sensors_truncated,
+    build_cockpit_report, select_highlights, sort_sensor_summaries, summarize_sensor_report,
+    synthesize_invalid_sensor, synthesize_missing_sensor, synthesize_path_traversal_highlight,
+    synthesize_path_traversal_sensor, synthesize_receipt_oversized_sensor,
+    synthesize_schema_violation_sensor, synthesize_sensors_truncated,
 };
 use cockpitctl_types::{
     BuildfixSummary, CockpitConfig, CockpitReport, MissingPolicy, RunInfo, SchemaValidation,
