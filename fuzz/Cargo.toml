@@ -23,6 +23,7 @@ toml = "0.9.8"
 cockpitctl-types = { path = "../crates/cockpitctl-types" }
 cockpitctl-sarif = { path = "../crates/cockpitctl-sarif" }
 cockpitctl-render = { path = "../crates/cockpitctl-render" }
+cockpitctl-conform = { path = "../crates/cockpitctl-conform" }
 
 # Prevent this from interfering with workspaces
 [workspace]
@@ -52,6 +53,20 @@ bench = false
 [[bin]]
 name = "render_comment"
 path = "fuzz_targets/render_comment.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_sensor_id"
+path = "fuzz_targets/fuzz_sensor_id.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_schema_validate"
+path = "fuzz_targets/fuzz_schema_validate.rs"
 test = false
 doc = false
 bench = false
