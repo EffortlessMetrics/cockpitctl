@@ -113,6 +113,14 @@ Filesystem adapters implementing the ports.
 - Implements `ReceiptSource`, `PolicySource`, `OutputSink`
 - Handles path safety, symlink checking, size limits
 
+### cockpitctl-ops
+
+Operational command adapters.
+
+- Dependencies: `cockpitctl-types`, `cockpitctl-ingest`
+- Runs post-process hooks and buildfix actuator commands
+- Loads policy signing key material from file/env
+
 ### cockpitctl-cli
 
 Binary entry point.

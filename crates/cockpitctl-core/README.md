@@ -3,7 +3,7 @@
 Facade crate that re-exports cockpitctl microcrates through a single dependency.
 
 ## Scope
-- Re-exports `types`, `domain`, `ingest`, `io`, `render`, and `sarif` modules.
+- Re-exports `types`, `domain`, `ingest`, `io`, `ops`, `render`, and `sarif` modules.
 - Provides flattened access to commonly used types and helpers.
 
 ## When to use this crate
@@ -12,5 +12,6 @@ Facade crate that re-exports cockpitctl microcrates through a single dependency.
 ## Key exports
 - `IngestUseCase`, `IngestRequest`, `IngestResult`
 - `CockpitConfig`, `CockpitReport`, `SensorReport`
+- `run_hooks`, `run_buildfix_actuator`, `load_policy_signing_key`
 - `render_comment`, `render_github_annotations`
 - `cockpit_report_to_sarif_json`
