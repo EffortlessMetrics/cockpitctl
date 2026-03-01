@@ -1,0 +1,7 @@
+---
+source: crates/cockpitctl-render/tests/golden_tests.rs
+expression: "&gh_output"
+---
+::error file=src/auth.rs,line=10,title=[lint] E001::Message for E001
+::warning file=src/db.rs,line=20,title=[lint] W001::Message for W001
+::notice file=src/utils.rs,line=30,title=[lint] I001::Message for I001
