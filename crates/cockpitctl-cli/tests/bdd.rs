@@ -53,6 +53,8 @@ pub struct IngestWorld {
     actuator_script_path: Option<PathBuf>,
     /// Path to generated policy-signing key material.
     policy_sign_key_path: Option<PathBuf>,
+    /// Sensor IDs created by dynamic multi-sensor steps.
+    dynamic_sensors: Vec<String>,
 }
 
 impl IngestWorld {
@@ -80,6 +82,7 @@ impl IngestWorld {
             hook_script_path: None,
             actuator_script_path: None,
             policy_sign_key_path: None,
+            dynamic_sensors: Vec::new(),
         }
     }
 
@@ -328,6 +331,171 @@ fn given_policy_signing_key_file(world: &mut IngestWorld) {
     let key_path = fixture_root.join("policy-signing.key");
     fs::write(&key_path, b"shared-signing-secret\n").expect("failed to write policy key file");
     world.policy_sign_key_path = Some(key_path);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Given steps — Dynamic multi-sensor helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+fn write_sensor_receipt(dir: &Path, sensor_id: &str, verdict: &str, findings: &[Value]) {
+    let sensor_dir = dir.join("artifacts").join(sensor_id);
+    fs::create_dir_all(&sensor_dir).expect("failed to create sensor dir");
+
+    let counts = match verdict {
+        "fail" => serde_json::json!({"info": 0, "warn": 0, "error": findings.len()}),
+        "warn" => serde_json::json!({"info": 0, "warn": findings.len(), "error": 0}),
+        _ => serde_json::json!({"info": 0, "warn": 0, "error": 0}),
+    };
+
+    let receipt = serde_json::json!({
+        "schema": "sensor.report.v1",
+        "tool": { "name": sensor_id, "version": "1.0.0" },
+        "run": { "started_at": "2026-02-02T11:59:00Z" },
+        "verdict": { "status": verdict, "counts": counts, "reasons": [] },
+        "findings": findings
+    });
+
+    let report_path = sensor_dir.join("report.json");
+    fs::write(
+        &report_path,
+        serde_json::to_string_pretty(&receipt).unwrap(),
+    )
+    .expect("failed to write sensor receipt");
+}
+
+fn make_finding(code: &str, severity: &str) -> Value {
+    serde_json::json!({
+        "severity": severity,
+        "code": code,
+        "message": format!("Finding: {}", code),
+        "location": { "path": "src/main.rs", "line": 1 }
+    })
+}
+
+#[given(expr = "a dynamic artifacts directory with sensors {string}")]
+fn given_dynamic_artifacts(world: &mut IngestWorld, sensors_csv: String) {
+    let sensors: Vec<String> = sensors_csv
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    let temp_dir = TempDir::new().expect("failed to create temp dir");
+    let base = temp_dir.path().to_path_buf();
+
+    // Create artifacts dir structure with empty pass receipts
+    for sensor in &sensors {
+        write_sensor_receipt(&base, sensor, "pass", &[]);
+    }
+
+    world.fixture_path = Some(base);
+    world.temp_dir = Some(temp_dir);
+    world.dynamic_sensors = sensors;
+    world.extra_args.clear();
+    world.stdout.clear();
+    world.stderr.clear();
+    world.baseline_report_path = None;
+    world.hook_script_path = None;
+    world.actuator_script_path = None;
+    world.policy_sign_key_path = None;
+}
+
+#[given(expr = "all dynamic sensors have verdict {string}")]
+fn all_dynamic_sensors_verdict(world: &mut IngestWorld, verdict: String) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    for sensor in world.dynamic_sensors.clone() {
+        write_sensor_receipt(base, &sensor, &verdict, &[]);
+    }
+}
+
+#[given(expr = "dynamic sensor {string} has verdict {string}")]
+fn dynamic_sensor_verdict(world: &mut IngestWorld, sensor_id: String, verdict: String) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    write_sensor_receipt(base, &sensor_id, &verdict, &[]);
+}
+
+#[given(expr = "dynamic sensor {string} has verdict {string} with finding {string}")]
+fn dynamic_sensor_verdict_with_finding(
+    world: &mut IngestWorld,
+    sensor_id: String,
+    verdict: String,
+    code: String,
+) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let severity = match verdict.as_str() {
+        "fail" => "error",
+        "warn" => "warn",
+        _ => "info",
+    };
+    let findings = vec![make_finding(&code, severity)];
+    write_sensor_receipt(base, &sensor_id, &verdict, &findings);
+}
+
+#[given(
+    expr = "dynamic sensor {string} has verdict {string} with {int} findings prefixed {string}"
+)]
+fn dynamic_sensor_verdict_with_n_findings(
+    world: &mut IngestWorld,
+    sensor_id: String,
+    verdict: String,
+    count: usize,
+    prefix: String,
+) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let severity = match verdict.as_str() {
+        "fail" => "error",
+        "warn" => "warn",
+        _ => "info",
+    };
+    let findings: Vec<Value> = (1..=count)
+        .map(|i| make_finding(&format!("{}.issue_{}", prefix, i), severity))
+        .collect();
+    write_sensor_receipt(base, &sensor_id, &verdict, &findings);
+}
+
+fn write_cockpit_config(
+    base: &Path,
+    sensors: &[String],
+    blocking: &[String],
+    max_highlights: Option<usize>,
+) {
+    let max_hl = max_highlights.unwrap_or(10);
+    let mut config = format!(
+        "[policy]\nwarn_is_fail = false\nmax_highlights = {}\nmax_per_sensor_findings = 50\nmax_annotations = 25\nsection_order = [\"Other\"]\n\n",
+        max_hl
+    );
+    for sensor in sensors {
+        let is_blocking = blocking.contains(sensor);
+        config.push_str(&format!(
+            "[sensors.{}]\nblocking = {}\nmissing = \"fail\"\nsection = \"Other\"\n\n",
+            sensor, is_blocking
+        ));
+    }
+    fs::write(base.join("cockpit.toml"), config).expect("failed to write cockpit.toml");
+}
+
+#[given("a cockpit config with all sensors blocking")]
+fn given_config_all_blocking(world: &mut IngestWorld) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let sensors = world.dynamic_sensors.clone();
+    write_cockpit_config(base, &sensors, &sensors, None);
+}
+
+#[given(expr = "a cockpit config with blocking sensors {string}")]
+fn given_config_blocking_sensors(world: &mut IngestWorld, blocking_csv: String) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let blocking: Vec<String> = blocking_csv
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+    let sensors = world.dynamic_sensors.clone();
+    write_cockpit_config(base, &sensors, &blocking, None);
+}
+
+#[given(expr = "a cockpit config with max highlights {int} and all sensors blocking")]
+fn given_config_max_highlights(world: &mut IngestWorld, max_highlights: usize) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let sensors = world.dynamic_sensors.clone();
+    write_cockpit_config(base, &sensors, &sensors, Some(max_highlights));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1092,6 +1260,57 @@ fn json_file_field_equals_string(
         actual_str, expected,
         "JSON field '{}' mismatch in {:?}",
         field_path, path
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Then steps - Multi-sensor assertions
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[then(expr = "the comment mentions sensors {string}")]
+fn comment_mentions_sensors(world: &mut IngestWorld, sensors_csv: String) {
+    let comment = world.read_comment();
+    for sensor in sensors_csv.split(',').map(|s| s.trim()) {
+        assert!(
+            comment.contains(sensor),
+            "comment does not mention sensor '{}'\n\nActual comment:\n{}",
+            sensor,
+            comment
+        );
+    }
+}
+
+#[then("the sensors are in lexical order")]
+fn sensors_in_lexical_order(world: &mut IngestWorld) {
+    let report = world.read_report();
+    let sensors = report
+        .get("sensors")
+        .and_then(|s| s.as_array())
+        .expect("sensors array not found");
+
+    let ids: Vec<&str> = sensors
+        .iter()
+        .filter_map(|s| s.get("id").and_then(|id| id.as_str()))
+        .collect();
+
+    let mut sorted = ids.clone();
+    sorted.sort();
+    assert_eq!(ids, sorted, "sensors not in lexical order: {:?}", ids);
+}
+
+#[then(expr = "the highlights count is at most {int}")]
+fn highlights_count_at_most(world: &mut IngestWorld, maximum: usize) {
+    let report = world.read_report();
+    let highlights = report
+        .get("highlights")
+        .and_then(|h| h.as_array())
+        .expect("highlights array not found");
+
+    assert!(
+        highlights.len() <= maximum,
+        "expected at most {} highlights, got {}",
+        maximum,
+        highlights.len()
     );
 }
 
