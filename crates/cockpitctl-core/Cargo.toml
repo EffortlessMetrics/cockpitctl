@@ -28,3 +28,8 @@ cockpitctl-sarif = { path = "../cockpitctl-sarif", version = "0.3.0" }
 cockpitctl-domain-buildfix = { path = "../cockpitctl-domain-buildfix", version = "0.3.0" }
 cockpitctl-domain-signing = { path = "../cockpitctl-domain-signing", version = "0.3.0" }
 cockpitctl-domain-trend = { path = "../cockpitctl-domain-trend", version = "0.3.0" }
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile.workspace = true
+toml.workspace = true
