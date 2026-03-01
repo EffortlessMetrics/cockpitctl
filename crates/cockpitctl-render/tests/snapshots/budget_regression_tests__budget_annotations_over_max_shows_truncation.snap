@@ -1,0 +1,16 @@
+---
+source: crates/cockpitctl-render/tests/budget_regression_tests.rs
+expression: result.content
+---
+1. ⚠️ **scanner**: `FIND-000` at `src/lib.rs:1` — Message for FIND-000
+2. ⚠️ **scanner**: `FIND-001` at `src/lib.rs:2` — Message for FIND-001
+3. ⚠️ **scanner**: `FIND-002` at `src/lib.rs:3` — Message for FIND-002
+4. ⚠️ **scanner**: `FIND-003` at `src/lib.rs:4` — Message for FIND-003
+5. ⚠️ **scanner**: `FIND-004` at `src/lib.rs:5` — Message for FIND-004
+6. ⚠️ **scanner**: `FIND-005` at `src/lib.rs:6` — Message for FIND-005
+7. ⚠️ **scanner**: `FIND-006` at `src/lib.rs:7` — Message for FIND-006
+8. ⚠️ **scanner**: `FIND-007` at `src/lib.rs:8` — Message for FIND-007
+9. ⚠️ **scanner**: `FIND-008` at `src/lib.rs:9` — Message for FIND-008
+10. ⚠️ **scanner**: `FIND-009` at `src/lib.rs:10` — Message for FIND-009
+
+_Showing 10 of 20 annotations (capped by `max_annotations`)._
