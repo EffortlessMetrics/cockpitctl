@@ -26,6 +26,15 @@ jobs:
       - name: Tests
         run: cargo test --workspace --all-targets
 
+      - name: Run doc tests
+        run: cargo test --workspace --doc
+
+      - name: Compile benchmarks
+        run: cargo bench --workspace --no-run
+
+      - name: Compile examples
+        run: cargo build --workspace --examples
+
       - name: Build without default features
         run: cargo build -p cockpitctl --no-default-features
 

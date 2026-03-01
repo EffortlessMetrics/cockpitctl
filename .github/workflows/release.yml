@@ -76,6 +76,8 @@ jobs:
         run: cargo test --workspace --all-targets
 
       # ── Tier 1: leaf crates (no workspace deps) ──
+      # cockpitctl-types: stable DTOs, embedded schemas, ordering helpers
+      # cockpitctl-feature-state: feature flag state types
       - name: Dry-run publish cockpitctl-types
         run: cargo publish --dry-run -p cockpitctl-types
       - name: Publish cockpitctl-types
@@ -87,7 +89,11 @@ jobs:
       - name: Wait for crates.io index update (tier 1)
         run: sleep 30
 
-      # ── Tier 2: depends on types and/or feature-state ──
+      # ── Tier 2: depends on types and/or feature-state (6 crates) ──
+      # cockpitctl-conform: conformance checking (schema validation, path hygiene)
+      # cockpitctl-domain-{buildfix,signing,trend}: domain sub-modules
+      # cockpitctl-feature-grid: feature grid composition
+      # cockpitctl-io-schema: schema IO adapter
       - name: Dry-run publish cockpitctl-conform
         run: cargo publish --dry-run -p cockpitctl-conform
       - name: Publish cockpitctl-conform
@@ -115,7 +121,9 @@ jobs:
       - name: Wait for crates.io index update (tier 2)
         run: sleep 30
 
-      # ── Tier 3: depends on tier-2 crates ──
+      # ── Tier 3: depends on tier-2 crates (4 crates) ──
+      # cockpitctl-domain: policy evaluation, deterministic selection, normalization
+      # cockpitctl-io-{buildfix,hooks,policy-signing}: specialized IO adapters
       - name: Dry-run publish cockpitctl-domain
         run: cargo publish --dry-run -p cockpitctl-domain
       - name: Publish cockpitctl-domain
@@ -135,7 +143,9 @@ jobs:
       - name: Wait for crates.io index update (tier 3)
         run: sleep 30
 
-      # ── Tier 4: render & ingest ──
+      # ── Tier 4: render & ingest (2 crates) ──
+      # cockpitctl-render: PR comment renderer with budgeting and stable markers
+      # cockpitctl-ingest: use-case orchestration with ports (ReceiptSource, PolicySource, OutputSink)
       - name: Dry-run publish cockpitctl-render
         run: cargo publish --dry-run -p cockpitctl-render
       - name: Publish cockpitctl-render
@@ -147,7 +157,8 @@ jobs:
       - name: Wait for crates.io index update (tier 4)
         run: sleep 30
 
-      # ── Tier 5: io (depends on ingest ports) ──
+      # ── Tier 5: io (depends on ingest ports, 1 crate) ──
+      # cockpitctl-io: filesystem adapters implementing ingest ports
       - name: Dry-run publish cockpitctl-io
         run: cargo publish --dry-run -p cockpitctl-io
       - name: Publish cockpitctl-io
@@ -155,7 +166,8 @@ jobs:
       - name: Wait for crates.io index update (tier 5)
         run: sleep 30
 
-      # ── Tier 6: sarif ──
+      # ── Tier 6: sarif (1 crate) ──
+      # cockpitctl-sarif: SARIF format conversion
       - name: Dry-run publish cockpitctl-sarif
         run: cargo publish --dry-run -p cockpitctl-sarif
       - name: Publish cockpitctl-sarif
@@ -163,7 +175,8 @@ jobs:
       - name: Wait for crates.io index update (tier 6)
         run: sleep 30
 
-      # ── Tier 7: core facade ──
+      # ── Tier 7: core facade (1 crate) ──
+      # cockpitctl-core: re-exports all microcrates as a single dependency
       - name: Dry-run publish cockpitctl-core
         run: cargo publish --dry-run -p cockpitctl-core
       - name: Publish cockpitctl-core
@@ -171,7 +184,8 @@ jobs:
       - name: Wait for crates.io index update (tier 7)
         run: sleep 30
 
-      # ── Tier 8: CLI binary ──
+      # ── Tier 8: CLI binary (1 crate) ──
+      # cockpitctl: clap-based binary entry point
       - name: Dry-run publish cockpitctl
         run: cargo publish --dry-run -p cockpitctl
       - name: Publish cockpitctl
@@ -179,7 +193,8 @@ jobs:
       - name: Wait for crates.io index update (tier 8)
         run: sleep 30
 
-      # ── Tier 9: conformctl binary ──
+      # ── Tier 9: conformctl binary (1 crate) ──
+      # conformctl: standalone conformance checker (depends only on types + conform)
       - name: Dry-run publish conformctl
         run: cargo publish --dry-run -p conformctl
       - name: Publish conformctl
