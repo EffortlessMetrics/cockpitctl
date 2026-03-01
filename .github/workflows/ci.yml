@@ -24,6 +24,12 @@ jobs:
       - name: Tests
         run: cargo test --workspace --all-targets
 
+      - name: Build without default features
+        run: cargo build -p cockpitctl --no-default-features
+
+      - name: Test without default features
+        run: cargo test -p cockpitctl --no-default-features
+
       - name: Schema sync check
         run: cargo run -p xtask -- schema-sync-check
 
