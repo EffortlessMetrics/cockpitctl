@@ -7,6 +7,7 @@
 pub use cockpitctl_domain as domain;
 pub use cockpitctl_ingest as ingest;
 pub use cockpitctl_io as io;
+pub use cockpitctl_ops as ops;
 pub use cockpitctl_render as render;
 pub use cockpitctl_sarif as sarif;
 pub use cockpitctl_types as types;
@@ -37,3 +38,6 @@ pub use cockpitctl_sarif::{cockpit_report_to_sarif, cockpit_report_to_sarif_json
 pub use cockpitctl_render::{
     GitHubAnnotationResult, append_comment_sections, render_comment, render_github_annotations,
 };
+
+// Flatten operations helpers.
+pub use cockpitctl_ops::{load_policy_signing_key, run_buildfix_actuator, run_hooks};
