@@ -152,6 +152,26 @@ Development tooling.
 - Schema checks, conformance harness, fixture regeneration
 - Not part of the main binary
 
+### Additional microcrates
+
+The following crates extend the core architecture for optional features
+(feature-gated, `default = []`):
+
+| Crate | Layer | Purpose |
+|-------|-------|---------|
+| `cockpitctl-domain-buildfix` | Domain | Buildfix domain logic |
+| `cockpitctl-domain-signing` | Domain | Policy signing domain logic |
+| `cockpitctl-domain-trend` | Domain | Trend analysis domain logic |
+| `cockpitctl-io-hooks` | Adapter | Hook execution adapters |
+| `cockpitctl-io-schema` | Adapter | Schema validation adapters |
+| `cockpitctl-io-buildfix` | Adapter | Buildfix I/O adapters |
+| `cockpitctl-io-policy-signing` | Adapter | Policy signing I/O adapters |
+| `cockpitctl-feature-state` | Infra | Feature flag state management |
+| `cockpitctl-feature-grid` | Infra | BDD feature toggle grid |
+| `cockpitctl-sarif` | Adapter | SARIF v2.1.0 export |
+
+Total: **19 publishable crates** (10 core + 9 feature-gated + SARIF).
+
 ## The Rule
 
 **Domain crates must not depend on clap, filesystem, or network.**

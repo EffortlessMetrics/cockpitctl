@@ -96,6 +96,12 @@ Implemented:
 - No-default-features build and test steps to verify feature isolation.
 - Security audit workflow (weekly + on dependency changes).
 - MSRV (minimum supported Rust version) verification in CI.
+- Code coverage reporting with cargo-tarpaulin (PR #36).
+- cargo-deny for license and advisory checking (PR #37).
+- Benchmark, examples, and doc test compilation checks (PR #68).
+- Full CI pipeline: fmt, clippy, tests, doc tests, benchmarks, examples,
+  no-default-features, schema-sync, packaging, conformance, dependency
+  isolation, security audit, MSRV, cargo-deny.
 
 ### Documentation and crates.io readiness
 
@@ -103,7 +109,34 @@ Implemented:
 - Architecture documentation aligned with 19-crate layout.
 - Per-crate `README.md` files for all published crates.
 - Runnable doc-tested examples for core and types crates.
+- Executable doc tests for public APIs (PR #58).
 - 9-tier dependency-ordered publish in release workflow.
+
+### Comprehensive test expansion
+
+Implemented (1800+ tests across 19 crates):
+- 13 test modalities: unit, integration, E2E, BDD, golden/snapshot,
+  property-based, fuzz (6 targets with corpus seeds), stress, doc tests,
+  benchmarks, mutation testing, cross-platform, CLI completeness.
+- Cross-platform path normalization tests (PR #73).
+- CLI completeness and help/version tests — 28 tests (PR #74).
+- Conform crate property-based test expansion (PR #72).
+- Stress and load tests for caps and budgets (PR #67).
+- Feature flag isolation and compilation matrix tests (PR #59).
+
+---
+
+## Near-term focus
+
+### Release candidate finalization
+- Final documentation polish and CHANGELOG alignment
+- Verify all CI gates pass on tagged release
+- Smoke test published artifacts on all platforms
+
+### Community readiness
+- Contributing guide (`CONTRIBUTING.md`)
+- Issue templates for bug reports and feature requests
+- crates.io publish and documentation hosting
 
 ---
 

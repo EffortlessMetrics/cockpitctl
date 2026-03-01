@@ -9,7 +9,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 #### Architecture
-- Extract 9 new microcrates for clean SRP architecture (PR #9):
+- Extract 9 new microcrates for clean SRP architecture, bringing total to 19
+  crates (PR #9):
   - `cockpitctl-domain-buildfix` — Buildfix domain logic
   - `cockpitctl-domain-signing` — Policy signing domain logic
   - `cockpitctl-domain-trend` — Trend analysis domain logic
@@ -30,30 +31,69 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Packaging hygiene check scripts for CI (`check_state.js`, `check_state.ps1`)
   (PR #50)
 
-#### Testing expansion
+#### Testing expansion (1800+ tests across 19 crates)
+
+Unit and integration tests:
 - Comprehensive unit tests across all 19 microcrates (PR #9)
-- Doc tests across all public API crates (PR #25)
-- Edge case and error path coverage for safety-critical code (PR #26)
+- Doc tests across all public API crates (PR #25, #58)
+- Edge case and error path coverage for safety-critical code (PR #26, #63)
 - Cross-crate integration tests: full pipeline, determinism, and safety (PR #29)
-- Fuzz testing expansion: 6 targets covering receipt parsing, policy evaluation,
-  and rendering (PR #30)
-- Property-based testing (proptest) across 5 core crates — types, domain,
-  ingest, render, and IO (PR #31)
-- Golden/snapshot test expansion: 29 test functions, 34 snapshot files covering
-  normal, edge, error, and multi-sensor scenarios (PR #32)
-- Runnable examples for `cockpitctl-core` and `cockpitctl-types` crates (PR #33)
-- E2E test expansion: 47 new end-to-end tests covering CLI invocations, config
-  precedence, exit codes, and output validation (PR #34)
+- Cross-crate pipeline integration tests with in-memory doubles (PR #56)
 - Renderer budget and marker regression tests — 18 tests (PR #41)
 - Safety boundary tests for IO crate — 35 tests (PR #42)
-- Conformance expansion with snapshot tests and E2E (PR #44)
-- CLI precedence contract E2E tests — 22 tests (PR #45)
-- Determinism golden tests for ordering stability (PR #46)
 - Domain microcrate unit tests: buildfix, signing, and trend (PR #47)
 - IO adapter integration tests (PR #48)
+- IO microcrate integration tests (PR #60)
+- Domain and feature microcrate integration tests (PR #69)
+- Ingest use case edge case coverage (PR #71)
+- Proptest serde roundtrips and core reexport regression tests (PR #52)
+- Property-based ordering invariant tests for types (PR #64)
+
+Golden and snapshot tests:
+- Golden/snapshot test expansion: 29 test functions, 34 snapshot files covering
+  normal, edge, error, and multi-sensor scenarios (PR #32)
+- Determinism golden tests for ordering stability (PR #46)
+- Render golden/snapshot test coverage expansion (PR #66)
+
+BDD scenarios:
+- Multi-sensor BDD scenarios and CI workflow improvements (PR #53)
+- BDD scenarios for validate, init, error handling, policy, and schema
+  modes (PR #38)
+- BDD expansion for error handling, safety, and precedence (PR #70)
+
+E2E tests:
+- E2E test expansion: 47 new end-to-end tests covering CLI invocations, config
+  precedence, exit codes, and output validation (PR #34)
+- Conformance expansion with snapshot tests and E2E (PR #44)
+- CLI precedence contract E2E tests — 22 tests (PR #45)
 - SARIF, explain, and feature-grid test coverage expansion (PR #49)
 - Init, validate, and error message E2E hardening (PR #51)
-- Total test count: 1200+ tests across 19 crates
+- SARIF crate test coverage expansion (PR #55)
+- conformctl integration and E2E tests (PR #57)
+- CLI completeness and help/version tests — 28 tests (PR #74)
+
+Fuzz and property-based testing:
+- Fuzz testing expansion: 6 targets covering receipt parsing, policy evaluation,
+  and rendering (PR #30)
+- Fuzz corpus seed expansion for all 6 targets (PR #61)
+- Property-based testing (proptest) across 5 core crates — types, domain,
+  ingest, render, and IO (PR #31)
+- Conform crate property-based test expansion (PR #72)
+
+Stress and platform tests:
+- Stress and load tests for caps and budgets (PR #67)
+- Cross-platform path normalization tests (PR #73)
+
+Feature flag and compilation tests:
+- Feature flag isolation and compilation matrix tests (PR #59)
+
+Examples and benchmarks:
+- Runnable examples for `cockpitctl-core` and `cockpitctl-types` crates (PR #33)
+- Validated benchmarks and usage examples (PR #62)
+- Xtask crate integration tests (PR #65)
+
+Mutation testing:
+- Improved mutation testing config and manual CI workflow (PR #35)
 
 #### CI hardening
 - No-default-features build and test steps in CI (PR #11)
@@ -61,12 +101,17 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - MSRV (minimum supported Rust version) verification in CI (PR #27)
 - Code coverage reporting with cargo-tarpaulin (PR #36)
 - cargo-deny for license and advisory checking (PR #37)
+- Benchmark, examples, and doc test compilation checks in CI (PR #68)
+- CI pipeline: fmt → clippy → tests → doc tests → benchmarks → examples →
+  no-default-features → schema-sync → packaging → conformance → dependency
+  checks → security audit → MSRV
 
 #### Documentation
 - Architecture documentation aligned with 19-crate layout (PR #10)
 - Per-crate `README.md` files for crates.io readiness (PR #28)
 - Runnable doc-tested examples for core and types crates (PR #33)
 - Improved rustdoc coverage across core crates (PR #40)
+- Executable doc tests for public APIs (PR #58)
 
 #### Release infrastructure
 - 9-tier dependency-ordered publish in release workflow
