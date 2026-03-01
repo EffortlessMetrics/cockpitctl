@@ -7,6 +7,8 @@
 //!
 //! It should not parse sensor-specific markdown. Link only.
 
+#![warn(missing_docs)]
+
 use cockpitctl_types::{
     BuildfixApplyStatus, BuildfixApplySummary, BuildfixSummary, CockpitConfig, CockpitReport,
     Highlight, PolicySignatureAlgorithm, PolicySignatureEvidence, SafetyLevel, Severity,

@@ -21,6 +21,8 @@
 //! assert!(explanation.is_some());
 //! ```
 
+#![warn(missing_docs)]
+
 pub use cockpitctl_domain as domain;
 pub use cockpitctl_domain_buildfix as domain_buildfix;
 pub use cockpitctl_domain_signing as domain_signing;

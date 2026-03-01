@@ -3,6 +3,8 @@
 //! Computes the delta between a baseline and current cockpit report,
 //! identifying new findings, fixed findings, and sensor-level changes.
 
+#![warn(missing_docs)]
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use cockpitctl_types::{

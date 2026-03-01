@@ -3,16 +3,21 @@
 //! Defines the expected presence/absence of features per CLI argument
 //! combination, used by BDD scenario expansion and feature-flag tests.
 
+#![warn(missing_docs)]
+
 use cockpitctl_feature_state::Feature;
 
 /// Expected feature presence in a BDD matrix cell.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum FeatureGridState {
+    /// Feature is expected to be present.
     Present,
+    /// Feature is expected to be absent.
     Absent,
 }
 
 impl FeatureGridState {
+    /// Returns `true` if the state is `Present`.
     pub const fn is_present(self) -> bool {
         match self {
             Self::Present => true,
@@ -24,12 +29,16 @@ impl FeatureGridState {
 /// A single row in the feature runtime matrix.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct FeatureGridCase {
+    /// The feature under test.
     pub feature: Feature,
+    /// CLI arguments for this test case.
     pub args: &'static [&'static str],
+    /// Expected presence state.
     pub expected: FeatureGridState,
 }
 
 impl FeatureGridCase {
+    /// Create a new grid case.
     pub const fn new(
         feature: Feature,
         args: &'static [&'static str],
@@ -42,11 +51,13 @@ impl FeatureGridCase {
         }
     }
 
+    /// Returns whether the runtime state matches the expected state.
     pub fn expected_present<S: AsRef<str>>(self, cli_args: &[S]) -> bool {
         let runtime = feature_runtime_present(self.feature, cli_args);
         self.expected.is_present() == runtime
     }
 
+    /// Alias for [`expected_present`](Self::expected_present).
     pub fn matches_row<S: AsRef<str>>(self, cli_args: &[S]) -> bool {
         self.expected_present(cli_args)
     }

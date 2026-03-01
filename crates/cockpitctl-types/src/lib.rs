@@ -7,6 +7,8 @@
 //!
 //! It must not depend on filesystem, clap, or network.
 
+#![warn(missing_docs)]
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -73,9 +75,13 @@ fn is_zero(v: &u64) -> bool {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct VerdictCounts {
+    /// Number of info-level findings.
     pub info: u64,
+    /// Number of warn-level findings.
     pub warn: u64,
+    /// Number of error-level findings.
     pub error: u64,
+    /// Number of suppressed findings.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub suppressed: u64,
 }
@@ -98,8 +104,11 @@ pub struct VerdictCounts {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Verdict {
+    /// Overall verdict status.
     pub status: VerdictStatus,
+    /// Finding counts by severity.
     pub counts: VerdictCounts,
+    /// Human-readable reason tokens.
     #[serde(default)]
     pub reasons: Vec<String>,
 }
@@ -107,8 +116,11 @@ pub struct Verdict {
 /// Metadata about the tool that produced a report.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ToolInfo {
+    /// Tool name (e.g. "builddiag").
     pub name: String,
+    /// Tool version string.
     pub version: String,
+    /// Optional git commit SHA.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub commit: Option<String>,
 }
@@ -116,10 +128,13 @@ pub struct ToolInfo {
 /// Host environment information captured at run time.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HostInfo {
+    /// Operating system name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub os: Option<String>,
+    /// CPU architecture.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub arch: Option<String>,
+    /// Hostname of the build machine.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hostname: Option<String>,
 }
@@ -127,16 +142,22 @@ pub struct HostInfo {
 /// Git repository context captured at run time.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct GitInfo {
+    /// Repository URL or slug.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repo: Option<String>,
+    /// Base branch ref.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub base_ref: Option<String>,
+    /// Head branch ref.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub head_ref: Option<String>,
+    /// Base commit SHA.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub base_sha: Option<String>,
+    /// Head commit SHA.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub head_sha: Option<String>,
+    /// Merge base commit SHA.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub merge_base: Option<String>,
 }
@@ -144,12 +165,16 @@ pub struct GitInfo {
 /// CI provider context captured at run time.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CiInfo {
+    /// CI provider name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider: Option<String>,
+    /// CI run identifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run_id: Option<String>,
+    /// URL to the CI run.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run_url: Option<String>,
+    /// CI job name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub job: Option<String>,
 }
@@ -169,7 +194,9 @@ pub enum CapabilityStatus {
 /// A declared runtime capability and its status.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Capability {
+    /// Whether the capability was available.
     pub status: CapabilityStatus,
+    /// Optional reason for the status.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
@@ -177,15 +204,21 @@ pub struct Capability {
 /// Execution context for a sensor or cockpitctl run.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RunInfo {
+    /// RFC 3339 timestamp when the run started.
     pub started_at: String, // RFC3339
+    /// RFC 3339 timestamp when the run ended.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ended_at: Option<String>,
+    /// Wall-clock duration in milliseconds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration_ms: Option<u64>,
+    /// Host environment information.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub host: Option<HostInfo>,
+    /// Git repository context.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub git: Option<GitInfo>,
+    /// CI provider context.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ci: Option<CiInfo>,
     /// Declared capabilities (e.g., "git", "baseline", "lcov").
@@ -220,10 +253,13 @@ pub enum Severity {
 /// Source location of a finding in a file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Location {
+    /// File path of the finding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
+    /// Line number in the file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub line: Option<u32>,
+    /// Column number in the file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub col: Option<u32>,
 }
@@ -251,22 +287,31 @@ pub struct Location {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Finding {
+    /// Severity level of the finding.
     pub severity: Severity,
+    /// Optional check identifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub check_id: Option<String>,
+    /// Machine-readable finding code.
     pub code: String,
+    /// Human-readable message.
     pub message: String,
 
+    /// Source location of the finding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub location: Option<Location>,
 
+    /// Suggested remediation text.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub help: Option<String>,
+    /// URL for more information.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+    /// Stable fingerprint for deduplication.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fingerprint: Option<String>,
 
+    /// Opaque tool-specific payload.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }
@@ -305,14 +350,21 @@ pub struct Finding {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SensorReport {
+    /// Schema identifier string.
     pub schema: SchemaId,
+    /// Metadata about the producing tool.
     pub tool: ToolInfo,
+    /// Execution context.
     pub run: RunInfo,
+    /// Aggregate verdict.
     pub verdict: Verdict,
+    /// Diagnostic findings.
     #[serde(default)]
     pub findings: Vec<Finding>,
+    /// Pointers to produced artifacts.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub artifacts: Vec<ArtifactPointer>,
+    /// Opaque tool-specific payload.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }
@@ -321,9 +373,12 @@ pub struct SensorReport {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum MissingPolicy {
+    /// Skip: treat missing receipt as non-blocking.
     #[default]
     Skip,
+    /// Warn: report a warning for missing receipt.
     Warn,
+    /// Fail: fail the cockpit verdict for missing receipt.
     Fail,
 }
 
@@ -331,8 +386,11 @@ pub enum MissingPolicy {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Presence {
+    /// Sensor receipt was found.
     Present,
+    /// Sensor receipt was not found.
     Missing,
+    /// Sensor receipt was found but invalid.
     Invalid,
 }
 
@@ -340,17 +398,24 @@ pub enum Presence {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum PolicyOutcome {
+    /// Sensor blocked the merge.
     Blocked,
+    /// Sensor allowed the merge.
     Allowed,
+    /// Sensor is non-blocking (informational only).
     Informational,
 }
 
 /// Pointer to an artifact produced by a sensor.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ArtifactPointer {
+    /// Artifact identifier.
     pub id: String,
+    /// Relative path to the artifact file.
     pub path: String,
+    /// MIME type of the artifact.
     pub mime: String,
+    /// Optional schema the artifact conforms to.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub schema: Option<String>,
 }
@@ -358,12 +423,16 @@ pub struct ArtifactPointer {
 /// Promotion hints for cockpit (`data._cockpit`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CockpitPromoteHints {
+    /// Schema identifier for the promote hints.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub schema: Option<String>,
+    /// Promoted summary cards.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cards: Vec<PromoteCard>,
+    /// Suggested highlight fingerprints.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub suggested_highlights: Vec<SuggestedHighlight>,
+    /// Suggested artifact pointers.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub suggested_artifacts: Vec<SuggestedArtifact>,
 }
@@ -371,9 +440,13 @@ pub struct CockpitPromoteHints {
 /// A card promoted to the cockpit summary from a sensor.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PromoteCard {
+    /// Card identifier.
     pub id: String,
+    /// Display label.
     pub label: String,
+    /// Display value.
     pub value: String,
+    /// Optional severity for visual styling.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub severity: Option<Severity>,
 }
@@ -381,12 +454,14 @@ pub struct PromoteCard {
 /// A suggested highlight from a sensor via promotion.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SuggestedHighlight {
+    /// Fingerprint of the finding to highlight.
     pub finding_fingerprint: String,
 }
 
 /// A suggested artifact from a sensor via promotion.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SuggestedArtifact {
+    /// Identifier of the suggested artifact.
     pub artifact_id: String,
 }
 
@@ -404,14 +479,19 @@ pub enum SchemaValidation {
 /// A per-sensor policy in cockpit.toml.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct SensorPolicy {
+    /// Whether this sensor blocks the merge.
     #[serde(default)]
     pub blocking: bool,
+    /// Policy for missing receipts.
     #[serde(default)]
     pub missing: MissingPolicy,
+    /// Comment section to render this sensor under.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub section: Option<String>,
+    /// PR label required to activate this sensor.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub require_label: Option<String>,
+    /// Reproduction command for failures.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repro: Option<String>,
 }
@@ -447,7 +527,9 @@ impl Default for BuildfixPolicy {
 /// External command configuration for buildfix actuation.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BuildfixActuatorConfig {
+    /// Shell command to invoke.
     pub command: String,
+    /// Timeout in milliseconds.
     #[serde(default = "default_buildfix_actuator_timeout_ms")]
     pub timeout_ms: u64,
 }
@@ -455,14 +537,19 @@ pub struct BuildfixActuatorConfig {
 /// Global policy settings from `cockpit.toml`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Policy {
+    /// Treat warn verdicts as fail.
     #[serde(default)]
     pub warn_is_fail: bool,
+    /// Maximum number of highlights in the comment.
     #[serde(default = "default_max_highlights")]
     pub max_highlights: usize,
+    /// Maximum findings per sensor before truncation.
     #[serde(default = "default_max_per_sensor_findings")]
     pub max_per_sensor_findings: usize,
+    /// Maximum number of CI annotations.
     #[serde(default = "default_max_annotations")]
     pub max_annotations: usize,
+    /// Ordered list of comment section names.
     #[serde(default = "default_section_order")]
     pub section_order: Vec<String>,
     /// Schema validation mode: "lax" (default) skips schema validation; "strict"
@@ -539,14 +626,19 @@ impl Default for Policy {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct CockpitConfig {
+    /// Global policy settings.
     #[serde(default)]
     pub policy: Policy,
+    /// Buildfix auto-apply policy.
     #[serde(default)]
     pub buildfix: BuildfixPolicy,
+    /// Policy snapshot signing config.
     #[serde(default)]
     pub policy_signing: PolicySigningConfig,
+    /// Per-sensor policy overrides.
     #[serde(default)]
     pub sensors: std::collections::BTreeMap<String, SensorPolicy>,
+    /// Post-processing hooks.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub hooks: Vec<HookConfig>,
 }
@@ -554,20 +646,31 @@ pub struct CockpitConfig {
 /// A single sensor row in the cockpit aggregate report.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SensorSummary {
+    /// Sensor identifier.
     pub id: String,
+    /// Whether this sensor is blocking.
     pub blocking: bool,
+    /// Policy for missing receipts.
     pub missing: MissingPolicy,
+    /// Whether the sensor receipt was found.
     pub presence: Presence,
+    /// Path to the sensor report file.
     pub report_path: String,
+    /// Optional path to a sensor comment file.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub comment_path: Option<String>,
+    /// The sensor's verdict.
     pub verdict: Verdict,
+    /// Whether findings were truncated.
     #[serde(default)]
     pub truncated: bool,
+    /// Errors encountered while processing.
     #[serde(default)]
     pub errors: Vec<String>,
+    /// Missing policy that was actually applied.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub missing_policy_applied: Option<MissingPolicy>,
+    /// Evaluated policy outcome.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub policy_outcome: Option<PolicyOutcome>,
 }
@@ -595,20 +698,30 @@ pub struct SensorSummary {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Highlight {
+    /// Sensor that produced the finding.
     pub sensor_id: String,
+    /// The highlighted finding.
     pub finding: Finding,
 }
 
 /// The director output: cockpit.report.v1.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CockpitReport {
+    /// Schema identifier string.
     pub schema: SchemaId,
+    /// Metadata about the cockpitctl tool.
     pub tool: ToolInfo,
+    /// Execution context.
     pub run: RunInfo,
+    /// Aggregate cockpit verdict.
     pub verdict: Verdict,
+    /// Sensor summaries.
     pub sensors: Vec<SensorSummary>,
+    /// Highlighted findings.
     pub highlights: Vec<Highlight>,
+    /// Snapshot of the evaluated policy.
     pub policy: PolicySnapshot,
+    /// Opaque extension data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }
@@ -616,24 +729,36 @@ pub struct CockpitReport {
 /// Snapshot of the policy configuration used during evaluation.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PolicySnapshot {
+    /// Whether warn was treated as fail.
     pub warn_is_fail: bool,
+    /// Maximum highlights allowed.
     pub max_highlights: usize,
+    /// Maximum findings per sensor.
     pub max_per_sensor_findings: usize,
+    /// Maximum CI annotations.
     pub max_annotations: usize,
+    /// Ordered section names.
     pub section_order: Vec<String>,
+    /// Per-sensor policy snapshots.
     pub sensors: Vec<PolicySensorSnapshot>,
 }
 
 /// Per-sensor policy snapshot embedded in the cockpit report.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PolicySensorSnapshot {
+    /// Sensor identifier.
     pub id: String,
+    /// Whether the sensor is blocking.
     pub blocking: bool,
+    /// Missing receipt policy.
     pub missing: MissingPolicy,
+    /// Comment section name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub section: Option<String>,
+    /// Required PR label.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub require_label: Option<String>,
+    /// Reproduction command.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repro: Option<String>,
 }
@@ -641,11 +766,17 @@ pub struct PolicySensorSnapshot {
 /// A stable key used for sorting findings deterministically.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FindingSortKey {
+    /// Numeric severity rank (lower = more severe).
     pub severity_rank: u8,
+    /// Sensor that produced the finding.
     pub sensor_id: String,
+    /// File path of the finding.
     pub path: String,
+    /// Line number.
     pub line: u32,
+    /// Finding code.
     pub code: String,
+    /// Finding message.
     pub message: String,
 }
 
@@ -756,13 +887,18 @@ pub fn safety_level_rank(s: &SafetyLevel) -> u8 {
 /// Reference to a finding that a fix addresses.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FindingRef {
+    /// Sensor that produced the referenced finding.
     pub sensor_id: String,
+    /// Fingerprint of the referenced finding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fingerprint: Option<String>,
+    /// Code of the referenced finding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
+    /// Tool name that produced the finding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool: Option<String>,
+    /// Check identifier of the finding.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub check_id: Option<String>,
 }
@@ -770,7 +906,9 @@ pub struct FindingRef {
 /// Preconditions that must hold before applying a fix.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Preconditions {
+    /// Required repository HEAD commit SHA.
     pub repo_head: String,
+    /// Expected receipt content digests.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub receipt_digests: Vec<String>,
 }
@@ -778,13 +916,19 @@ pub struct Preconditions {
 /// A single fix in a buildfix plan.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Fix {
+    /// Unique fix identifier.
     pub id: String,
+    /// Safety classification of the fix.
     pub safety: SafetyLevel,
+    /// Human-readable description.
     pub description: String,
+    /// Findings this fix addresses.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub finding_refs: Vec<FindingRef>,
+    /// Preconditions required before applying.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preconditions: Option<Preconditions>,
+    /// Opaque tool-specific fix payload.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }
@@ -792,8 +936,11 @@ pub struct Fix {
 /// A buildfix plan: a set of fixes to apply.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BuildfixPlan {
+    /// Schema identifier.
     pub schema: SchemaId,
+    /// Metadata about the producing tool.
     pub tool: ToolInfo,
+    /// List of fixes in the plan.
     pub fixes: Vec<Fix>,
 }
 
@@ -804,30 +951,42 @@ pub struct BuildfixPlan {
 /// Change in the overall verdict between baseline and current.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct VerdictChange {
+    /// Verdict status before the change.
     pub before: VerdictStatus,
+    /// Verdict status after the change.
     pub after: VerdictStatus,
 }
 
 /// Delta counts for findings.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CountDeltas {
+    /// Change in info-level finding count.
     pub info_delta: i64,
+    /// Change in warn-level finding count.
     pub warn_delta: i64,
+    /// Change in error-level finding count.
     pub error_delta: i64,
 }
 
 /// A finding that changed between baseline and current.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TrendFinding {
+    /// Sensor that produced the finding.
     pub sensor_id: String,
+    /// Finding code.
     pub code: String,
+    /// Human-readable message.
     pub message: String,
+    /// Optional file path.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
+    /// Optional line number.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub line: Option<u32>,
+    /// Stable fingerprint for deduplication.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fingerprint: Option<String>,
+    /// Severity level.
     pub severity: Severity,
 }
 
@@ -835,18 +994,26 @@ pub struct TrendFinding {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum TrendChange {
+    /// Finding is new in the current report.
     New,
+    /// Finding was fixed since the baseline.
     Fixed,
 }
 
 /// Full trend delta between a baseline and current report.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TrendDelta {
+    /// Change in the overall verdict.
     pub verdict_change: Option<VerdictChange>,
+    /// Aggregate count changes.
     pub count_deltas: CountDeltas,
+    /// Findings that are new.
     pub new_findings: Vec<TrendFinding>,
+    /// Findings that were fixed.
     pub fixed_findings: Vec<TrendFinding>,
+    /// Sensors added since baseline.
     pub sensors_added: Vec<String>,
+    /// Sensors removed since baseline.
     pub sensors_removed: Vec<String>,
 }
 
@@ -857,8 +1024,11 @@ pub struct TrendDelta {
 /// A matched finding for a fix.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MatchedFinding {
+    /// Sensor that produced the finding.
     pub sensor_id: String,
+    /// Finding code.
     pub code: String,
+    /// Fingerprint for deduplication.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub fingerprint: Option<String>,
 }
@@ -866,20 +1036,30 @@ pub struct MatchedFinding {
 /// Summary of a single fix for cockpit surfacing.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FixSummary {
+    /// Unique fix identifier.
     pub fix_id: String,
+    /// Sensor the fix applies to.
     pub sensor_id: String,
+    /// Safety classification.
     pub safety: SafetyLevel,
+    /// Human-readable description.
     pub description: String,
+    /// Findings matched to this fix.
     pub matched_findings: Vec<MatchedFinding>,
+    /// Whether the fix had unmatched finding refs.
     pub unmatched: bool,
 }
 
 /// Summary of buildfix plans for cockpit surfacing.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BuildfixSummary {
+    /// Individual fix summaries.
     pub fixes: Vec<FixSummary>,
+    /// Total number of fixes.
     pub total_fixes: usize,
+    /// Number of fixes with matched findings.
     pub matched_count: usize,
+    /// Number of fixes without matched findings.
     pub unmatched_count: usize,
 }
 
@@ -889,19 +1069,26 @@ pub const BUILDFIX_APPLY_REQUEST_SCHEMA_ID: &str = "buildfix.apply.request.v1";
 /// Structured request sent to a buildfix actuator command on stdin.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BuildfixApplyRequest {
+    /// Schema identifier.
     pub schema: SchemaId,
+    /// Maximum safety level for auto-apply.
     pub max_auto_apply_safety: SafetyLevel,
+    /// Whether matched findings are required.
     pub require_matched_finding: bool,
+    /// Fix summaries to apply.
     pub fixes: Vec<FixSummary>,
 }
 
 /// Structured response returned by a buildfix actuator command on stdout.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BuildfixActuatorResult {
+    /// IDs of successfully applied fixes.
     #[serde(default)]
     pub applied_fix_ids: Vec<String>,
+    /// IDs of skipped fixes.
     #[serde(default)]
     pub skipped_fix_ids: Vec<String>,
+    /// Error messages from the actuator.
     #[serde(default)]
     pub errors: Vec<String>,
 }
@@ -910,30 +1097,44 @@ pub struct BuildfixActuatorResult {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BuildfixApplyStatus {
+    /// Auto-apply was skipped.
     Skipped,
+    /// Fixes were applied.
     Applied,
+    /// Auto-apply failed.
     Failed,
 }
 
 /// Buildfix auto-apply evidence surfaced in `cockpit.report.v1` data.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BuildfixApplySummary {
+    /// Overall apply status.
     pub status: BuildfixApplyStatus,
+    /// Whether auto-apply was enabled.
     pub auto_apply_enabled: bool,
+    /// Maximum safety level used.
     pub max_auto_apply_safety: SafetyLevel,
+    /// Whether matched findings were required.
     pub require_matched_finding: bool,
+    /// IDs of candidate fixes considered.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub candidate_fix_ids: Vec<String>,
+    /// IDs of selected fixes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub selected_fix_ids: Vec<String>,
+    /// IDs of successfully applied fixes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub applied_fix_ids: Vec<String>,
+    /// IDs of skipped fixes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub skipped_fix_ids: Vec<String>,
+    /// Error messages from auto-apply.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub errors: Vec<String>,
+    /// Reason for the apply status.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Command used for actuation.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub actuator_command: Option<String>,
 }
@@ -977,12 +1178,15 @@ pub const POLICY_SIGNATURE_SCHEMA_ID: &str = "cockpit.policy_signature.v1";
 /// Signed evidence for the policy snapshot used to compute a cockpit verdict.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PolicySignatureEvidence {
+    /// Schema identifier.
     pub schema: SchemaId,
+    /// Signature algorithm used.
     pub algorithm: PolicySignatureAlgorithm,
     /// SHA-256 digest (hex) of canonical policy snapshot JSON bytes.
     pub policy_sha256: String,
     /// Signature (hex) produced by the configured algorithm.
     pub signature: String,
+    /// Optional key identifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub key_id: Option<String>,
 }
@@ -1003,10 +1207,14 @@ pub enum HookWhen {
 /// Configuration for a post-processing hook.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct HookConfig {
+    /// Hook name.
     pub name: String,
+    /// Shell command to run.
     pub command: String,
+    /// When the hook should run.
     #[serde(default)]
     pub when: HookWhen,
+    /// Timeout in milliseconds.
     #[serde(default = "default_hook_timeout_ms")]
     pub timeout_ms: u64,
 }
