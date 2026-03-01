@@ -1,0 +1,186 @@
+---
+source: crates/cockpitctl-ingest/tests/snapshot_edge_cases.rs
+assertion_line: 294
+expression: result.report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 2,
+      "warn": 1,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "alpha-pass",
+      "blocking": false,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/alpha-pass/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": {
+          "info": 2,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    },
+    {
+      "id": "beta-warn",
+      "blocking": false,
+      "missing": "warn",
+      "presence": "present",
+      "report_path": "artifacts/beta-warn/report.json",
+      "verdict": {
+        "status": "warn",
+        "counts": {
+          "info": 0,
+          "warn": 1,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    },
+    {
+      "id": "delta-skip",
+      "blocking": false,
+      "missing": "skip",
+      "presence": "present",
+      "report_path": "artifacts/delta-skip/report.json",
+      "verdict": {
+        "status": "skip",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    },
+    {
+      "id": "gamma-fail",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/gamma-fail/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "gamma-fail",
+      "finding": {
+        "severity": "error",
+        "check_id": "SEC-001",
+        "code": "sec/vuln",
+        "message": "Critical vulnerability",
+        "location": {
+          "path": "lib/auth.rs",
+          "line": 42
+        },
+        "help": "Upgrade dependency",
+        "url": "https://example.com/cve",
+        "fingerprint": "382cfd37520fc761fa363b63d70575e8ef5505f6f509d7b9c5f553dc1145ccde"
+      }
+    },
+    {
+      "sensor_id": "beta-warn",
+      "finding": {
+        "severity": "warn",
+        "code": "warn/coverage",
+        "message": "Coverage below 80%",
+        "fingerprint": "ee258ba80028cae7642f2bf1aedbdceac95edb0cefbfecb3c8a412d67f701715"
+      }
+    },
+    {
+      "sensor_id": "alpha-pass",
+      "finding": {
+        "severity": "info",
+        "code": "info/note-1",
+        "message": "All clear",
+        "fingerprint": "305ab3a273454cdae6d257b1be1bf15325ad19ec2ffaf845c5fdb597ea103105"
+      }
+    },
+    {
+      "sensor_id": "alpha-pass",
+      "finding": {
+        "severity": "info",
+        "code": "info/note-2",
+        "message": "Everything fine",
+        "fingerprint": "23dcead1810b315f1ca68bc6b6026bda40f5e4e86cd1a19af9c5cf3d274e745e"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "alpha-pass",
+        "blocking": false,
+        "missing": "fail"
+      },
+      {
+        "id": "beta-warn",
+        "blocking": false,
+        "missing": "warn"
+      },
+      {
+        "id": "delta-skip",
+        "blocking": false,
+        "missing": "skip"
+      },
+      {
+        "id": "gamma-fail",
+        "blocking": true,
+        "missing": "fail"
+      }
+    ]
+  }
+}

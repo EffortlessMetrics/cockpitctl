@@ -1,0 +1,111 @@
+---
+source: crates/cockpitctl-ingest/tests/snapshot_edge_cases.rs
+assertion_line: 406
+expression: result.report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 1,
+      "warn": 1,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "multi-severity",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/multi-severity/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 1,
+          "warn": 1,
+          "error": 1
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "multi-severity",
+      "finding": {
+        "severity": "error",
+        "check_id": "E001",
+        "code": "err/critical",
+        "message": "Critical error found",
+        "location": {
+          "path": "src/main.rs",
+          "line": 10,
+          "col": 5
+        },
+        "help": "Fix the critical error",
+        "fingerprint": "fp-err-001"
+      }
+    },
+    {
+      "sensor_id": "multi-severity",
+      "finding": {
+        "severity": "warn",
+        "check_id": "W001",
+        "code": "warn/deprecated",
+        "message": "Deprecated function used",
+        "location": {
+          "path": "src/lib.rs",
+          "line": 25
+        },
+        "url": "https://docs.example.com/deprecated",
+        "fingerprint": "5241e7e40fb098f06b7de05f4ac9fc78bdf31d87ec36185f4533e3fffba22083"
+      }
+    },
+    {
+      "sensor_id": "multi-severity",
+      "finding": {
+        "severity": "info",
+        "code": "info/metric",
+        "message": "Code coverage: 87%",
+        "fingerprint": "41e5a89ff9587e9591ae62374d360177335e385563f433ed49a217d6c0fd8820"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "multi-severity",
+        "blocking": true,
+        "missing": "fail"
+      }
+    ]
+  }
+}

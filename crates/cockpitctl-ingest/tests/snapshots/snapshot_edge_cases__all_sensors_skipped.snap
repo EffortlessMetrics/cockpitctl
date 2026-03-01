@@ -1,0 +1,118 @@
+---
+source: crates/cockpitctl-ingest/tests/snapshot_edge_cases.rs
+assertion_line: 454
+expression: result.report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "sensor-a",
+      "blocking": false,
+      "missing": "skip",
+      "presence": "present",
+      "report_path": "artifacts/sensor-a/report.json",
+      "verdict": {
+        "status": "skip",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    },
+    {
+      "id": "sensor-b",
+      "blocking": false,
+      "missing": "skip",
+      "presence": "present",
+      "report_path": "artifacts/sensor-b/report.json",
+      "verdict": {
+        "status": "skip",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    },
+    {
+      "id": "sensor-c",
+      "blocking": false,
+      "missing": "skip",
+      "presence": "present",
+      "report_path": "artifacts/sensor-c/report.json",
+      "verdict": {
+        "status": "skip",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    }
+  ],
+  "highlights": [],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "sensor-a",
+        "blocking": false,
+        "missing": "skip"
+      },
+      {
+        "id": "sensor-b",
+        "blocking": false,
+        "missing": "skip"
+      },
+      {
+        "id": "sensor-c",
+        "blocking": false,
+        "missing": "skip"
+      }
+    ]
+  }
+}
