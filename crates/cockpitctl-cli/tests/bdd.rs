@@ -1064,14 +1064,11 @@ fn main() {
     if skip_tags.is_empty() {
         futures::executor::block_on(runner.run(features));
     } else {
-        futures::executor::block_on(
-            runner
-                .filter_run(features, move |_, _, sc| {
-                    !sc.tags.iter().any(|t| {
-                        let tag = t.trim_start_matches('@');
-                        skip_tags.iter().any(|s| s.trim_start_matches('@') == tag)
-                    })
-                }),
-        );
+        futures::executor::block_on(runner.filter_run(features, move |_, _, sc| {
+            !sc.tags.iter().any(|t| {
+                let tag = t.trim_start_matches('@');
+                skip_tags.iter().any(|s| s.trim_start_matches('@') == tag)
+            })
+        }));
     }
 }
