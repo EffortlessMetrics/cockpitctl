@@ -79,6 +79,32 @@ Implemented:
   deterministic sidecar output in `artifacts/cockpit/policy.signature.json`.
 - Optional CLI overrides for enabling signing and selecting key source/ID.
 
+### 19-crate microcrate extraction and test expansion
+
+Implemented:
+- 9 new microcrates extracted for clean SRP (domain-buildfix, domain-signing,
+  domain-trend, io-hooks, io-schema, io-buildfix, io-policy-signing,
+  feature-state, feature-grid).
+- Comprehensive test expansion: doc tests, edge-case/error-path tests,
+  cross-crate integration tests, 6 fuzz targets, property-based testing across
+  5 crates, 29 golden/snapshot tests (34 snap files), and 47 E2E tests.
+- Feature gating: `default = []`, all optional features opt-in from CLI.
+
+### CI hardening
+
+Implemented:
+- No-default-features build and test steps to verify feature isolation.
+- Security audit workflow (weekly + on dependency changes).
+- MSRV (minimum supported Rust version) verification in CI.
+
+### Documentation and crates.io readiness
+
+Implemented:
+- Architecture documentation aligned with 19-crate layout.
+- Per-crate `README.md` files for all published crates.
+- Runnable doc-tested examples for core and types crates.
+- 9-tier dependency-ordered publish in release workflow.
+
 ---
 
 ## Long-term / exploratory
