@@ -1,0 +1,30 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: highlights
+---
+[
+  {
+    "sensor_id": "lint",
+    "finding": {
+      "severity": "warn",
+      "code": "W1",
+      "message": "Message for W1",
+      "location": {
+        "path": "src/lib.rs",
+        "line": 20
+      }
+    }
+  },
+  {
+    "sensor_id": "lint",
+    "finding": {
+      "severity": "info",
+      "code": "I1",
+      "message": "Message for I1",
+      "location": {
+        "path": "src/util.rs",
+        "line": 5
+      }
+    }
+  }
+]

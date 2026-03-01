@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use cockpitctl_sarif::cockpit_report_to_sarif;
+use cockpitctl_sarif::{cockpit_report_to_sarif, cockpit_report_to_sarif_json};
 use cockpitctl_types::*;
 
 // ── Helpers ─────────────────────────────────────────────────────────────
@@ -246,4 +246,161 @@ fn snapshot_all_severity_levels() {
 
     let sarif = cockpit_report_to_sarif(&report);
     insta::assert_json_snapshot!("all_severity_levels", sarif);
+}
+
+// ── New expanded snapshot scenarios ─────────────────────────────────────
+
+#[test]
+fn snapshot_single_sensor_sarif() {
+    let report = CockpitReport {
+        highlights: vec![make_highlight(
+            "builddiag",
+            Severity::Error,
+            "E0308",
+            "mismatched types: expected bool, found i32",
+            Some("src/main.rs"),
+            Some(10),
+            Some(5),
+            Some("fp_single"),
+        )],
+        verdict: Verdict {
+            status: VerdictStatus::Fail,
+            counts: VerdictCounts {
+                info: 0,
+                warn: 0,
+                error: 1,
+                suppressed: 0,
+            },
+            reasons: vec![],
+        },
+        ..base_report()
+    };
+
+    let sarif = cockpit_report_to_sarif(&report);
+    insta::assert_json_snapshot!("single_sensor_sarif", sarif);
+}
+
+#[test]
+fn snapshot_findings_without_location() {
+    let report = CockpitReport {
+        highlights: vec![
+            make_highlight(
+                "scanner",
+                Severity::Error,
+                "SEC-001",
+                "Critical vulnerability detected",
+                None,
+                None,
+                None,
+                Some("fp_no_loc_1"),
+            ),
+            make_highlight(
+                "scanner",
+                Severity::Warn,
+                "SEC-002",
+                "Outdated dependency found",
+                None,
+                None,
+                None,
+                None,
+            ),
+        ],
+        verdict: Verdict {
+            status: VerdictStatus::Fail,
+            counts: VerdictCounts {
+                info: 0,
+                warn: 1,
+                error: 1,
+                suppressed: 0,
+            },
+            reasons: vec![],
+        },
+        ..base_report()
+    };
+
+    let sarif = cockpit_report_to_sarif(&report);
+    insta::assert_json_snapshot!("findings_without_location", sarif);
+}
+
+#[test]
+fn snapshot_sarif_json_string() {
+    let report = CockpitReport {
+        highlights: vec![make_highlight(
+            "clippy",
+            Severity::Warn,
+            "clippy::todo",
+            "TODO found in source",
+            Some("src/lib.rs"),
+            Some(5),
+            None,
+            None,
+        )],
+        verdict: Verdict {
+            status: VerdictStatus::Warn,
+            counts: VerdictCounts {
+                info: 0,
+                warn: 1,
+                error: 0,
+                suppressed: 0,
+            },
+            reasons: vec![],
+        },
+        ..base_report()
+    };
+
+    let json_str = cockpit_report_to_sarif_json(&report).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    insta::assert_json_snapshot!("sarif_json_string_roundtrip", parsed);
+}
+
+#[test]
+fn snapshot_many_findings_same_rule() {
+    let report = CockpitReport {
+        highlights: vec![
+            make_highlight(
+                "clippy",
+                Severity::Warn,
+                "clippy::unwrap_used",
+                "unwrap in main.rs",
+                Some("src/main.rs"),
+                Some(10),
+                None,
+                None,
+            ),
+            make_highlight(
+                "clippy",
+                Severity::Warn,
+                "clippy::unwrap_used",
+                "unwrap in lib.rs",
+                Some("src/lib.rs"),
+                Some(20),
+                None,
+                None,
+            ),
+            make_highlight(
+                "clippy",
+                Severity::Warn,
+                "clippy::unwrap_used",
+                "unwrap in utils.rs",
+                Some("src/utils.rs"),
+                Some(30),
+                Some(5),
+                Some("fp_utils"),
+            ),
+        ],
+        verdict: Verdict {
+            status: VerdictStatus::Warn,
+            counts: VerdictCounts {
+                info: 0,
+                warn: 3,
+                error: 0,
+                suppressed: 0,
+            },
+            reasons: vec![],
+        },
+        ..base_report()
+    };
+
+    let sarif = cockpit_report_to_sarif(&report);
+    insta::assert_json_snapshot!("many_findings_same_rule", sarif);
 }

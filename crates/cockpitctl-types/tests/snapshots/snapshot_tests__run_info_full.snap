@@ -1,0 +1,37 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: sample_run()
+---
+{
+  "started_at": "2025-01-15T10:00:00Z",
+  "ended_at": "2025-01-15T10:01:30Z",
+  "duration_ms": 90000,
+  "host": {
+    "os": "linux",
+    "arch": "x86_64",
+    "hostname": "ci-runner-42"
+  },
+  "git": {
+    "repo": "octocat/hello-world",
+    "base_ref": "main",
+    "head_ref": "feature/foo",
+    "base_sha": "aaa1111",
+    "head_sha": "bbb2222",
+    "merge_base": "ccc3333"
+  },
+  "ci": {
+    "provider": "github",
+    "run_id": "12345",
+    "run_url": "https://github.com/octocat/hello-world/actions/runs/12345",
+    "job": "build"
+  },
+  "capabilities": {
+    "baseline": {
+      "status": "unavailable",
+      "reason": "no baseline found"
+    },
+    "git": {
+      "status": "available"
+    }
+  }
+}

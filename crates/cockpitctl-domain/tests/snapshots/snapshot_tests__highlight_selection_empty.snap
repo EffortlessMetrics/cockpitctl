@@ -1,0 +1,5 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: selected
+---
+[]

@@ -1,0 +1,24 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: capped
+---
+[
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "Message for E1",
+    "location": {
+      "path": "src/a.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "W1",
+    "message": "Message for W1",
+    "location": {
+      "path": "src/b.rs",
+      "line": 1
+    }
+  }
+]

@@ -1,0 +1,22 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: results
+---
+[
+    (
+        "nonblocking_pass",
+        Informational,
+    ),
+    (
+        "nonblocking_warn",
+        Informational,
+    ),
+    (
+        "nonblocking_skip",
+        Informational,
+    ),
+    (
+        "blocking_skip",
+        Allowed,
+    ),
+]

@@ -1,0 +1,61 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "builddiag",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/builddiag/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": []
+    }
+  ],
+  "highlights": [],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Build"
+    ],
+    "sensors": [
+      {
+        "id": "builddiag",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Build"
+      }
+    ]
+  }
+}

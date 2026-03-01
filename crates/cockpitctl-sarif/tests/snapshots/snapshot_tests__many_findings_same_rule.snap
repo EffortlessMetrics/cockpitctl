@@ -1,0 +1,89 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_tests.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "clippy::unwrap_used",
+              "shortDescription": {
+                "text": "[clippy] clippy::unwrap_used"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "clippy::unwrap_used",
+          "level": "warning",
+          "message": {
+            "text": "unwrap in main.rs"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/main.rs"
+                },
+                "region": {
+                  "startLine": 10
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "clippy::unwrap_used",
+          "level": "warning",
+          "message": {
+            "text": "unwrap in lib.rs"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/lib.rs"
+                },
+                "region": {
+                  "startLine": 20
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "clippy::unwrap_used",
+          "level": "warning",
+          "message": {
+            "text": "unwrap in utils.rs"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/utils.rs"
+                },
+                "region": {
+                  "startLine": 30,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_utils"
+          }
+        }
+      ]
+    }
+  ]
+}

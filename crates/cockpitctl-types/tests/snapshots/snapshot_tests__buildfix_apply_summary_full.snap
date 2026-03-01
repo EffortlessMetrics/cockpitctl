@@ -1,0 +1,25 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: summary
+---
+{
+  "status": "applied",
+  "auto_apply_enabled": true,
+  "max_auto_apply_safety": "safe",
+  "require_matched_finding": true,
+  "candidate_fix_ids": [
+    "fix-1",
+    "fix-2"
+  ],
+  "selected_fix_ids": [
+    "fix-1"
+  ],
+  "applied_fix_ids": [
+    "fix-1"
+  ],
+  "skipped_fix_ids": [
+    "fix-2"
+  ],
+  "reason": "auto-applied safe fix",
+  "actuator_command": "buildfix-actuator apply"
+}

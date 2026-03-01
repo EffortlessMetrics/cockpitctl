@@ -1,0 +1,18 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: fs
+---
+{
+  "fix_id": "fix-1",
+  "sensor_id": "builddiag",
+  "safety": "safe",
+  "description": "Add missing import",
+  "matched_findings": [
+    {
+      "sensor_id": "builddiag",
+      "code": "E0432",
+      "fingerprint": "fp-123"
+    }
+  ],
+  "unmatched": false
+}

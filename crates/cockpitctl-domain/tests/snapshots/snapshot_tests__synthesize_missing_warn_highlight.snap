@@ -1,0 +1,14 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: highlight
+---
+{
+  "sensor_id": "lint",
+  "finding": {
+    "severity": "warn",
+    "check_id": "cockpit.missing_receipt",
+    "code": "cockpit.missing_receipt",
+    "message": "Expected receipt for sensor `lint` but it was not found at `artifacts/lint/report.json`.",
+    "help": "Ensure the sensor ran and wrote artifacts/<sensor>/report.json."
+  }
+}
