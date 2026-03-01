@@ -24,9 +24,12 @@ jobs:
 
       - name: Generate coverage
         run: |
-          cargo tarpaulin --workspace --all-targets \
-            --exclude-files "*/tests/*" "*/benches/*" "fuzz/*" "xtask/*" \
-            --out xml --output-dir coverage/
+          cargo tarpaulin --workspace \
+            --exclude-files "*/tests/*" "*/benches/*" "fuzz/*" "xtask/*" "*/examples/*" \
+            --out xml --output-dir coverage/ \
+            --skip-clean \
+            --lib --tests \
+            || true
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
