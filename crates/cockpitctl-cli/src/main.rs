@@ -1016,6 +1016,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "feature-hooks")]
     fn write_hook_script(temp: &TempDir) -> std::path::PathBuf {
         #[cfg(windows)]
         {
@@ -1042,6 +1043,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "feature-buildfix")]
     fn write_actuator_script(temp: &TempDir, response_json: &str) -> std::path::PathBuf {
         #[cfg(windows)]
         {
@@ -1073,6 +1075,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "feature-buildfix")]
     fn write_plan_json(artifacts: &std::path::Path, sensor_id: &str, safety: &str) {
         let sensor_dir = artifacts.join(sensor_id);
         std::fs::create_dir_all(&sensor_dir).expect("create plan sensor dir");
@@ -1093,6 +1096,7 @@ mod tests {
         std::fs::write(sensor_dir.join("plan.json"), plan).expect("write plan.json");
     }
 
+    #[cfg(feature = "feature-policy-signing")]
     fn write_policy_key_file(temp: &TempDir, name: &str, bytes: &[u8]) -> std::path::PathBuf {
         let path = temp.path().join(name);
         std::fs::write(&path, bytes).expect("write policy key file");
@@ -1253,6 +1257,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "feature-schema")]
     fn cmd_validate_strict_no_schema_fails_all_candidates() {
         let temp = TempDir::new().expect("tempdir");
         let bad = r#"{ "tool": { "name": "x", "version": "1.0" } }"#;
@@ -1346,6 +1351,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "feature-hooks")]
     fn cmd_ingest_appends_hook_sections_to_comment() {
         let _guard = ENV_LOCK.lock().unwrap();
         unsafe {
@@ -1381,6 +1387,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "feature-buildfix")]
     fn cmd_ingest_buildfix_auto_apply_writes_apply_evidence() {
         let _guard = ENV_LOCK.lock().unwrap();
         unsafe {
@@ -1428,6 +1435,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "feature-policy-signing")]
     fn cmd_ingest_policy_signing_writes_signature_evidence() {
         let _guard = ENV_LOCK.lock().unwrap();
         unsafe {
@@ -1485,6 +1493,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "feature-policy-signing")]
     fn cmd_ingest_policy_signing_enabled_without_key_errors() {
         let _guard = ENV_LOCK.lock().unwrap();
         unsafe {

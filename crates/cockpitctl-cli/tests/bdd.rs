@@ -1044,5 +1044,34 @@ fn main() {
         .map(|d| Path::new(&d).join("features"))
         .unwrap_or_else(|_| PathBuf::from("features"));
 
-    futures::executor::block_on(IngestWorld::cucumber().with_default_cli().run(features));
+    // Build a tag filter that skips scenarios requiring disabled features.
+    let mut skip_tags: Vec<&str> = Vec::new();
+    if !cfg!(feature = "feature-hooks") {
+        skip_tags.push("@feature-hooks");
+    }
+    if !cfg!(feature = "feature-buildfix") {
+        skip_tags.push("@feature-buildfix");
+    }
+    if !cfg!(feature = "feature-policy-signing") {
+        skip_tags.push("@feature-policy-signing");
+    }
+    if !cfg!(feature = "feature-schema") {
+        skip_tags.push("@feature-schema");
+    }
+
+    let runner = IngestWorld::cucumber().with_default_cli();
+
+    if skip_tags.is_empty() {
+        futures::executor::block_on(runner.run(features));
+    } else {
+        futures::executor::block_on(
+            runner
+                .filter_run(features, move |_, _, sc| {
+                    !sc.tags.iter().any(|t| {
+                        let tag = t.trim_start_matches('@');
+                        skip_tags.iter().any(|s| s.trim_start_matches('@') == tag)
+                    })
+                }),
+        );
+    }
 }
