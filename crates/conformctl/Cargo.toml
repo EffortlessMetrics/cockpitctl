@@ -11,6 +11,7 @@ readme = "README.md"
 description = "CLI for conformance checking cockpitctl receipts and aggregated cockpit reports."
 keywords = ["ci", "conformance", "cli", "schema", "validation"]
 categories = ["command-line-utilities", "development-tools"]
+exclude = ["tests/"]
 
 [[bin]]
 name = "conformctl"

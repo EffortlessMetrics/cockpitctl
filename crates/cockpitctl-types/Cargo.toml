@@ -11,6 +11,7 @@ description = "Stable cockpitctl DTOs, enums, and embedded JSON schemas."
 readme = "README.md"
 keywords = ["ci", "types", "schema", "receipts", "deterministic"]
 categories = ["development-tools"]
+exclude = ["tests/"]
 
 [dependencies]
 serde.workspace = true

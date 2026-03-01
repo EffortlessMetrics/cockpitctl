@@ -11,6 +11,7 @@ description = "Facade crate that re-exports cockpitctl microcrates as one depend
 readme = "README.md"
 keywords = ["ci", "cockpit", "facade", "receipts", "policy"]
 categories = ["development-tools"]
+exclude = ["tests/"]
 
 [dependencies]
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }

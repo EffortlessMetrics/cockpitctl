@@ -96,6 +96,38 @@ jobs:
             -p cockpitctl \
             --no-verify --registry crates-io
 
+      - name: Verify package contents (no junk shipped)
+        run: |
+          FAIL=0
+          JUNK_PATTERN='(fixtures/|docs/|\.snap$|\.snap\.new$|target/|\.github/|tests/)'
+          for crate in cockpitctl-types cockpitctl-core cockpitctl conformctl; do
+            echo "=== Checking $crate ==="
+            FILES=$(cargo package --list -p "$crate" --allow-dirty 2>&1)
+            if echo "$FILES" | grep -qE "$JUNK_PATTERN"; then
+              echo "FAIL: $crate ships unexpected files:"
+              echo "$FILES" | grep -E "$JUNK_PATTERN"
+              FAIL=1
+            else
+              echo "  OK: $crate — no junk files"
+            fi
+          done
+          if [ "$FAIL" -ne 0 ]; then
+            echo "FAILED: package content hygiene check"
+            exit 1
+          fi
+
+      - name: Verify embedded schemas in cockpitctl-types package
+        run: |
+          FILES=$(cargo package --list -p cockpitctl-types --allow-dirty)
+          for schema in sensor.report.v1.json cockpit.report.v1.json buildfix.plan.v1.json cockpit.promote.v1.json; do
+            if echo "$FILES" | grep -q "$schema"; then
+              echo "  OK: $schema included"
+            else
+              echo "FAIL: $schema missing from cockpitctl-types package"
+              exit 1
+            fi
+          done
+
       - name: Publish dry-run (types only, safe pre-first-publish)
         run: cargo publish --dry-run -p cockpitctl-types
 
