@@ -1,0 +1,22 @@
+[policy]
+warn_is_fail = true
+max_highlights = 100
+max_per_sensor_findings = 1000
+max_annotations = 500
+max_receipts = 200
+max_receipt_bytes = 10485760
+section_order = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+
+[sensors.sensor-with-many-dashes-in-name]
+blocking = true
+missing = "fail"
+section = "A"
+
+[sensors.another_sensor_underscores]
+blocking = false
+missing = "skip"
+section = "B"
+
+[sensors.z]
+blocking = true
+missing = "warn"

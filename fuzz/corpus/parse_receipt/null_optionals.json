@@ -1,0 +1,10 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "null-tester", "version": "1.0.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 1, "warn": 0, "error": 0 }, "reasons": [] },
+  "findings": [
+    { "severity": "info", "code": "N1", "message": "all nullable fields null", "location": null, "help": null, "url": null, "fingerprint": null, "data": null, "check_id": null }
+  ],
+  "artifacts": []
+}

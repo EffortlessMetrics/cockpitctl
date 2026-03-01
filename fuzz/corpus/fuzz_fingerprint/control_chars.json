@@ -1,0 +1,6 @@
+{
+  "severity": "info",
+  "code": "\u0000\u0001\u0002\u0003\t\n\r",
+  "message": "control\u0000chars\nnewlines\ttabs",
+  "location": { "path": "../../../etc/passwd", "line": 4294967295 }
+}

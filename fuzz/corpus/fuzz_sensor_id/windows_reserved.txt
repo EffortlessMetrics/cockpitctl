@@ -1,0 +1,6 @@
+CON
+PRN
+AUX
+NUL
+COM1
+LPT1

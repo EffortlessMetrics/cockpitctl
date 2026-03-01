@@ -1,0 +1,15 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": "cockpitctl", "version": "0.3.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 2 }, "reasons": [] },
+  "sensors": [
+    { "id": "blocking-sensor", "blocking": true, "missing": "fail", "presence": "present", "report_path": "x", "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 1 }, "reasons": [] }, "truncated": false, "errors": [], "policy_outcome": "blocked" },
+    { "id": "non-blocking", "blocking": false, "missing": "skip", "presence": "present", "report_path": "y", "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 1 }, "reasons": [] }, "truncated": false, "errors": [], "policy_outcome": "informational" }
+  ],
+  "highlights": [
+    { "sensor_id": "non-blocking", "finding": { "severity": "error", "code": "NB1", "message": "non-blocking error", "location": { "path": "a.rs", "line": 1 } } },
+    { "sensor_id": "blocking-sensor", "finding": { "severity": "error", "code": "B1", "message": "blocking error", "location": { "path": "a.rs", "line": 1 } } }
+  ],
+  "policy": { "warn_is_fail": false, "max_highlights": 7, "max_per_sensor_findings": 20, "max_annotations": 25, "section_order": [], "sensors": [] }
+}

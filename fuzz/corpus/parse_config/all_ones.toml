@@ -1,0 +1,13 @@
+[policy]
+warn_is_fail = true
+max_highlights = 1
+max_per_sensor_findings = 1
+max_annotations = 1
+max_receipts = 1
+section_order = ["Only"]
+
+[sensors.only-sensor]
+blocking = true
+missing = "fail"
+section = "Only"
+repro = "echo 'hello world'"

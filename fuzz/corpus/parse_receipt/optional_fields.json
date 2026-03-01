@@ -1,0 +1,11 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "fuzz", "version": "0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] },
+  "findings": [
+    { "severity": "info", "check_id": "check.001", "code": "C001", "message": "with check_id", "fingerprint": "fp-001" },
+    { "severity": "warn", "check_id": "check.002", "code": "C002", "message": "with help and url", "help": "do this", "url": "https://example.com" }
+  ],
+  "artifacts": []
+}
