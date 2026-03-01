@@ -1,0 +1,13 @@
+---
+source: crates/cockpitctl-feature-grid/tests/feature_grid_snapshots.rs
+expression: "render_grid(&[\"--disable-hooks\"])"
+---
+cli_args: ["--disable-hooks"]
+
+feature              compiled     runtime      grid_match
+--------------------------------------------------------
+hooks                false        false        true      
+buildfix             false        false        true      
+policy-signing       false        false        true      
+
+RuntimeFeatureState: hooks=false, buildfix=false, policy_signing=false

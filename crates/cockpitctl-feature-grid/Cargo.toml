@@ -14,3 +14,6 @@ categories = ["development-tools"]
 
 [dependencies]
 cockpitctl-feature-state = { path = "../cockpitctl-feature-state", version = "0.3.0", default-features = false }
+
+[dev-dependencies]
+insta.workspace = true
