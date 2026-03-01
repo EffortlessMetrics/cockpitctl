@@ -1,0 +1,103 @@
+---
+source: crates/cockpitctl-sarif/tests/comprehensive_tests.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "A",
+              "shortDescription": {
+                "text": "[s] A"
+              }
+            },
+            {
+              "id": "B",
+              "shortDescription": {
+                "text": "[s] B"
+              }
+            },
+            {
+              "id": "C",
+              "shortDescription": {
+                "text": "[s] C"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "A",
+          "level": "error",
+          "message": {
+            "text": "with fp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "a.rs"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "deadbeef"
+          }
+        },
+        {
+          "ruleId": "B",
+          "level": "warning",
+          "message": {
+            "text": "no fp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "b.rs"
+                },
+                "region": {
+                  "startLine": 2
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "C",
+          "level": "note",
+          "message": {
+            "text": "with fp"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "c.rs"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "cafebabe"
+          }
+        }
+      ]
+    }
+  ]
+}
