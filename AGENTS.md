@@ -70,6 +70,8 @@ Workspace layout:
 - `cockpitctl-domain`: pure determinism, selection logic, normalization
 - `cockpitctl-ingest`: orchestration + ports + precedence + exit semantics
 - `cockpitctl-io`: filesystem adapters + safety limits + traversal protection
+- `cockpitctl-exec`: process execution adapters (hooks, actuator, key loading)
+- `cockpitctl-validate`: JSON schema validation adapters
 - `cockpitctl-render`: markdown renderer + budgets + stable markers
 - `cockpitctl-core`: facade crate — re-exports all microcrates as one dependency
 - `cockpitctl-cli`: clap + subcommands (only clap crate)
