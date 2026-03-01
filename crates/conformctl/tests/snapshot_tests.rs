@@ -51,7 +51,10 @@ fn normalize_output(s: &str) -> String {
         result.push_str(&normalized);
         result.push('\n');
     }
+    // Strip Windows .exe suffixes so snapshots match on all platforms
     result
+        .replace("conformctl.exe", "conformctl")
+        .replace("cockpitctl.exe", "cockpitctl")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
