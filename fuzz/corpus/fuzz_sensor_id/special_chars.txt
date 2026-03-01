@@ -1,0 +1,15 @@
+sensor with spaces
+sensor;rm -rf /
+sensor|cat /etc/passwd
+sensor$(whoami)
+sensor`id`
+sensor<script>
+sensor&amp;&amp;echo
+sensor%00null
+sensor\0
+sensor	tab
+sensor
+newline
+${{env.SECRET}}
+sensor🦀emoji
+sensor™©®

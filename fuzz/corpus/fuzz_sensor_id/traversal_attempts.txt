@@ -1,0 +1,10 @@
+../etc/passwd
+..%2f..%2fetc%2fpasswd
+../../secrets
+..\windows\system32
+sensor/../../../etc/shadow
+....//....//etc
+..\..\..
+%2e%2e%2f
+sensor/../../
+./../../../

@@ -1,0 +1,70 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": "cockpitctl", "version": "0.3.0" },
+  "run": { "started_at": "2026-04-01T10:00:00Z" },
+  "verdict": {
+    "status": "fail",
+    "counts": { "info": 5, "warn": 8, "error": 10 },
+    "reasons": ["policy_violation", "build_failure"]
+  },
+  "sensors": [
+    {
+      "id": "builddiag",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/builddiag/report.json",
+      "verdict": { "status": "fail", "counts": { "info": 2, "warn": 3, "error": 5 }, "reasons": ["build_failure"] },
+      "truncated": true,
+      "errors": [],
+      "policy_outcome": "blocked"
+    },
+    {
+      "id": "clippy",
+      "blocking": false,
+      "missing": "warn",
+      "presence": "present",
+      "report_path": "artifacts/clippy/report.json",
+      "verdict": { "status": "warn", "counts": { "info": 3, "warn": 5, "error": 5 }, "reasons": [] },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    }
+  ],
+  "highlights": [
+    { "sensor_id": "builddiag", "finding": { "severity": "error", "code": "E0001", "message": "syntax error in main.rs", "location": { "path": "src/main.rs", "line": 1 } } },
+    { "sensor_id": "builddiag", "finding": { "severity": "error", "code": "E0002", "message": "type mismatch", "location": { "path": "src/main.rs", "line": 15 } } },
+    { "sensor_id": "builddiag", "finding": { "severity": "error", "code": "E0003", "message": "undefined variable", "location": { "path": "src/lib.rs", "line": 22 } } },
+    { "sensor_id": "builddiag", "finding": { "severity": "error", "code": "E0004", "message": "missing return type", "location": { "path": "src/lib.rs", "line": 44 } } },
+    { "sensor_id": "builddiag", "finding": { "severity": "error", "code": "E0005", "message": "borrow checker violation", "location": { "path": "src/lib.rs", "line": 88 } } },
+    { "sensor_id": "builddiag", "finding": { "severity": "warn", "code": "W0001", "message": "unused import", "location": { "path": "src/main.rs", "line": 2 } } },
+    { "sensor_id": "builddiag", "finding": { "severity": "warn", "code": "W0002", "message": "dead code detected", "location": { "path": "src/utils.rs", "line": 10 } } },
+    { "sensor_id": "builddiag", "finding": { "severity": "warn", "code": "W0003", "message": "unnecessary clone", "location": { "path": "src/utils.rs", "line": 30 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "warn", "code": "clippy.needless_return", "message": "unneeded return statement", "location": { "path": "src/lib.rs", "line": 5 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "warn", "code": "clippy.redundant_closure", "message": "redundant closure found", "location": { "path": "src/lib.rs", "line": 20 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "warn", "code": "clippy.useless_vec", "message": "useless use of vec!", "location": { "path": "src/main.rs", "line": 8 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "warn", "code": "clippy.map_flatten", "message": "called map(..).flatten()", "location": { "path": "src/main.rs", "line": 12 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "warn", "code": "clippy.clone_on_copy", "message": "using clone on a Copy type", "location": { "path": "src/utils.rs", "line": 5 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "error", "code": "clippy.unwrap_used", "message": "used unwrap() on a Result", "location": { "path": "src/main.rs", "line": 25 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "error", "code": "clippy.panic", "message": "explicit panic", "location": { "path": "src/lib.rs", "line": 60 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "error", "code": "clippy.index_out_of_bounds", "message": "index out of bounds", "location": { "path": "src/lib.rs", "line": 75 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "error", "code": "clippy.transmute", "message": "transmute used", "location": { "path": "src/lib.rs", "line": 80 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "error", "code": "clippy.mem_forget", "message": "std::mem::forget used", "location": { "path": "src/lib.rs", "line": 90 } } },
+    { "sensor_id": "builddiag", "finding": { "severity": "info", "code": "I0001", "message": "note: consider using const", "location": { "path": "src/main.rs", "line": 3 } } },
+    { "sensor_id": "builddiag", "finding": { "severity": "info", "code": "I0002", "message": "help: add type annotation", "location": { "path": "src/main.rs", "line": 7 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "info", "code": "clippy.cognitive_complexity", "message": "function has high cognitive complexity", "location": { "path": "src/lib.rs", "line": 100 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "info", "code": "clippy.too_many_arguments", "message": "function has too many arguments", "location": { "path": "src/lib.rs", "line": 110 } } },
+    { "sensor_id": "clippy", "finding": { "severity": "info", "code": "clippy.missing_docs", "message": "missing documentation", "location": { "path": "src/lib.rs", "line": 1 } } }
+  ],
+  "policy": {
+    "warn_is_fail": true,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": ["Highlights", "Diagnostics", "Other"],
+    "sensors": [
+      { "id": "builddiag", "blocking": true, "missing": "fail", "section": "Diagnostics" },
+      { "id": "clippy", "blocking": false, "missing": "warn", "section": "Diagnostics" }
+    ]
+  }
+}

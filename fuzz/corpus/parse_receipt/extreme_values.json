@@ -1,0 +1,19 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "huge", "version": "99.99.99" },
+  "run": {
+    "started_at": "2026-12-31T23:59:59Z",
+    "ended_at": "2027-01-01T00:00:00Z",
+    "duration_ms": 18446744073709551615
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": { "info": 999999, "warn": 999999, "error": 999999, "suppressed": 999999 },
+    "reasons": ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]
+  },
+  "findings": [],
+  "artifacts": [
+    { "id": "art-1", "path": "out/report.html", "mime": "text/html" },
+    { "id": "art-2", "path": "out/coverage.lcov", "mime": "text/plain", "schema": "lcov.v1" }
+  ]
+}
