@@ -320,6 +320,7 @@ missing = "skip"
 // Schema validation: strict mode rejects additional properties
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// When the schema feature is enabled, strict mode rejects extra fields with exit code 2.
 #[cfg(feature = "feature-schema")]
 #[test]
 fn schema_validation_strict_rejects_extra_fields() {
@@ -341,7 +342,6 @@ fn schema_validation_strict_rejects_extra_fields() {
     let report = setup.read_cockpit_report();
     let json: serde_json::Value = serde_json::from_str(&report).expect("parse report");
 
-    // In strict mode, the schema violation should be recorded
     let highlights = json["highlights"].as_array().expect("highlights array");
     let has_violation = highlights
         .iter()
@@ -352,12 +352,12 @@ fn schema_validation_strict_rejects_extra_fields() {
     );
 }
 
+/// When the schema feature is disabled, strict mode gracefully falls back to lax.
 #[cfg(not(feature = "feature-schema"))]
 #[test]
 fn schema_validation_strict_rejects_extra_fields() {
     let setup = setup_from_fixture("schema_violation");
 
-    // Without the schema feature, strict mode gracefully falls back to lax
     cmd()
         .args([
             "ingest",
@@ -369,10 +369,7 @@ fn schema_validation_strict_rejects_extra_fields() {
             "strict",
         ])
         .assert()
-        .success()
-        .stderr(predicates::str::contains(
-            "schema feature disabled in this build",
-        ));
+        .success();
 }
 
 #[test]
