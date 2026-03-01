@@ -171,7 +171,7 @@ jobs:
 
 ## Test coverage
 
-cockpitctl has 1800+ tests across 19 crates, spanning all major modalities:
+cockpitctl has 2400+ tests across 19 crates, spanning all major modalities:
 
 | Modality | Description |
 |----------|-------------|
@@ -181,7 +181,7 @@ cockpitctl has 1800+ tests across 19 crates, spanning all major modalities:
 | BDD scenarios | Cucumber/Gherkin scenarios for ingest, validate, init |
 | Golden/snapshot | Deterministic output verification via insta |
 | Property-based | Proptest across types, domain, ingest, render, IO, conform |
-| Fuzz testing | 6 cargo-fuzz targets with corpus seeds |
+| Fuzz testing | 9 cargo-fuzz targets with corpus seeds |
 | Stress tests | Caps, budgets, and load testing |
 | Doc tests | Executable examples in rustdoc for public APIs |
 | Benchmarks | Performance benchmarks for critical paths |

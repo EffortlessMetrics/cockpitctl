@@ -31,7 +31,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Packaging hygiene check scripts for CI (`check_state.js`, `check_state.ps1`)
   (PR #50)
 
-#### Testing expansion (2000+ tests across 19 crates)
+#### Testing expansion (2400+ tests across 19 crates)
 
 Unit and integration tests:
 - Comprehensive unit tests across all 19 microcrates (PR #9)
@@ -53,6 +53,11 @@ Unit and integration tests:
 - Render annotation, marker, and template tests — 36 tests (PR #88)
 - Conform ordering and validation edge case tests — 25 tests (PR #89)
 - Ingest port boundary tests with test doubles — 24 tests (PR #90)
+- IO adapter edge case tests — 27 tests (PR #97)
+- Core facade integration tests — 13 tests (PR #101)
+- Cross-crate contract tests — 13 tests (PR #106)
+- Domain trend expansion — 12 tests (PR #107)
+- IO sub-crate tests — 23 tests (PR #108)
 
 Golden and snapshot tests:
 - Golden/snapshot test expansion: 29 test functions, 34 snapshot files covering
@@ -67,6 +72,7 @@ BDD scenarios:
 - BDD scenarios for validate, init, error handling, policy, and schema
   modes (PR #38)
 - BDD expansion for error handling, safety, and precedence (PR #70)
+- BDD feature-gated scenarios — 8 scenarios, 144 total (PR #95)
 
 E2E tests:
 - E2E test expansion: 47 new end-to-end tests covering CLI invocations, config
@@ -78,17 +84,25 @@ E2E tests:
 - SARIF crate test coverage expansion (PR #55)
 - conformctl integration and E2E tests (PR #57)
 - CLI completeness and help/version tests — 28 tests (PR #74)
+- CLI help/error E2E tests — 19 tests (PR #94)
+- SARIF advanced output tests — 25 tests (PR #96)
+- Config precedence E2E tests — 13 tests (PR #104)
 
 Fuzz and property-based testing:
 - Fuzz testing expansion: 6 targets covering receipt parsing, policy evaluation,
   and rendering (PR #30)
 - Fuzz corpus seed expansion for all 6 targets (PR #61)
+- Fuzz target expansion — 3 new targets with 30+ seeds (PR #103)
 - Property-based testing (proptest) across 5 core crates — types, domain,
   ingest, render, and IO (PR #31)
 - Conform crate property-based test expansion (PR #72)
+- Render proptest budget invariants — 10 tests (PR #98)
+- Domain proptest invariants — 17 tests (PR #99)
+- Ingest proptest roundtrips — 12 tests (PR #100)
 
 Stress and platform tests:
 - Stress and load tests for caps and budgets (PR #67)
+- Stress tests for memory limits — 17 tests (PR #105)
 - Cross-platform path normalization tests (PR #73)
 
 Feature flag and compilation tests:
@@ -98,6 +112,7 @@ Examples and benchmarks:
 - Runnable examples for `cockpitctl-core` and `cockpitctl-types` crates (PR #33)
 - Validated benchmarks and usage examples (PR #62)
 - Xtask crate integration tests (PR #65)
+- Xtask conformance expansion — 16 tests (PR #102)
 
 Mutation testing:
 - Improved mutation testing config and manual CI workflow (PR #35)
@@ -123,6 +138,7 @@ Mutation testing:
 - Executable doc tests for public APIs (PR #58)
 - CONTRIBUTING.md with development workflow, architecture guide, testing overview,
   code style, and PR guidelines (PR #91)
+- CHANGELOG waves 19–22 update (PR #92)
 
 #### Release infrastructure
 - 9-tier dependency-ordered publish in release workflow
@@ -130,6 +146,7 @@ Mutation testing:
 
 ### Fixed
 - Feature gating: feature flags now properly propagate from CLI to feature-state crate
+- Feature-grid snapshot: default features alignment fix (PR #93)
 - CI packaging: all 19 crates included in cargo package verification
 - Release workflow: 9-tier dependency-ordered publish with proper index waits
 
