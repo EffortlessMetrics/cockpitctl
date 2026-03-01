@@ -1,0 +1,14 @@
+---
+source: crates/conformctl/tests/snapshot_tests.rs
+expression: normalize_output(&stderr)
+---
+conformance check: <PATH>
+  ok: schema validation passed
+  ok: survivability check passed
+  ok: path-hygiene passed
+  ok: ordering passed
+  ok: reason-lint passed
+  ok: tool-error-identity passed
+  ok: sensor-id-format passed
+  ok: artifact-pointers passed
+conformance: PASS

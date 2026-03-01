@@ -1,0 +1,11 @@
+---
+source: crates/conformctl/tests/snapshot_tests.rs
+expression: normalize_output(&stderr)
+---
+conform-dir: <PATH>
+
+Summary:
+  Sensor               Status
+  ------               ------
+
+conform-dir: <PATH>

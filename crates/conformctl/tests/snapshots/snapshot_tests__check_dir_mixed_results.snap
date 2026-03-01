@@ -1,0 +1,25 @@
+---
+source: crates/conformctl/tests/snapshot_tests.rs
+expression: normalize_output(&stderr)
+---
+conform-dir: <PATH>
+
+--- sensor: bad ---
+  FAIL: parse JSON: key must be a string at line 1 column 3
+
+--- sensor: good ---
+  ok: schema validation passed
+  ok: survivability check passed
+  ok: path-hygiene passed
+  ok: ordering passed
+  ok: reason-lint passed
+  ok: tool-error-identity passed
+  ok: sensor-id-format passed
+  ok: artifact-pointers passed
+
+Summary:
+  Sensor               Status
+  ------               ------
+  bad                  FAIL
+  good                 PASS
+conformctl error: conform-dir: one or more sensors failed conformance checks

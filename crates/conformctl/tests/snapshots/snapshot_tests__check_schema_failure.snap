@@ -1,0 +1,10 @@
+---
+source: crates/conformctl/tests/snapshot_tests.rs
+expression: normalize_output(&stderr)
+---
+conformance check: <PATH>
+  FAIL: schema validation errors:
+    - "run" is a required property
+    - "verdict" is a required property
+    - "findings" is a required property
+conformctl error: conformance failed with 3 violation(s)

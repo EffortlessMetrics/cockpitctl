@@ -1,0 +1,8 @@
+---
+source: crates/conformctl/tests/snapshot_tests.rs
+expression: normalize_output(&stderr)
+---
+conformance check: <PATH>
+  ok: schema validation passed
+  FAIL: ordering: finding[1] is out of order (severity_rank=1, code=W1) < finding[0] (severity_rank=2, code=I1)
+conformctl error: conformance failed with 1 violation(s)

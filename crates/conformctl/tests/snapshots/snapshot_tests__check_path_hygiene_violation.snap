@@ -1,0 +1,8 @@
+---
+source: crates/conformctl/tests/snapshot_tests.rs
+expression: normalize_output(&stderr)
+---
+conformance check: <PATH>
+  ok: schema validation passed
+  FAIL: path-hygiene: finding[0]: path traversal (contains ..): ../../../etc/passwd
+conformctl error: conformance failed with 1 violation(s)
