@@ -1,0 +1,33 @@
+---
+source: crates/conformctl/tests/snapshot_tests.rs
+expression: normalized
+---
+conform-dir: <PATH>
+
+--- sensor: alpha ---
+  ok: schema validation passed
+  ok: survivability check passed
+  ok: path-hygiene passed
+  ok: ordering passed
+  ok: reason-lint passed
+  ok: tool-error-identity passed
+  ok: sensor-id-format passed
+  ok: artifact-pointers passed
+
+--- sensor: beta ---
+  ok: schema validation passed
+  ok: survivability check passed
+  ok: path-hygiene passed
+  ok: ordering passed
+  ok: reason-lint passed
+  ok: tool-error-identity passed
+  ok: sensor-id-format passed
+  ok: artifact-pointers passed
+
+Summary:
+  Sensor               Status
+  ------               ------
+  alpha                PASS
+  beta                 PASS
+
+conform-dir: <PATH>

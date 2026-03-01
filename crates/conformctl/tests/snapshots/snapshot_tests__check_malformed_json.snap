@@ -1,0 +1,5 @@
+---
+source: crates/conformctl/tests/snapshot_tests.rs
+expression: normalize_output(&stderr)
+---
+conformctl error: --ordering requires --sensor-id
