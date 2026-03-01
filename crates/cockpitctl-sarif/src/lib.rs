@@ -151,6 +151,44 @@ fn highlight_to_sarif_result(h: &Highlight) -> SarifResult {
 }
 
 /// Convert a cockpit report to a SARIF v2.1.0 log.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_sarif::cockpit_report_to_sarif;
+/// use cockpitctl_types::{
+///     CockpitReport, PolicySnapshot, RunInfo, ToolInfo,
+///     Verdict, VerdictCounts, VerdictStatus,
+/// };
+/// use std::collections::BTreeMap;
+///
+/// let report = CockpitReport {
+///     schema: "cockpit.report.v1".into(),
+///     tool: ToolInfo { name: "cockpitctl".into(), version: "0.1.0".into(), commit: None },
+///     run: RunInfo {
+///         started_at: "2026-01-01T00:00:00Z".into(),
+///         ended_at: None, duration_ms: None, host: None,
+///         git: None, ci: None, capabilities: BTreeMap::new(),
+///     },
+///     verdict: Verdict {
+///         status: VerdictStatus::Pass,
+///         counts: VerdictCounts { info: 0, warn: 0, error: 0, suppressed: 0 },
+///         reasons: vec![],
+///     },
+///     sensors: vec![],
+///     highlights: vec![],
+///     policy: PolicySnapshot {
+///         warn_is_fail: false, max_highlights: 5,
+///         max_per_sensor_findings: 20, max_annotations: 10,
+///         section_order: vec![], sensors: vec![],
+///     },
+///     data: None,
+/// };
+///
+/// let sarif = cockpit_report_to_sarif(&report);
+/// assert_eq!(sarif.version, "2.1.0");
+/// assert_eq!(sarif.runs.len(), 1);
+/// ```
 pub fn cockpit_report_to_sarif(report: &CockpitReport) -> SarifLog {
     // Collect unique rules by code (BTreeMap for determinism).
     let mut rules_map: BTreeMap<String, SarifRule> = BTreeMap::new();
@@ -189,6 +227,43 @@ pub fn cockpit_report_to_sarif(report: &CockpitReport) -> SarifLog {
 }
 
 /// Convert a cockpit report to a pretty-printed SARIF JSON string.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_sarif::cockpit_report_to_sarif_json;
+/// use cockpitctl_types::{
+///     CockpitReport, PolicySnapshot, RunInfo, ToolInfo,
+///     Verdict, VerdictCounts, VerdictStatus,
+/// };
+/// use std::collections::BTreeMap;
+///
+/// let report = CockpitReport {
+///     schema: "cockpit.report.v1".into(),
+///     tool: ToolInfo { name: "cockpitctl".into(), version: "0.1.0".into(), commit: None },
+///     run: RunInfo {
+///         started_at: "2026-01-01T00:00:00Z".into(),
+///         ended_at: None, duration_ms: None, host: None,
+///         git: None, ci: None, capabilities: BTreeMap::new(),
+///     },
+///     verdict: Verdict {
+///         status: VerdictStatus::Pass,
+///         counts: VerdictCounts { info: 0, warn: 0, error: 0, suppressed: 0 },
+///         reasons: vec![],
+///     },
+///     sensors: vec![],
+///     highlights: vec![],
+///     policy: PolicySnapshot {
+///         warn_is_fail: false, max_highlights: 5,
+///         max_per_sensor_findings: 20, max_annotations: 10,
+///         section_order: vec![], sensors: vec![],
+///     },
+///     data: None,
+/// };
+///
+/// let json = cockpit_report_to_sarif_json(&report).unwrap();
+/// assert!(json.contains("\"version\": \"2.1.0\""));
+/// ```
 pub fn cockpit_report_to_sarif_json(report: &CockpitReport) -> Result<String, serde_json::Error> {
     let sarif = cockpit_report_to_sarif(report);
     let mut json = serde_json::to_string_pretty(&sarif)?;

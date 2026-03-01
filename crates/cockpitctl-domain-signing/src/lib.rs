@@ -10,17 +10,77 @@ use sha2::{Digest, Sha256};
 ///
 /// Canonicalization is the compact serde JSON encoding of `PolicySnapshot`.
 /// Determinism relies on stable field ordering and pre-sorted vectors.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain_signing::canonical_policy_snapshot_bytes;
+/// use cockpitctl_types::PolicySnapshot;
+///
+/// let policy = PolicySnapshot {
+///     warn_is_fail: false,
+///     max_highlights: 5,
+///     max_per_sensor_findings: 20,
+///     max_annotations: 10,
+///     section_order: vec![],
+///     sensors: vec![],
+/// };
+/// let bytes = canonical_policy_snapshot_bytes(&policy).unwrap();
+/// let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+/// assert_eq!(json["max_highlights"], 5);
+/// ```
 pub fn canonical_policy_snapshot_bytes(policy: &PolicySnapshot) -> Result<Vec<u8>> {
     serde_json::to_vec(policy).context("serialize policy snapshot for signing")
 }
 
 /// Compute SHA-256 digest (hex) of the canonical policy snapshot bytes.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain_signing::policy_snapshot_sha256_hex;
+/// use cockpitctl_types::PolicySnapshot;
+///
+/// let policy = PolicySnapshot {
+///     warn_is_fail: false,
+///     max_highlights: 5,
+///     max_per_sensor_findings: 20,
+///     max_annotations: 10,
+///     section_order: vec![],
+///     sensors: vec![],
+/// };
+/// let hex = policy_snapshot_sha256_hex(&policy).unwrap();
+/// assert_eq!(hex.len(), 64); // SHA-256 hex string
+/// ```
 pub fn policy_snapshot_sha256_hex(policy: &PolicySnapshot) -> Result<String> {
     let payload = canonical_policy_snapshot_bytes(policy)?;
     Ok(hex::encode(Sha256::digest(payload)))
 }
 
 /// Sign the policy snapshot with the configured algorithm.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain_signing::sign_policy_snapshot;
+/// use cockpitctl_types::{PolicySignatureAlgorithm, PolicySnapshot};
+///
+/// let policy = PolicySnapshot {
+///     warn_is_fail: false,
+///     max_highlights: 5,
+///     max_per_sensor_findings: 20,
+///     max_annotations: 10,
+///     section_order: vec![],
+///     sensors: vec![],
+/// };
+/// let evidence = sign_policy_snapshot(
+///     &policy,
+///     PolicySignatureAlgorithm::HmacSha256,
+///     b"my-secret-key",
+///     Some("key-v1".into()),
+/// ).unwrap();
+/// assert_eq!(evidence.signature.len(), 64);
+/// ```
 pub fn sign_policy_snapshot(
     policy: &PolicySnapshot,
     algorithm: PolicySignatureAlgorithm,

@@ -11,6 +11,53 @@ use cockpitctl_types::{
 /// - `FindingRef.sensor_id` matches the sensor
 /// - If `fingerprint` is set, it must match
 /// - If `code` is set, it must match
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain_buildfix::match_buildfix_plan;
+/// use cockpitctl_types::{
+///     BuildfixPlan, Finding, FindingRef, Fix, Highlight, Location,
+///     SafetyLevel, Severity, ToolInfo,
+/// };
+///
+/// let plan = BuildfixPlan {
+///     schema: "buildfix.plan.v1".into(),
+///     tool: ToolInfo { name: "tool".into(), version: "1.0.0".into(), commit: None },
+///     fixes: vec![Fix {
+///         id: "fix-1".into(),
+///         safety: SafetyLevel::Safe,
+///         description: "Fix it".into(),
+///         finding_refs: vec![FindingRef {
+///             sensor_id: "clippy".into(),
+///             fingerprint: None,
+///             code: Some("W001".into()),
+///             tool: None,
+///             check_id: None,
+///         }],
+///         preconditions: None,
+///         data: None,
+///     }],
+/// };
+///
+/// let highlights = vec![Highlight {
+///     sensor_id: "clippy".into(),
+///     finding: Finding {
+///         severity: Severity::Warn,
+///         check_id: None,
+///         code: "W001".into(),
+///         message: "warning".into(),
+///         location: None,
+///         help: None,
+///         url: None,
+///         fingerprint: None,
+///         data: None,
+///     },
+/// }];
+///
+/// let summary = match_buildfix_plan("clippy", &plan, &highlights);
+/// assert_eq!(summary.matched_count, 1);
+/// ```
 pub fn match_buildfix_plan(
     sensor_id: &str,
     plan: &BuildfixPlan,
@@ -88,6 +135,30 @@ fn safety_rank(s: &SafetyLevel) -> u8 {
 ///
 /// Selection is deterministic and preserves the existing sorted order from
 /// `BuildfixSummary` (`safe` -> `guarded` -> `unsafe`, then sensor/fix id).
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain_buildfix::select_auto_apply_fixes;
+/// use cockpitctl_types::{BuildfixSummary, FixSummary, SafetyLevel};
+///
+/// let summary = BuildfixSummary {
+///     fixes: vec![FixSummary {
+///         fix_id: "f1".into(),
+///         sensor_id: "s".into(),
+///         safety: SafetyLevel::Safe,
+///         description: "desc".into(),
+///         matched_findings: vec![],
+///         unmatched: false,
+///     }],
+///     total_fixes: 1,
+///     matched_count: 1,
+///     unmatched_count: 0,
+/// };
+///
+/// let selected = select_auto_apply_fixes(&summary, SafetyLevel::Safe, false);
+/// assert_eq!(selected.len(), 1);
+/// ```
 pub fn select_auto_apply_fixes(
     summary: &BuildfixSummary,
     max_auto_apply_safety: SafetyLevel,

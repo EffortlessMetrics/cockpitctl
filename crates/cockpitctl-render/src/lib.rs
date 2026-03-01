@@ -60,6 +60,46 @@ fn extract_policy_signature(report: &CockpitReport) -> Option<PolicySignatureEvi
     serde_json::from_value(raw.clone()).ok()
 }
 
+/// Render the cockpit PR comment markdown from a report and config.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_render::render_comment;
+/// use cockpitctl_types::{
+///     CockpitConfig, CockpitReport, PolicySnapshot, RunInfo, ToolInfo,
+///     Verdict, VerdictCounts, VerdictStatus,
+/// };
+/// use std::collections::BTreeMap;
+///
+/// let report = CockpitReport {
+///     schema: "cockpit.report.v1".into(),
+///     tool: ToolInfo { name: "cockpitctl".into(), version: "0.1.0".into(), commit: None },
+///     run: RunInfo {
+///         started_at: "2026-01-01T00:00:00Z".into(),
+///         ended_at: None, duration_ms: None, host: None,
+///         git: None, ci: None, capabilities: BTreeMap::new(),
+///     },
+///     verdict: Verdict {
+///         status: VerdictStatus::Pass,
+///         counts: VerdictCounts { info: 0, warn: 0, error: 0, suppressed: 0 },
+///         reasons: vec![],
+///     },
+///     sensors: vec![],
+///     highlights: vec![],
+///     policy: PolicySnapshot {
+///         warn_is_fail: false, max_highlights: 5,
+///         max_per_sensor_findings: 20, max_annotations: 10,
+///         section_order: vec![], sensors: vec![],
+///     },
+///     data: None,
+/// };
+/// let cfg = CockpitConfig::default();
+///
+/// let md = render_comment(&report, &cfg);
+/// assert!(md.contains("## Cockpit"));
+/// assert!(md.contains("cockpit:begin"));
+/// ```
 pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
     let mut out = String::new();
 
@@ -192,8 +232,22 @@ pub fn render_comment(report: &CockpitReport, cfg: &CockpitConfig) -> String {
 
 /// Append externally supplied comment sections before the cockpit end marker.
 ///
+/// Append extra markdown sections before the end marker.
+///
 /// This is used by post-processing hooks to contribute extra markdown sections
 /// while preserving stable sticky markers.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_render::append_comment_sections;
+///
+/// let base = "<!-- cockpit:begin -->\n## Cockpit\n<!-- cockpit:end -->";
+/// let sections = vec![("Notes".to_string(), "Extra info".to_string())];
+/// let result = append_comment_sections(base, &sections);
+/// assert!(result.contains("### Notes"));
+/// assert!(result.contains("cockpit:end"));
+/// ```
 pub fn append_comment_sections(comment_md: &str, sections: &[(String, String)]) -> String {
     if sections.is_empty() {
         return comment_md.to_string();
