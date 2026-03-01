@@ -499,6 +499,194 @@ fn given_config_max_highlights(world: &mut IngestWorld, max_highlights: usize) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Given steps — Safety / error-handling helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[given(expr = "a raw sensor directory {string} with a valid receipt")]
+fn given_raw_sensor_directory(world: &mut IngestWorld, sensor_id: String) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let sensor_dir = base.join("artifacts").join(&sensor_id);
+    let _ = fs::create_dir_all(&sensor_dir);
+    let receipt = serde_json::json!({
+        "schema": "sensor.report.v1",
+        "tool": { "name": "hostile", "version": "1.0.0" },
+        "run": { "started_at": "2026-02-02T11:59:00Z" },
+        "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] },
+        "findings": []
+    });
+    let _ = fs::write(
+        sensor_dir.join("report.json"),
+        serde_json::to_string_pretty(&receipt).unwrap(),
+    );
+}
+
+#[given(expr = "a dynamic artifacts directory with {int} sensors prefixed {string}")]
+fn given_dynamic_artifacts_n_sensors(world: &mut IngestWorld, count: usize, prefix: String) {
+    let temp_dir = TempDir::new().expect("failed to create temp dir");
+    let base = temp_dir.path().to_path_buf();
+
+    let mut sensors = Vec::new();
+    for i in 0..count {
+        let id = format!("{}{:04}", prefix, i);
+        write_sensor_receipt(&base, &id, "pass", &[]);
+        sensors.push(id);
+    }
+
+    world.fixture_path = Some(base);
+    world.temp_dir = Some(temp_dir);
+    world.dynamic_sensors = sensors;
+    world.extra_args.clear();
+    world.stdout.clear();
+    world.stderr.clear();
+    world.baseline_report_path = None;
+    world.hook_script_path = None;
+    world.actuator_script_path = None;
+    world.policy_sign_key_path = None;
+}
+
+fn write_cockpit_config_extended(
+    base: &Path,
+    sensors: &[String],
+    blocking: &[String],
+    max_highlights: Option<usize>,
+    warn_is_fail: bool,
+    schema_validation: Option<&str>,
+) {
+    let max_hl = max_highlights.unwrap_or(10);
+    let sv = schema_validation.unwrap_or("lax");
+    let mut config = format!(
+        "[policy]\nwarn_is_fail = {}\nmax_highlights = {}\nmax_per_sensor_findings = 50\nmax_annotations = 25\nsection_order = [\"Other\"]\nschema_validation = \"{}\"\n\n",
+        warn_is_fail, max_hl, sv
+    );
+    for sensor in sensors {
+        let is_blocking = blocking.contains(sensor);
+        config.push_str(&format!(
+            "[sensors.{}]\nblocking = {}\nmissing = \"fail\"\nsection = \"Other\"\n\n",
+            sensor, is_blocking
+        ));
+    }
+    fs::write(base.join("cockpit.toml"), config).expect("failed to write cockpit.toml");
+}
+
+#[given("a cockpit config for all prefixed sensors blocking")]
+fn given_config_all_prefixed_blocking(world: &mut IngestWorld) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let sensors = world.dynamic_sensors.clone();
+    write_cockpit_config(base, &sensors, &sensors, None);
+}
+
+#[given(expr = "a cockpit config with schema_validation {string} and blocking sensors {string}")]
+fn given_config_schema_validation_blocking(
+    world: &mut IngestWorld,
+    sv: String,
+    blocking_csv: String,
+) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let blocking: Vec<String> = blocking_csv
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+    let sensors = world.dynamic_sensors.clone();
+    write_cockpit_config_extended(base, &sensors, &blocking, None, false, Some(&sv));
+}
+
+#[given(expr = "a cockpit config with warn_is_fail {word} and blocking sensors {string}")]
+fn given_config_warn_is_fail(world: &mut IngestWorld, wif: String, blocking_csv: String) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let blocking: Vec<String> = blocking_csv
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+    let sensors = world.dynamic_sensors.clone();
+    let warn_is_fail = wif == "true";
+    write_cockpit_config_extended(base, &sensors, &blocking, None, warn_is_fail, None);
+}
+
+#[given(expr = "dynamic sensor {string} has a schema-violating receipt")]
+fn given_sensor_schema_violating(world: &mut IngestWorld, sensor_id: String) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let sensor_dir = base.join("artifacts").join(&sensor_id);
+    fs::create_dir_all(&sensor_dir).expect("failed to create sensor dir");
+    // Missing required fields like "verdict" but valid JSON with wrong schema shape
+    let receipt = serde_json::json!({
+        "schema": "sensor.report.v1",
+        "tool": { "name": sensor_id, "version": "1.0.0" },
+        "run": { "started_at": "2026-02-02T11:59:00Z" },
+        "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] },
+        "findings": [],
+        "extra_forbidden_field": "this violates strict schema"
+    });
+    fs::write(
+        sensor_dir.join("report.json"),
+        serde_json::to_string_pretty(&receipt).unwrap(),
+    )
+    .expect("failed to write schema-violating receipt");
+}
+
+#[given(expr = "dynamic sensor {string} has corrupt JSON content")]
+fn given_sensor_corrupt_json(world: &mut IngestWorld, sensor_id: String) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let sensor_dir = base.join("artifacts").join(&sensor_id);
+    fs::create_dir_all(&sensor_dir).expect("failed to create sensor dir");
+    fs::write(sensor_dir.join("report.json"), "{ not valid json !!!")
+        .expect("failed to write corrupt receipt");
+}
+
+#[given(expr = "dynamic sensor {string} has truncated JSON content")]
+fn given_sensor_truncated_json(world: &mut IngestWorld, sensor_id: String) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let sensor_dir = base.join("artifacts").join(&sensor_id);
+    fs::create_dir_all(&sensor_dir).expect("failed to create sensor dir");
+    fs::write(
+        sensor_dir.join("report.json"),
+        "{\"schema\": \"sensor.report.v1\"",
+    )
+    .expect("failed to write truncated receipt");
+}
+
+#[given(expr = "dynamic sensor {string} has content {string}")]
+fn given_sensor_raw_content(world: &mut IngestWorld, sensor_id: String, content: String) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let sensor_dir = base.join("artifacts").join(&sensor_id);
+    fs::create_dir_all(&sensor_dir).expect("failed to create sensor dir");
+    fs::write(sensor_dir.join("report.json"), &content)
+        .expect("failed to write sensor receipt content");
+}
+
+#[given("an empty artifacts subdirectory")]
+fn given_empty_artifacts_subdir(world: &mut IngestWorld) {
+    let dir = world.fixture_path.as_ref().expect("temp directory not set");
+    fs::create_dir_all(dir.join("artifacts")).expect("failed to create artifacts dir");
+}
+
+#[given(expr = "the file {string} is deleted")]
+fn given_file_deleted(world: &mut IngestWorld, rel_path: String) {
+    let base = world.fixture_path.as_ref().expect("fixture path not set");
+    let path = base.join(&rel_path);
+    let _ = fs::remove_file(&path);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Then steps — Sensor count bounds
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[then(expr = "the sensors count is at most {int}")]
+fn sensors_count_at_most(world: &mut IngestWorld, maximum: usize) {
+    let report = world.read_report();
+    let sensors = report
+        .get("sensors")
+        .and_then(|s| s.as_array())
+        .expect("sensors array not found");
+
+    assert!(
+        sensors.len() <= maximum,
+        "expected at most {} sensors, got {}",
+        maximum,
+        sensors.len()
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // When steps
 // ─────────────────────────────────────────────────────────────────────────────
 
