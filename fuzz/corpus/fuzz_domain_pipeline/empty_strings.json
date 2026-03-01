@@ -1,0 +1,10 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "x", "version": "" },
+  "run": { "started_at": "" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] },
+  "findings": [
+    { "severity": "error", "code": "", "message": "" }
+  ],
+  "artifacts": []
+}

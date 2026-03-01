@@ -1,0 +1,4 @@
+[policy]
+warn_is_fail = false
+max_highlights = 7
+schema_validation = "strict"

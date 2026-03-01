@@ -21,6 +21,7 @@ libfuzzer-sys = "0.4.10"
 serde_json = "1.0.149"
 toml = "0.9.8"
 cockpitctl-types = { path = "../crates/cockpitctl-types" }
+cockpitctl-domain = { path = "../crates/cockpitctl-domain" }
 cockpitctl-sarif = { path = "../crates/cockpitctl-sarif" }
 cockpitctl-render = { path = "../crates/cockpitctl-render" }
 cockpitctl-conform = { path = "../crates/cockpitctl-conform" }
@@ -67,6 +68,27 @@ bench = false
 [[bin]]
 name = "fuzz_schema_validate"
 path = "fuzz_targets/fuzz_schema_validate.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_domain_pipeline"
+path = "fuzz_targets/fuzz_domain_pipeline.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_render_annotations"
+path = "fuzz_targets/fuzz_render_annotations.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_fingerprint"
+path = "fuzz_targets/fuzz_fingerprint.rs"
 test = false
 doc = false
 bench = false

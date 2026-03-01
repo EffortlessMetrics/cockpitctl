@@ -1,0 +1,19 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "fuzz", "version": "0.0.1" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 1 }, "reasons": [] },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "TRAVERSAL",
+      "message": "path with special chars: ../../../etc/passwd",
+      "location": { "path": "../../../etc/shadow", "line": 0 },
+      "help": "This is a malicious path",
+      "url": "https://example.com/<script>alert(1)</script>",
+      "fingerprint": "custom-fp-\u0000null-bytes",
+      "data": { "nested": { "deep": [1, 2, 3, null, true, false, "string", 1e308] } }
+    }
+  ],
+  "artifacts": []
+}

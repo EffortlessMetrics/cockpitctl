@@ -1,0 +1,25 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "builddiag", "version": "1.2.3" },
+  "run": { "started_at": "2026-06-15T14:30:00Z" },
+  "verdict": {
+    "status": "fail",
+    "counts": { "info": 2, "warn": 3, "error": 5 },
+    "reasons": ["build_error", "lint_error"]
+  },
+  "findings": [
+    { "severity": "error", "code": "E0308", "message": "mismatched types", "location": { "path": "src/main.rs", "line": 10 } },
+    { "severity": "error", "code": "E0599", "message": "no method named `foo`", "location": { "path": "src/lib.rs", "line": 42, "col": 5 } },
+    { "severity": "error", "code": "E0425", "message": "cannot find value `x`", "location": { "path": "src/lib.rs", "line": 99 } },
+    { "severity": "error", "code": "E0382", "message": "use of moved value", "location": { "path": "src/main.rs", "line": 55 }, "help": "consider cloning" },
+    { "severity": "error", "code": "E0277", "message": "trait bound not satisfied", "location": { "path": "src/utils.rs", "line": 7 }, "url": "https://doc.rust-lang.org/error-index.html#E0277" },
+    { "severity": "warn", "code": "W0001", "message": "unused import", "location": { "path": "src/main.rs", "line": 1 } },
+    { "severity": "warn", "code": "W0002", "message": "dead code", "location": { "path": "src/lib.rs", "line": 200 } },
+    { "severity": "warn", "code": "W0003", "message": "unreachable pattern", "location": { "path": "src/lib.rs", "line": 150 } },
+    { "severity": "info", "code": "I0001", "message": "build took 42s" },
+    { "severity": "info", "code": "I0002", "message": "compiled 15 crates" }
+  ],
+  "artifacts": [
+    { "path": "target/debug/binary", "kind": "executable" }
+  ]
+}

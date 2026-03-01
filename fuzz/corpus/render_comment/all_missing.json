@@ -1,0 +1,15 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": "cockpitctl", "version": "0.3.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 3 }, "reasons": ["missing_receipt"] },
+  "sensors": [
+    { "id": "a", "blocking": true, "missing": "fail", "presence": "missing", "report_path": "artifacts/a/report.json", "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": ["missing_receipt"] }, "truncated": false, "errors": ["receipt not found"], "missing_policy_applied": "fail", "policy_outcome": "blocked" },
+    { "id": "b", "blocking": false, "missing": "skip", "presence": "missing", "report_path": "artifacts/b/report.json", "verdict": { "status": "skip", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] }, "truncated": false, "errors": [], "missing_policy_applied": "skip", "policy_outcome": "informational" },
+    { "id": "c", "blocking": true, "missing": "warn", "presence": "missing", "report_path": "artifacts/c/report.json", "verdict": { "status": "warn", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": ["missing_receipt"] }, "truncated": false, "errors": ["receipt not found"], "missing_policy_applied": "warn", "policy_outcome": "allowed" }
+  ],
+  "highlights": [
+    { "sensor_id": "_cockpit", "finding": { "severity": "error", "code": "cockpit.missing_receipt", "message": "Expected receipt for sensor `a` but it was not found." } }
+  ],
+  "policy": { "warn_is_fail": false, "max_highlights": 7, "max_per_sensor_findings": 20, "max_annotations": 25, "section_order": [], "sensors": [{ "id": "a", "blocking": true, "missing": "fail" }, { "id": "b", "blocking": false, "missing": "skip" }, { "id": "c", "blocking": true, "missing": "warn" }] }
+}

@@ -1,0 +1,7 @@
+[
+  { "severity": "error", "code": "E1", "message": "first", "location": { "path": "a.rs", "line": 10 } },
+  { "severity": "error", "code": "E1", "message": "first", "location": { "path": "a.rs", "line": 10 } },
+  { "severity": "warn", "code": "W1", "message": "warn", "location": { "path": "a.rs", "line": 5 } },
+  { "severity": "info", "code": "I1", "message": "info" },
+  { "severity": "error", "code": "E2", "message": "second", "location": { "path": "b.rs", "line": 1 } }
+]

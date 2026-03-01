@@ -1,0 +1,11 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": "cockpitctl", "version": "0.3.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 1 }, "reasons": [] },
+  "sensors": [],
+  "highlights": [
+    { "sensor_id": "s", "finding": { "severity": "error", "code": "C", "message": "msg with\nnewlines\tand\ttabs and <html> &amp; \"quotes\"", "location": { "path": "path/with spaces/and (parens)/file.rs", "line": 1 } } }
+  ],
+  "policy": { "warn_is_fail": false, "max_highlights": 7, "max_per_sensor_findings": 20, "max_annotations": 25, "section_order": [], "sensors": [] }
+}

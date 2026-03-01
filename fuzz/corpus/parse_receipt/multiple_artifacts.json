@@ -1,0 +1,12 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "multi-artifact", "version": "1.0.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] },
+  "findings": [],
+  "artifacts": [
+    { "path": "target/release/bin", "kind": "executable" },
+    { "path": "target/coverage/lcov.info", "kind": "coverage" },
+    { "path": "target/doc/index.html", "kind": "documentation" }
+  ]
+}

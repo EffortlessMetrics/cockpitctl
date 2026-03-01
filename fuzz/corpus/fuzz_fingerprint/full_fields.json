@@ -1,0 +1,10 @@
+{
+  "severity": "warn",
+  "code": "W001",
+  "message": "detailed warning message with context",
+  "location": { "path": "src/handlers/auth.rs", "line": 42, "col": 10 },
+  "help": "try using a different approach",
+  "url": "https://example.com/docs/W001",
+  "fingerprint": "abc123def456",
+  "data": { "extra": "info", "nested": { "key": "value" } }
+}

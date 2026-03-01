@@ -80,6 +80,45 @@ JSON schemas.
 cargo +nightly fuzz run fuzz_schema_validate
 ```
 
+### fuzz_domain_pipeline
+
+Fuzzes the full domain pipeline: `summarize_sensor_report` → `select_highlights`
+→ `build_cockpit_report`. Parses arbitrary bytes as a `SensorReport`, then runs
+the complete summarization, highlight selection, and report construction chain.
+
+**Goal:** Ensure the domain pipeline (sort, cap, fingerprint, verdict aggregation)
+never panics on any valid `SensorReport`.
+
+```bash
+cargo +nightly fuzz run fuzz_domain_pipeline
+```
+
+### fuzz_render_annotations
+
+Fuzzes annotation rendering paths: `render_annotations`,
+`render_github_annotations`, and `append_comment_sections`. Parses arbitrary
+bytes as a `CockpitReport`, then exercises all annotation rendering code paths.
+
+**Goal:** Ensure annotation rendering and comment section appending never panic
+on any valid `CockpitReport`.
+
+```bash
+cargo +nightly fuzz run fuzz_render_annotations
+```
+
+### fuzz_fingerprint
+
+Fuzzes fingerprint derivation and finding sort logic: `derive_fingerprint`,
+`finding_sort_key`, `sort_findings`, `cap_findings`, and `compute_counts`.
+Accepts both single `Finding` JSON and `Vec<Finding>` arrays.
+
+**Goal:** Ensure deterministic ordering and fingerprinting never panic on any
+valid `Finding` data.
+
+```bash
+cargo +nightly fuzz run fuzz_fingerprint
+```
+
 ## Running Fuzz Tests
 
 Basic usage (runs indefinitely until stopped or crash found):
@@ -91,6 +130,9 @@ cargo +nightly fuzz run sarif_convert
 cargo +nightly fuzz run render_comment
 cargo +nightly fuzz run fuzz_sensor_id
 cargo +nightly fuzz run fuzz_schema_validate
+cargo +nightly fuzz run fuzz_domain_pipeline
+cargo +nightly fuzz run fuzz_render_annotations
+cargo +nightly fuzz run fuzz_fingerprint
 ```
 
 Run for a specific duration:
@@ -116,6 +158,9 @@ Seed inputs are stored in `corpus/<target>/`:
 - `corpus/render_comment/` — `CockpitReport` JSON for rendering (valid, empty, large, single-finding)
 - `corpus/fuzz_sensor_id/` — Sensor ID strings (valid, traversal attacks, special chars, long, empty)
 - `corpus/fuzz_schema_validate/` — JSON for schema validation (valid receipt, invalid schema, missing fields, extras, malformed)
+- `corpus/fuzz_domain_pipeline/` — `SensorReport` JSON for full domain pipeline (valid, inconsistent counts, edge cases)
+- `corpus/fuzz_render_annotations/` — `CockpitReport` JSON for annotation rendering (empty, truncated, special chars, blocking)
+- `corpus/fuzz_fingerprint/` — `Finding` JSON for fingerprint/sort logic (single, arrays, duplicates, edge cases)
 
 The fuzzer will use these as starting points and mutate them to explore edge cases.
 
@@ -187,13 +232,35 @@ cargo +nightly fuzz coverage parse_receipt
 - `validate_cockpit_schema` for cockpit report validation
 - Invalid JSON, wrong schema versions, missing required fields
 
+### fuzz_domain_pipeline
+
+- Full domain pipeline: summarize → select highlights → build report
+- Finding sort, cap, and fingerprint derivation on untrusted SensorReport data
+- Inconsistent verdict counts detection and handling
+- Overall verdict aggregation from sensor summaries
+
+### fuzz_render_annotations
+
+- `render_annotations` with arbitrary highlight data
+- `render_github_annotations` (workflow command format)
+- `append_comment_sections` with rendered comment + arbitrary sections
+- Edge cases: empty highlights, special characters in messages, truncation
+
+### fuzz_fingerprint
+
+- `derive_fingerprint` with arbitrary sensor ID and Finding data
+- `finding_sort_key` derivation for deterministic ordering
+- `sort_findings` on Vec<Finding> (sort stability)
+- `cap_findings` at various limits (0, 1, 100, usize::MAX)
+- `compute_counts` on arbitrary finding slices
+
 ## Integration with CI
 
 For CI integration, run fuzzing for a bounded time:
 
 ```bash
 # Quick smoke test (60 seconds per target)
-for target in parse_receipt parse_config sarif_convert render_comment fuzz_sensor_id fuzz_schema_validate; do
+for target in parse_receipt parse_config sarif_convert render_comment fuzz_sensor_id fuzz_schema_validate fuzz_domain_pipeline fuzz_render_annotations fuzz_fingerprint; do
   cargo +nightly fuzz run "$target" -- -max_total_time=60
 done
 
@@ -212,8 +279,11 @@ From CLAUDE.md, receipts are untrusted input. The fuzzer helps ensure:
 4. Comment rendering must not panic on valid CockpitReport
 5. Sensor ID validation must not panic (safety-critical for path traversal)
 6. Schema validation must not panic on any input
-7. Memory usage is bounded (via file size caps at IO boundary)
-8. Invalid input yields proper errors instead of crashes
+7. Domain pipeline (sort, cap, fingerprint, verdict) must not panic
+8. Annotation rendering must not panic on any valid CockpitReport
+9. Fingerprint derivation must not panic on any valid Finding
+10. Memory usage is bounded (via file size caps at IO boundary)
+11. Invalid input yields proper errors instead of crashes
 
 ## Tips
 
