@@ -8,12 +8,19 @@ use crate::checks;
 
 /// Which conformance checks to run.
 pub struct ConformChecks {
+    /// Check finding paths for traversal or absolute paths.
     pub path_hygiene: bool,
+    /// Check deterministic ordering of findings.
     pub ordering: bool,
+    /// Lint verdict reason tokens.
     pub reason_lint: bool,
+    /// Ensure fail verdicts have findings or reasons.
     pub survivability: bool,
+    /// Check tool error identity convention.
     pub tool_error_identity: bool,
+    /// Validate sensor ID format.
     pub sensor_id_format: bool,
+    /// Validate artifact pointer paths.
     pub artifact_pointers: bool,
 }
 
@@ -29,10 +36,12 @@ pub struct Violation {
 /// Result of running conformance checks on a single report.
 #[derive(Debug)]
 pub struct ConformResult {
+    /// List of violations found.
     pub violations: Vec<Violation>,
 }
 
 impl ConformResult {
+    /// Returns `true` if no violations were found.
     pub fn is_pass(&self) -> bool {
         self.violations.is_empty()
     }

@@ -3,6 +3,8 @@
 //! Provides JSON Schema validation for sensor and cockpit reports using
 //! either embedded schema bytes or a user-supplied schema file path.
 
+#![warn(missing_docs)]
+
 use anyhow::{Context, Result};
 use cockpitctl_ingest::{SchemaValidationResult, SchemaValidator};
 use jsonschema::Validator;

@@ -3,11 +3,16 @@
 //! Enumerates features that can be conditionally present at runtime and
 //! maps each feature to its CLI flag, comment marker, and sidecar file.
 
+#![warn(missing_docs)]
+
 /// Metadata describing how a feature maps to CLI/runtime artifacts.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct FeatureContract {
+    /// The feature this contract describes.
     pub feature: Feature,
+    /// Short name of the feature.
     pub name: &'static str,
+    /// CLI flag to disable this feature.
     pub disable_flag: &'static str,
     /// Comment marker contributed when the feature renders markdown sections.
     pub comment_marker: Option<&'static str>,
@@ -33,16 +38,21 @@ pub struct FeatureContract {
 /// ```
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Feature {
+    /// Post-processing hooks feature.
     Hooks,
+    /// Automatic build-fix application feature.
     Buildfix,
+    /// Policy snapshot signing feature.
     PolicySigning,
 }
 
 impl Feature {
+    /// Returns a slice of all known features.
     pub const fn all() -> &'static [Feature] {
         &[Feature::Hooks, Feature::Buildfix, Feature::PolicySigning]
     }
 
+    /// Returns the string name of this feature.
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Hooks => "hooks",
@@ -51,6 +61,7 @@ impl Feature {
         }
     }
 
+    /// Returns the CLI flag that disables this feature.
     pub const fn disable_flag(self) -> &'static str {
         match self {
             Self::Hooks => "--disable-hooks",
@@ -59,6 +70,7 @@ impl Feature {
         }
     }
 
+    /// Returns whether this feature was compiled in.
     pub const fn is_available(self) -> bool {
         match self {
             Self::Hooks => cfg!(feature = "feature-hooks"),
@@ -67,6 +79,7 @@ impl Feature {
         }
     }
 
+    /// Returns the full contract metadata for this feature.
     pub const fn contract(self) -> FeatureContract {
         match self {
             Self::Hooks => FeatureContract {
@@ -96,6 +109,7 @@ impl Feature {
         }
     }
 
+    /// Parse a feature from its string name.
     pub fn from_name(name: &str) -> Option<Self> {
         match name {
             "hooks" => Some(Self::Hooks),
@@ -126,6 +140,7 @@ pub struct RuntimeFeatureState {
 }
 
 impl RuntimeFeatureState {
+    /// Create a new runtime feature state from explicit flags.
     pub const fn new(hooks: bool, buildfix: bool, policy_signing: bool) -> Self {
         Self {
             hooks,
@@ -134,6 +149,7 @@ impl RuntimeFeatureState {
         }
     }
 
+    /// Create state from compile-time availability and disable flags.
     pub const fn from_disable_flags(
         hooks_compiled: bool,
         hooks_disabled: bool,
@@ -149,6 +165,7 @@ impl RuntimeFeatureState {
         )
     }
 
+    /// Create state by scanning CLI args for disable flags.
     pub fn from_args(
         hooks_compiled: bool,
         buildfix_compiled: bool,
@@ -165,16 +182,20 @@ impl RuntimeFeatureState {
         )
     }
 
+    /// Returns whether hooks are enabled.
     pub const fn hooks(self) -> bool {
         self.hooks
     }
+    /// Returns whether buildfix is enabled.
     pub const fn buildfix(self) -> bool {
         self.buildfix
     }
+    /// Returns whether policy signing is enabled.
     pub const fn policy_signing(self) -> bool {
         self.policy_signing
     }
 
+    /// Returns whether the given feature is enabled.
     pub const fn is_enabled(self, feature: Feature) -> bool {
         match feature {
             Feature::Hooks => self.hooks,

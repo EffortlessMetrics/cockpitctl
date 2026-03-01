@@ -3,6 +3,8 @@
 //! Runs an external command to apply selected fixes, passing the request
 //! as JSON on stdin and reading the result from stdout.
 
+#![warn(missing_docs)]
+
 use anyhow::{Context, Result};
 use cockpitctl_types::{BuildfixActuatorConfig, BuildfixActuatorResult, BuildfixApplyRequest};
 use std::io::{Read, Write};

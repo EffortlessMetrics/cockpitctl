@@ -5,6 +5,8 @@
 //!
 //! No filesystem, no clap, no network.
 
+#![warn(missing_docs)]
+
 pub use cockpitctl_domain_buildfix::{match_buildfix_plan, select_auto_apply_fixes};
 pub use cockpitctl_domain_signing::{
     canonical_policy_snapshot_bytes, policy_snapshot_sha256_hex, sign_policy_snapshot,
@@ -51,12 +53,19 @@ pub fn compute_policy_outcome(blocking: bool, status: &VerdictStatus) -> PolicyO
 
 /// A cockpit-level code for synthesized findings.
 pub mod cockpit_codes {
+    /// Missing sensor receipt.
     pub const MISSING_RECEIPT: &str = "cockpit.missing_receipt";
+    /// Invalid or unparseable receipt.
     pub const INVALID_RECEIPT: &str = "cockpit.invalid_receipt";
+    /// Receipt failed schema validation.
     pub const SCHEMA_VIOLATION: &str = "cockpit.schema_violation";
+    /// Receipt has inconsistent data.
     pub const RECEIPT_INCONSISTENT: &str = "cockpit.receipt_inconsistent";
+    /// Sensor count exceeded the cap.
     pub const SENSORS_TRUNCATED: &str = "cockpit.sensors_truncated";
+    /// Path traversal detected in sensor ID.
     pub const PATH_TRAVERSAL: &str = "cockpit.path_traversal";
+    /// Receipt file exceeded size limit.
     pub const RECEIPT_OVERSIZED: &str = "cockpit.receipt_oversized";
 }
 
@@ -67,10 +76,15 @@ pub mod cockpit_codes {
 /// Explanation of a cockpit finding code.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CodeExplanation {
+    /// The cockpit finding code.
     pub code: &'static str,
+    /// Short human-readable title.
     pub title: &'static str,
+    /// Detailed explanation.
     pub description: &'static str,
+    /// Common cause of this finding.
     pub cause: &'static str,
+    /// Suggested remediation.
     pub fix: &'static str,
 }
 

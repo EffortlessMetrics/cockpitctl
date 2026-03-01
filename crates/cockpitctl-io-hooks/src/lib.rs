@@ -3,6 +3,8 @@
 //! Runs post-processing hook commands after ingest, allowing external
 //! tools to contribute extra comment sections and sidecar files.
 
+#![warn(missing_docs)]
+
 use anyhow::{Context, Result};
 use cockpitctl_ingest::OutputSink;
 use cockpitctl_types::HookConfig;
@@ -15,8 +17,10 @@ use wait_timeout::ChildExt;
 /// Output from a post-processor hook.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PostProcessOutput {
+    /// Comment sections contributed by the hook.
     #[serde(default)]
     pub comment_sections: Vec<CommentSection>,
+    /// Files contributed by the hook.
     #[serde(default)]
     pub files: Vec<OutputFile>,
 }
@@ -24,8 +28,11 @@ pub struct PostProcessOutput {
 /// A comment section contributed by a hook.
 #[derive(Debug, Clone, Deserialize)]
 pub struct CommentSection {
+    /// Section name.
     pub name: String,
+    /// Markdown content.
     pub content: String,
+    /// Sort order (lower values come first).
     #[serde(default)]
     pub order: i32,
 }
@@ -33,7 +40,9 @@ pub struct CommentSection {
 /// A file contributed by a hook.
 #[derive(Debug, Clone, Deserialize)]
 pub struct OutputFile {
+    /// Output file name.
     pub name: String,
+    /// File content bytes (base64-decoded if applicable).
     #[serde(with = "base64_bytes", default)]
     pub content: Vec<u8>,
 }

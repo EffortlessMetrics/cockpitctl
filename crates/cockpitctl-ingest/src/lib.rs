@@ -14,6 +14,8 @@
 //! assert!(matches!(result, SchemaValidationResult::Valid));
 //! ```
 
+#![warn(missing_docs)]
+
 use anyhow::{Context, Result};
 use cockpitctl_domain::{
     build_cockpit_report, match_buildfix_plan, select_highlights, sort_sensor_summaries,
@@ -41,24 +43,44 @@ pub struct DiscoveredSensors {
 
 /// Result of reading a sensor report.
 pub enum ReportRead {
+    /// No report file found for this sensor.
     Missing,
+    /// Raw report bytes read successfully.
     Bytes(Vec<u8>),
-    Oversized { size: u64, cap: usize },
+    /// Report file exceeds the size cap.
+    Oversized {
+        /// Actual file size in bytes.
+        size: u64,
+        /// Configured maximum size in bytes.
+        cap: usize,
+    },
+    /// Report path resolved outside the safe artifacts root.
     UnsafePath,
 }
 
 /// Result of checking for a sensor comment.
 pub enum CommentRead {
+    /// No comment file found for this sensor.
     Missing,
+    /// Comment file path (relative) found.
     Present(String),
+    /// Comment path resolved outside the safe artifacts root.
     UnsafePath,
 }
 
 /// Result of reading a buildfix plan.
 pub enum PlanRead {
+    /// No plan file found for this sensor.
     Missing,
+    /// Raw plan bytes read successfully.
     Bytes(Vec<u8>),
-    Oversized { size: u64, cap: usize },
+    /// Plan file exceeds the size cap.
+    Oversized {
+        /// Actual file size in bytes.
+        size: u64,
+        /// Configured maximum size in bytes.
+        cap: usize,
+    },
 }
 
 /// Ports: where receipts come from.
@@ -84,12 +106,15 @@ pub trait ReceiptSource {
 
 /// Ports: policy source (cockpit.toml).
 pub trait PolicySource {
+    /// Load the cockpit configuration, returning `None` if no config file exists.
     fn load_config(&self) -> Result<Option<CockpitConfig>>;
 }
 
 /// Ports: where outputs are written.
 pub trait OutputSink {
+    /// Write the serialized cockpit report JSON.
     fn write_cockpit_report(&self, json: &str) -> Result<()>;
+    /// Write the rendered cockpit comment markdown.
     fn write_cockpit_comment(&self, md: &str) -> Result<()>;
 
     /// Write an extra file (e.g. from a post-processor hook). Default is a no-op.
@@ -124,17 +149,25 @@ impl SchemaValidator for NoOpSchemaValidator {
 
 /// Request inputs for ingestion.
 pub struct IngestRequest {
-    pub labels: Vec<String>, // optional; label-gates may use this
+    /// PR labels used for label-gate evaluation.
+    pub labels: Vec<String>,
+    /// Tool metadata to embed in the cockpit report.
     pub tool: ToolInfo,
+    /// Run metadata (timing, host, git info) to embed in the cockpit report.
     pub run: RunInfo,
+    /// Optional CLI override for schema validation mode.
     pub schema_validation_override: Option<SchemaValidation>,
 }
 
 /// Result of ingestion, including the computed report and recommended exit code.
 pub struct IngestResult {
+    /// The computed cockpit report.
     pub report: CockpitReport,
+    /// Rendered markdown comment.
     pub comment_md: String,
+    /// Recommended process exit code (0 = pass, 2 = policy fail).
     pub exit_code: i32,
+    /// Aggregated buildfix summary, if any plans were found.
     pub buildfix: Option<BuildfixSummary>,
 }
 

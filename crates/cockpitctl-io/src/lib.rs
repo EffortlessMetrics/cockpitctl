@@ -4,6 +4,8 @@
 //! It provides [`FsReceiptSource`], [`FsPolicySource`], and [`FsOutputSink`]
 //! which implement the port traits from `cockpitctl-ingest`.
 
+#![warn(missing_docs)]
+
 use anyhow::{Context, Result};
 use cockpitctl_ingest::{
     CommentRead, DiscoveredSensors, OutputSink, PlanRead, PolicySource, ReceiptSource, ReportRead,
@@ -24,15 +26,20 @@ pub const DEFAULT_MAX_RECEIPTS: usize = 100;
 /// Filesystem layout describing artifact and output paths.
 #[derive(Clone)]
 pub struct FsLayout {
+    /// Root directory for sensor artifacts.
     pub artifacts_dir: PathBuf,
+    /// Output directory for cockpit results.
     pub out_dir: PathBuf,
+    /// Path to `cockpit.toml` configuration file.
     pub config_path: PathBuf,
+    /// Maximum receipt file size in bytes.
     pub max_receipt_bytes: usize,
     /// Maximum number of sensor receipts to process. Protects against DoS.
     pub max_receipts: usize,
 }
 
 impl FsLayout {
+    /// Create a new filesystem layout from artifact and config paths.
     pub fn new(artifacts_dir: impl Into<PathBuf>, config_path: impl Into<PathBuf>) -> Self {
         let artifacts_dir = artifacts_dir.into();
         let out_dir = artifacts_dir.join("cockpit");

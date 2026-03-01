@@ -3,6 +3,8 @@
 //! Provides canonical serialisation of policy snapshots and HMAC-SHA256
 //! signing for tamper-evident policy evidence in the cockpit report.
 
+#![warn(missing_docs)]
+
 use anyhow::{Context, Result};
 use cockpitctl_types::{
     POLICY_SIGNATURE_SCHEMA_ID, PolicySignatureAlgorithm, PolicySignatureEvidence, PolicySnapshot,
