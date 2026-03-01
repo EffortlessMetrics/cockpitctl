@@ -1,0 +1,5 @@
+---
+source: crates/cockpitctl-domain-signing/tests/signing_tests.rs
+expression: ev1.signature
+---
+4c19a2dcbfee627f1f312276fc3353bd8b1a7a6262f1026157622fe6bc2c1e08

@@ -1,0 +1,48 @@
+---
+source: crates/cockpitctl-domain-buildfix/tests/buildfix_tests.rs
+expression: all
+---
+[
+  {
+    "fix_id": "safe-fix",
+    "sensor_id": "sensor",
+    "safety": "safe",
+    "description": "description for safe-fix",
+    "matched_findings": [
+      {
+        "sensor_id": "sensor",
+        "code": "E001",
+        "fingerprint": "fp-1"
+      }
+    ],
+    "unmatched": false
+  },
+  {
+    "fix_id": "guarded-fix",
+    "sensor_id": "sensor",
+    "safety": "guarded",
+    "description": "description for guarded-fix",
+    "matched_findings": [
+      {
+        "sensor_id": "sensor",
+        "code": "E002",
+        "fingerprint": "fp-2"
+      }
+    ],
+    "unmatched": false
+  },
+  {
+    "fix_id": "unsafe-fix",
+    "sensor_id": "sensor",
+    "safety": "unsafe",
+    "description": "description for unsafe-fix",
+    "matched_findings": [
+      {
+        "sensor_id": "sensor",
+        "code": "E003",
+        "fingerprint": "fp-3"
+      }
+    ],
+    "unmatched": false
+  }
+]

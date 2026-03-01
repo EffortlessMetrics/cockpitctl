@@ -1,0 +1,20 @@
+---
+source: crates/cockpitctl-domain-buildfix/tests/buildfix_tests.rs
+expression: safe_only
+---
+[
+  {
+    "fix_id": "safe-fix",
+    "sensor_id": "sensor",
+    "safety": "safe",
+    "description": "description for safe-fix",
+    "matched_findings": [
+      {
+        "sensor_id": "sensor",
+        "code": "E001",
+        "fingerprint": "fp-1"
+      }
+    ],
+    "unmatched": false
+  }
+]

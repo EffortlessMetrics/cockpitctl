@@ -1,0 +1,5 @@
+---
+source: crates/cockpitctl-domain-signing/tests/signing_tests.rs
+expression: ev.policy_sha256
+---
+ca3197885c3591e7a0fac8e7e8508c151e15f38fd41a61c9466a7fcddf52395e
