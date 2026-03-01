@@ -1,6 +1,6 @@
 use cockpitctl_domain::{
-    cap_findings, compute_counts, compute_policy_outcome, derive_fingerprint, overall_verdict,
-    select_highlights, snapshot_policy, sort_findings, summarize_sensor_report,
+    build_cockpit_report, cap_findings, compute_counts, compute_policy_outcome, derive_fingerprint,
+    overall_verdict, select_highlights, snapshot_policy, sort_findings, summarize_sensor_report,
     synthesize_invalid_sensor, synthesize_missing_sensor, synthesize_path_traversal_sensor,
     synthesize_receipt_oversized_sensor, synthesize_schema_violation_sensor,
     synthesize_sensors_truncated,
@@ -462,4 +462,182 @@ fn snapshot_derive_fingerprint_stability() {
     let f = finding("E1", Severity::Error, "src/main.rs", 42);
     let fp = derive_fingerprint("sensor_a", &f);
     insta::assert_snapshot!("derive_fingerprint_stable", fp);
+}
+
+// ---------------------------------------------------------------------------
+// New expanded snapshot scenarios
+// ---------------------------------------------------------------------------
+
+#[test]
+fn snapshot_overall_verdict_all_skip() {
+    let summaries = vec![
+        summary_with_verdict("a", false, VerdictStatus::Skip, VerdictCounts::default()),
+        summary_with_verdict("b", false, VerdictStatus::Skip, VerdictCounts::default()),
+    ];
+    let verdict = overall_verdict(&summaries, &CockpitConfig::default());
+    insta::assert_json_snapshot!("overall_verdict_all_skip", verdict);
+}
+
+#[test]
+fn snapshot_overall_verdict_mixed_blocking_and_nonblocking() {
+    let summaries = vec![
+        summary_with_verdict(
+            "blocking_pass",
+            true,
+            VerdictStatus::Pass,
+            VerdictCounts::default(),
+        ),
+        summary_with_verdict(
+            "nonblocking_fail",
+            false,
+            VerdictStatus::Fail,
+            VerdictCounts {
+                info: 0,
+                warn: 0,
+                error: 10,
+                suppressed: 0,
+            },
+        ),
+        summary_with_verdict(
+            "blocking_warn",
+            true,
+            VerdictStatus::Warn,
+            VerdictCounts {
+                info: 0,
+                warn: 3,
+                error: 0,
+                suppressed: 0,
+            },
+        ),
+    ];
+    let verdict = overall_verdict(&summaries, &CockpitConfig::default());
+    insta::assert_json_snapshot!("overall_verdict_mixed_blocking_nonblocking", verdict);
+}
+
+#[test]
+fn snapshot_synthesize_missing_warn() {
+    let (summary, highlight) = synthesize_missing_sensor(
+        "lint",
+        &policy(true, MissingPolicy::Warn),
+        "artifacts/lint/report.json",
+        Some("artifacts/lint/comment.md".to_string()),
+    );
+    insta::assert_json_snapshot!("synthesize_missing_warn_summary", summary);
+    insta::assert_json_snapshot!("synthesize_missing_warn_highlight", highlight);
+}
+
+#[test]
+fn snapshot_capped_findings_no_truncation() {
+    let findings = vec![
+        finding("E1", Severity::Error, "src/a.rs", 1),
+        finding("W1", Severity::Warn, "src/b.rs", 1),
+    ];
+    let (capped, truncated) = cap_findings(findings, 10);
+    assert!(!truncated);
+    insta::assert_json_snapshot!("capped_findings_no_truncation", capped);
+}
+
+#[test]
+fn snapshot_highlight_selection_empty() {
+    let cfg = CockpitConfig::default();
+    let selected = select_highlights(vec![], &cfg, &std::collections::BTreeMap::new());
+    insta::assert_json_snapshot!("highlight_selection_empty", selected);
+}
+
+#[test]
+fn snapshot_compute_policy_outcome_nonblocking_matrix() {
+    let results = vec![
+        (
+            "nonblocking_pass",
+            compute_policy_outcome(false, &VerdictStatus::Pass),
+        ),
+        (
+            "nonblocking_warn",
+            compute_policy_outcome(false, &VerdictStatus::Warn),
+        ),
+        (
+            "nonblocking_skip",
+            compute_policy_outcome(false, &VerdictStatus::Skip),
+        ),
+        (
+            "blocking_skip",
+            compute_policy_outcome(true, &VerdictStatus::Skip),
+        ),
+    ];
+    insta::assert_debug_snapshot!("policy_outcome_nonblocking_matrix", results);
+}
+
+#[test]
+fn snapshot_summarize_sensor_report_no_truncation() {
+    let findings = vec![
+        finding("W1", Severity::Warn, "src/lib.rs", 20),
+        finding("I1", Severity::Info, "src/util.rs", 5),
+    ];
+
+    let report = SensorReport {
+        schema: "sensor.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Warn,
+            counts: VerdictCounts {
+                info: 1,
+                warn: 1,
+                error: 0,
+                suppressed: 0,
+            },
+            reasons: vec![],
+        },
+        findings,
+        artifacts: vec![],
+        data: None,
+    };
+
+    let (summary, highlights) = summarize_sensor_report(
+        "lint",
+        "artifacts/lint/report.json",
+        None,
+        &policy(false, MissingPolicy::Skip),
+        report,
+        20,
+    );
+    insta::assert_json_snapshot!("summarize_report_no_truncation_summary", summary);
+    insta::assert_json_snapshot!("summarize_report_no_truncation_highlights", highlights);
+}
+
+#[test]
+fn snapshot_build_cockpit_report() {
+    let mut cfg = CockpitConfig::default();
+    cfg.sensors.insert(
+        "builddiag".to_string(),
+        SensorPolicy {
+            blocking: true,
+            missing: MissingPolicy::Fail,
+            section: Some("Build".to_string()),
+            require_label: None,
+            repro: None,
+        },
+    );
+    cfg.policy.section_order = vec!["Build".to_string()];
+
+    let summaries = vec![summary_with_verdict(
+        "builddiag",
+        true,
+        VerdictStatus::Pass,
+        VerdictCounts::default(),
+    )];
+
+    let report = build_cockpit_report(&cfg, tool_info(), run_info(), summaries, vec![]);
+    insta::assert_json_snapshot!("build_cockpit_report", report);
+}
+
+#[test]
+fn snapshot_sorted_findings_same_severity() {
+    let mut findings = vec![
+        finding("Z1", Severity::Error, "src/z.rs", 100),
+        finding("A1", Severity::Error, "src/a.rs", 1),
+        finding("M1", Severity::Error, "src/m.rs", 50),
+    ];
+    sort_findings("sensor", &mut findings);
+    insta::assert_json_snapshot!("sorted_findings_same_severity", findings);
 }

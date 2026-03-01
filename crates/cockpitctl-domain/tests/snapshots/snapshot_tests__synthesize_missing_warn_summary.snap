@@ -1,0 +1,27 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: summary
+---
+{
+  "id": "lint",
+  "blocking": true,
+  "missing": "warn",
+  "presence": "missing",
+  "report_path": "artifacts/lint/report.json",
+  "comment_path": "artifacts/lint/comment.md",
+  "verdict": {
+    "status": "warn",
+    "counts": {
+      "info": 0,
+      "warn": 1,
+      "error": 0
+    },
+    "reasons": [
+      "missing_receipt"
+    ]
+  },
+  "truncated": false,
+  "errors": [],
+  "missing_policy_applied": "warn",
+  "policy_outcome": "allowed"
+}

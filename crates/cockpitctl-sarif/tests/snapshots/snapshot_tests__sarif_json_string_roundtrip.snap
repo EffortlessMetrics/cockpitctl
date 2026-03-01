@@ -1,0 +1,47 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_tests.rs
+expression: parsed
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/lib.rs"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "TODO found in source"
+          },
+          "ruleId": "clippy::todo"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "rules": [
+            {
+              "id": "clippy::todo",
+              "shortDescription": {
+                "text": "[clippy] clippy::todo"
+              }
+            }
+          ],
+          "version": "0.3.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

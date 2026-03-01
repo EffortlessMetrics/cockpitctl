@@ -1,0 +1,10 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: ci
+---
+{
+  "provider": "github",
+  "run_id": "99999",
+  "run_url": "https://github.com/org/repo/actions/runs/99999",
+  "job": "test"
+}

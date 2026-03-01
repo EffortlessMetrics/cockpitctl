@@ -1,0 +1,11 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: evidence
+---
+{
+  "schema": "policy.signature.v1",
+  "algorithm": "hmac_sha256",
+  "policy_sha256": "abcdef1234567890",
+  "signature": "sig-hex-value",
+  "key_id": "key-1"
+}

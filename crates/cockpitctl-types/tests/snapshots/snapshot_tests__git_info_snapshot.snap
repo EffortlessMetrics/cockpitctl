@@ -1,0 +1,12 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: g
+---
+{
+  "repo": "org/repo",
+  "base_ref": "main",
+  "head_ref": "feature/x",
+  "base_sha": "aaa",
+  "head_sha": "bbb",
+  "merge_base": "ccc"
+}

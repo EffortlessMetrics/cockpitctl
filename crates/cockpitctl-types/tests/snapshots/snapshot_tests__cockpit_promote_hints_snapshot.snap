@@ -1,0 +1,25 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: hints
+---
+{
+  "schema": "cockpit.promote.v1",
+  "cards": [
+    {
+      "id": "cov-percent",
+      "label": "Coverage",
+      "value": "85.2%",
+      "severity": "warn"
+    }
+  ],
+  "suggested_highlights": [
+    {
+      "finding_fingerprint": "fp-cov-drop"
+    }
+  ],
+  "suggested_artifacts": [
+    {
+      "artifact_id": "lcov"
+    }
+  ]
+}

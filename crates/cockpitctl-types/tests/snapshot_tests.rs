@@ -456,3 +456,162 @@ fn buildfix_summary_default() {
 fn count_deltas_default() {
     insta::assert_json_snapshot!(CountDeltas::default());
 }
+
+// ---------------------------------------------------------------------------
+// New expanded snapshot scenarios
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cockpit_config_default() {
+    insta::assert_json_snapshot!(CockpitConfig::default());
+}
+
+#[test]
+fn run_info_full() {
+    insta::assert_json_snapshot!(sample_run());
+}
+
+#[test]
+fn sensor_summary_full() {
+    let summary = SensorSummary {
+        id: "builddiag".into(),
+        blocking: true,
+        missing: MissingPolicy::Fail,
+        presence: Presence::Present,
+        report_path: "artifacts/builddiag/report.json".into(),
+        comment_path: Some("artifacts/builddiag/comment.md".into()),
+        verdict: sample_verdict(),
+        truncated: true,
+        errors: vec!["some warning".into()],
+        missing_policy_applied: None,
+        policy_outcome: Some(PolicyOutcome::Blocked),
+    };
+    insta::assert_json_snapshot!(summary);
+}
+
+#[test]
+fn verdict_with_reasons() {
+    let v = Verdict {
+        status: VerdictStatus::Fail,
+        counts: VerdictCounts {
+            info: 2,
+            warn: 3,
+            error: 5,
+            suppressed: 1,
+        },
+        reasons: vec![
+            "blocking_sensor_failed".into(),
+            "warn_is_fail".into(),
+            "schema_violation".into(),
+        ],
+    };
+    insta::assert_json_snapshot!(v);
+}
+
+#[test]
+fn capability_status_variants() {
+    insta::assert_json_snapshot!("cap_available", CapabilityStatus::Available);
+    insta::assert_json_snapshot!("cap_unavailable", CapabilityStatus::Unavailable);
+    insta::assert_json_snapshot!("cap_skipped", CapabilityStatus::Skipped);
+}
+
+#[test]
+fn host_info_snapshot() {
+    let h = HostInfo {
+        os: Some("linux".into()),
+        arch: Some("aarch64".into()),
+        hostname: Some("runner-1".into()),
+    };
+    insta::assert_json_snapshot!(h);
+}
+
+#[test]
+fn git_info_snapshot() {
+    let g = GitInfo {
+        repo: Some("org/repo".into()),
+        base_ref: Some("main".into()),
+        head_ref: Some("feature/x".into()),
+        base_sha: Some("aaa".into()),
+        head_sha: Some("bbb".into()),
+        merge_base: Some("ccc".into()),
+    };
+    insta::assert_json_snapshot!(g);
+}
+
+#[test]
+fn ci_info_snapshot() {
+    let ci = CiInfo {
+        provider: Some("github".into()),
+        run_id: Some("99999".into()),
+        run_url: Some("https://github.com/org/repo/actions/runs/99999".into()),
+        job: Some("test".into()),
+    };
+    insta::assert_json_snapshot!(ci);
+}
+
+#[test]
+fn cockpit_promote_hints_snapshot() {
+    let hints = CockpitPromoteHints {
+        schema: Some("cockpit.promote.v1".into()),
+        cards: vec![PromoteCard {
+            id: "cov-percent".into(),
+            label: "Coverage".into(),
+            value: "85.2%".into(),
+            severity: Some(Severity::Warn),
+        }],
+        suggested_highlights: vec![SuggestedHighlight {
+            finding_fingerprint: "fp-cov-drop".into(),
+        }],
+        suggested_artifacts: vec![SuggestedArtifact {
+            artifact_id: "lcov".into(),
+        }],
+    };
+    insta::assert_json_snapshot!(hints);
+}
+
+#[test]
+fn fix_summary_snapshot() {
+    let fs = FixSummary {
+        fix_id: "fix-1".into(),
+        sensor_id: "builddiag".into(),
+        safety: SafetyLevel::Safe,
+        description: "Add missing import".into(),
+        matched_findings: vec![MatchedFinding {
+            sensor_id: "builddiag".into(),
+            code: "E0432".into(),
+            fingerprint: Some("fp-123".into()),
+        }],
+        unmatched: false,
+    };
+    insta::assert_json_snapshot!(fs);
+}
+
+#[test]
+fn buildfix_apply_summary_full() {
+    let summary = BuildfixApplySummary {
+        status: BuildfixApplyStatus::Applied,
+        auto_apply_enabled: true,
+        max_auto_apply_safety: SafetyLevel::Safe,
+        require_matched_finding: true,
+        candidate_fix_ids: vec!["fix-1".into(), "fix-2".into()],
+        selected_fix_ids: vec!["fix-1".into()],
+        applied_fix_ids: vec!["fix-1".into()],
+        skipped_fix_ids: vec!["fix-2".into()],
+        errors: vec![],
+        reason: Some("auto-applied safe fix".into()),
+        actuator_command: Some("buildfix-actuator apply".into()),
+    };
+    insta::assert_json_snapshot!(summary);
+}
+
+#[test]
+fn policy_signature_evidence_snapshot() {
+    let evidence = PolicySignatureEvidence {
+        schema: "policy.signature.v1".into(),
+        algorithm: PolicySignatureAlgorithm::HmacSha256,
+        policy_sha256: "abcdef1234567890".into(),
+        signature: "sig-hex-value".into(),
+        key_id: Some("key-1".into()),
+    };
+    insta::assert_json_snapshot!(evidence);
+}

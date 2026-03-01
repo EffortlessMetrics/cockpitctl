@@ -421,3 +421,276 @@ fn snapshot_findings_with_annotations() {
     let md = render_comment(&report, &cfg);
     insta::assert_snapshot!(md);
 }
+
+// ---------------------------------------------------------------------------
+// New expanded snapshot scenarios
+// ---------------------------------------------------------------------------
+
+#[test]
+fn snapshot_many_sensors_five_sections() {
+    let mut cfg = CockpitConfig::default();
+    cfg.policy.max_highlights = 10;
+    cfg.policy.max_annotations = 10;
+
+    let sensors_cfg = [
+        ("builddiag", true, MissingPolicy::Fail, "Build"),
+        ("clippy", true, MissingPolicy::Fail, "Lint"),
+        ("cargo-test", true, MissingPolicy::Fail, "Tests"),
+        ("trivy", true, MissingPolicy::Fail, "Security"),
+        ("covguard", false, MissingPolicy::Warn, "Coverage"),
+    ];
+    for (id, blocking, missing, section) in &sensors_cfg {
+        cfg.sensors.insert(
+            id.to_string(),
+            SensorPolicy {
+                blocking: *blocking,
+                missing: *missing,
+                section: Some(section.to_string()),
+                require_label: None,
+                repro: None,
+            },
+        );
+    }
+    cfg.policy.section_order = vec![
+        "Build".into(),
+        "Lint".into(),
+        "Tests".into(),
+        "Security".into(),
+        "Coverage".into(),
+    ];
+
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Fail,
+            counts: VerdictCounts {
+                info: 1,
+                warn: 2,
+                error: 3,
+                suppressed: 0,
+            },
+            reasons: vec!["trivy failed".to_string()],
+        },
+        sensors: vec![
+            sensor_summary("builddiag", VerdictStatus::Pass, true, false),
+            sensor_summary("clippy", VerdictStatus::Warn, true, false),
+            sensor_summary("cargo-test", VerdictStatus::Pass, true, false),
+            sensor_summary("trivy", VerdictStatus::Fail, true, false),
+            sensor_summary("covguard", VerdictStatus::Warn, false, false),
+        ],
+        highlights: vec![
+            make_highlight(
+                "trivy",
+                "CVE-2024-0001",
+                Severity::Error,
+                Some("Cargo.lock"),
+                Some(100),
+            ),
+            make_highlight(
+                "trivy",
+                "CVE-2024-0002",
+                Severity::Error,
+                Some("Cargo.lock"),
+                Some(200),
+            ),
+            make_highlight(
+                "clippy",
+                "W-UNUSED",
+                Severity::Warn,
+                Some("src/lib.rs"),
+                Some(5),
+            ),
+            make_highlight(
+                "covguard",
+                "COV-LOW",
+                Severity::Info,
+                Some("src/utils.rs"),
+                Some(1),
+            ),
+        ],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: None,
+    };
+
+    let md = render_comment(&report, &cfg);
+    insta::assert_snapshot!(md);
+}
+
+#[test]
+fn snapshot_warn_is_fail_policy() {
+    let mut cfg = CockpitConfig::default();
+    cfg.policy.warn_is_fail = true;
+    cfg.policy.max_highlights = 5;
+    cfg.sensors.insert(
+        "lint".to_string(),
+        SensorPolicy {
+            blocking: true,
+            missing: MissingPolicy::Fail,
+            section: Some("Lint".to_string()),
+            require_label: None,
+            repro: Some("cargo clippy".to_string()),
+        },
+    );
+    cfg.policy.section_order = vec!["Lint".to_string()];
+
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Fail,
+            counts: VerdictCounts {
+                info: 0,
+                warn: 2,
+                error: 0,
+                suppressed: 0,
+            },
+            reasons: vec!["warn_is_fail".to_string()],
+        },
+        sensors: vec![sensor_summary("lint", VerdictStatus::Warn, true, false)],
+        highlights: vec![
+            make_highlight("lint", "W001", Severity::Warn, Some("src/a.rs"), Some(10)),
+            make_highlight("lint", "W002", Severity::Warn, Some("src/b.rs"), Some(20)),
+        ],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: None,
+    };
+
+    let md = render_comment(&report, &cfg);
+    insta::assert_snapshot!(md);
+}
+
+#[test]
+fn snapshot_single_sensor_no_findings() {
+    let mut cfg = CockpitConfig::default();
+    cfg.sensors.insert(
+        "builddiag".to_string(),
+        SensorPolicy {
+            blocking: true,
+            missing: MissingPolicy::Fail,
+            section: Some("Build".to_string()),
+            require_label: None,
+            repro: Some("cargo build".to_string()),
+        },
+    );
+    cfg.policy.section_order = vec!["Build".to_string()];
+
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Pass,
+            counts: VerdictCounts::default(),
+            reasons: vec![],
+        },
+        sensors: vec![sensor_summary(
+            "builddiag",
+            VerdictStatus::Pass,
+            true,
+            false,
+        )],
+        highlights: vec![],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: None,
+    };
+
+    let md = render_comment(&report, &cfg);
+    insta::assert_snapshot!(md);
+}
+
+#[test]
+fn snapshot_all_sensors_skip() {
+    let mut cfg = CockpitConfig::default();
+    cfg.sensors.insert(
+        "alpha".to_string(),
+        SensorPolicy {
+            blocking: false,
+            missing: MissingPolicy::Skip,
+            section: Some("Optional".to_string()),
+            require_label: None,
+            repro: None,
+        },
+    );
+    cfg.sensors.insert(
+        "beta".to_string(),
+        SensorPolicy {
+            blocking: false,
+            missing: MissingPolicy::Skip,
+            section: Some("Optional".to_string()),
+            require_label: None,
+            repro: None,
+        },
+    );
+    cfg.policy.section_order = vec!["Optional".to_string()];
+
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Pass,
+            counts: VerdictCounts::default(),
+            reasons: vec![],
+        },
+        sensors: vec![
+            sensor_summary("alpha", VerdictStatus::Skip, false, false),
+            sensor_summary("beta", VerdictStatus::Skip, false, false),
+        ],
+        highlights: vec![],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: None,
+    };
+
+    let md = render_comment(&report, &cfg);
+    insta::assert_snapshot!(md);
+}
+
+#[test]
+fn snapshot_max_highlights_one() {
+    let mut cfg = CockpitConfig::default();
+    cfg.policy.max_highlights = 1;
+    cfg.policy.max_annotations = 1;
+    cfg.sensors.insert(
+        "scanner".to_string(),
+        SensorPolicy {
+            blocking: true,
+            missing: MissingPolicy::Fail,
+            section: Some("Security".to_string()),
+            require_label: None,
+            repro: None,
+        },
+    );
+    cfg.policy.section_order = vec!["Security".to_string()];
+
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: tool_info(),
+        run: run_info(),
+        verdict: Verdict {
+            status: VerdictStatus::Fail,
+            counts: VerdictCounts {
+                info: 0,
+                warn: 1,
+                error: 2,
+                suppressed: 0,
+            },
+            reasons: vec![],
+        },
+        sensors: vec![sensor_summary("scanner", VerdictStatus::Fail, true, true)],
+        highlights: vec![make_highlight(
+            "scanner",
+            "SEC-CRIT",
+            Severity::Error,
+            Some("src/auth.rs"),
+            Some(42),
+        )],
+        policy: policy_snapshot_from_cfg(&cfg),
+        data: None,
+    };
+
+    let md = render_comment(&report, &cfg);
+    insta::assert_snapshot!(md);
+}

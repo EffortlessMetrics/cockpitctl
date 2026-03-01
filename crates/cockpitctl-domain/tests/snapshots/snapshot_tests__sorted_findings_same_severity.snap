@@ -1,0 +1,33 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_tests.rs
+expression: findings
+---
+[
+  {
+    "severity": "error",
+    "code": "A1",
+    "message": "Message for A1",
+    "location": {
+      "path": "src/a.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "error",
+    "code": "M1",
+    "message": "Message for M1",
+    "location": {
+      "path": "src/m.rs",
+      "line": 50
+    }
+  },
+  {
+    "severity": "error",
+    "code": "Z1",
+    "message": "Message for Z1",
+    "location": {
+      "path": "src/z.rs",
+      "line": 100
+    }
+  }
+]

@@ -1,0 +1,18 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: v
+---
+{
+  "status": "fail",
+  "counts": {
+    "info": 2,
+    "warn": 3,
+    "error": 5,
+    "suppressed": 1
+  },
+  "reasons": [
+    "blocking_sensor_failed",
+    "warn_is_fail",
+    "schema_violation"
+  ]
+}

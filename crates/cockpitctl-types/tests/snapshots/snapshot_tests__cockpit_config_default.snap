@@ -1,0 +1,35 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: "CockpitConfig::default()"
+---
+{
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "schema_validation": "lax",
+    "max_receipt_size_bytes": 2097152
+  },
+  "buildfix": {
+    "auto_apply": false,
+    "max_auto_apply_safety": "safe",
+    "require_matched_finding": true
+  },
+  "policy_signing": {
+    "enabled": false,
+    "algorithm": "hmac_sha256"
+  },
+  "sensors": {}
+}

@@ -1,0 +1,51 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_tests.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "SEC-001",
+              "shortDescription": {
+                "text": "[scanner] SEC-001"
+              }
+            },
+            {
+              "id": "SEC-002",
+              "shortDescription": {
+                "text": "[scanner] SEC-002"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "SEC-001",
+          "level": "error",
+          "message": {
+            "text": "Critical vulnerability detected"
+          },
+          "fingerprints": {
+            "cockpitctl/v1": "fp_no_loc_1"
+          }
+        },
+        {
+          "ruleId": "SEC-002",
+          "level": "warning",
+          "message": {
+            "text": "Outdated dependency found"
+          }
+        }
+      ]
+    }
+  ]
+}

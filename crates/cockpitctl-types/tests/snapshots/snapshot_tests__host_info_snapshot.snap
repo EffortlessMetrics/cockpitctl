@@ -1,0 +1,9 @@
+---
+source: crates/cockpitctl-types/tests/snapshot_tests.rs
+expression: h
+---
+{
+  "os": "linux",
+  "arch": "aarch64",
+  "hostname": "runner-1"
+}
