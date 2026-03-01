@@ -8,6 +8,7 @@ repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
 description = "Post-processor hook I/O boundary extracted from cockpitctl-io."
+readme = "README.md"
 
 [dependencies]
 anyhow.workspace = true

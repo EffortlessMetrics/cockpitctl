@@ -8,6 +8,7 @@ repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
 description = "Policy signing domain boundary extracted from cockpitctl-domain."
+readme = "README.md"
 
 [dependencies]
 anyhow.workspace = true
