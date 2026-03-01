@@ -73,6 +73,7 @@ Feature: cockpitctl ingest
     Then the exit code is 2
     And the cockpit report contains a highlight "cockpit.invalid_receipt"
 
+  @feature-schema
   Scenario: schema violations in strict mode become findings
     Given a fixture "schema_violation"
     When I run "cockpitctl ingest" on the fixture with "--schema-validation strict"
@@ -211,6 +212,7 @@ Feature: cockpitctl ingest
     And stderr contains "### Trend"
     And stderr contains "new finding(s)"
 
+  @feature-hooks
   Scenario: configured hooks append sections before sticky end marker
     Given a fixture "happy_path"
     And a hook script is configured
@@ -220,6 +222,7 @@ Feature: cockpitctl ingest
     And the comment contains "From hook"
     And in the comment "### Hook Notes" appears before "<!-- cockpit:end -->"
 
+  @feature-buildfix
   Scenario: buildfix plans are surfaced in report data and comment
     Given a fixture "buildfix_plan"
     When I run "cockpitctl ingest" on the fixture
@@ -229,6 +232,7 @@ Feature: cockpitctl ingest
     And the report field "data._buildfix.unmatched_count" equals 1
     And the comment contains "### Buildfix"
 
+  @feature-buildfix
   Scenario: buildfix auto-apply writes deterministic apply evidence
     Given a fixture "buildfix_plan"
     And a successful buildfix actuator script
@@ -240,6 +244,7 @@ Feature: cockpitctl ingest
     And the report field "data._buildfix_apply.status" equals "applied"
     And the comment contains "### Buildfix Apply"
 
+  @feature-policy-signing
   Scenario: policy signing writes signature evidence and comment section
     Given a fixture "happy_path"
     And a policy signing key file
@@ -255,6 +260,7 @@ Feature: cockpitctl ingest
   # Feature Gate Matrix
   # --------------------------------------------------------------------------
 
+  @feature-hooks
   Scenario Outline: hook feature is runtime-gated
     Given a fixture "happy_path"
     And a hook script is configured
@@ -267,6 +273,7 @@ Feature: cockpitctl ingest
       | --format cockpit                         | present |
       | --disable-hooks --format cockpit         | absent  |
 
+  @feature-buildfix
   Scenario Outline: buildfix feature is runtime-gated
     Given a fixture "buildfix_plan"
     When I run "cockpitctl ingest" on the fixture with "<args>"
@@ -278,6 +285,7 @@ Feature: cockpitctl ingest
       | --format cockpit                            | present |
       | --disable-buildfix --format cockpit         | absent  |
 
+  @feature-policy-signing
   Scenario Outline: policy-signing feature is runtime-gated
     Given a fixture "happy_path"
     And a policy signing key file
@@ -367,6 +375,7 @@ Feature: cockpitctl ingest
     And the cockpit report does not contain a highlight "cockpit.schema_violation"
     And the cockpit report is valid JSON
 
+  @feature-schema
   Scenario: strict schema validation catches schema violations
     Given a fixture "schema_violation"
     When I run "cockpitctl ingest" on the fixture with "--schema-validation strict"

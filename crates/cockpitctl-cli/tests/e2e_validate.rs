@@ -76,6 +76,7 @@ fn validate_valid_sensor_report_exits_0() {
 }
 
 #[test]
+#[cfg(feature = "feature-schema")]
 fn validate_valid_sensor_report_strict_exits_0() {
     let (_dir, path) = write_temp("sensor.json", valid_sensor_report());
 
@@ -130,6 +131,7 @@ fn validate_missing_required_fields_lax_exits_1() {
 }
 
 #[test]
+#[cfg(feature = "feature-schema")]
 fn validate_missing_required_fields_strict_exits_1() {
     let (_dir, path) = write_temp(
         "incomplete.json",
@@ -148,6 +150,7 @@ fn validate_missing_required_fields_strict_exits_1() {
 // =============================================================================
 
 #[test]
+#[cfg(feature = "feature-schema")]
 fn validate_wrong_schema_version_strict_exits_1() {
     // Claims to be cockpit.report.v1 but has a sensor-like body (missing
     // required policy/sensors/highlights fields). The strict validator selects
@@ -184,6 +187,7 @@ fn validate_cockpit_report_lax_exits_0() {
 }
 
 #[test]
+#[cfg(feature = "feature-schema")]
 fn validate_cockpit_report_strict_exits_0() {
     let (_dir, path) = write_temp("cockpit.json", valid_cockpit_report());
 
@@ -212,6 +216,7 @@ fn validate_missing_file_exits_1_with_message() {
 // =============================================================================
 
 #[test]
+#[cfg(feature = "feature-schema")]
 fn validate_strict_success_prints_ok() {
     let (_dir, path) = write_temp("sensor.json", valid_sensor_report());
 
@@ -234,6 +239,7 @@ fn validate_lax_success_prints_ok() {
 }
 
 #[test]
+#[cfg(feature = "feature-schema")]
 fn validate_strict_failure_shows_schema_errors() {
     // Missing "schema" field entirely — strict mode should show what failed.
     let bad = r#"{
@@ -255,6 +261,7 @@ fn validate_strict_failure_shows_schema_errors() {
 }
 
 #[test]
+#[cfg(feature = "feature-schema")]
 fn validate_default_mode_is_strict() {
     // Without --strict or --lax, default should be strict validation.
     let (_dir, path) = write_temp("sensor.json", valid_sensor_report());

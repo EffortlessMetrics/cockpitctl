@@ -2,6 +2,7 @@
 //!
 //! These tests verify the full pipeline with strict schema validation enabled,
 //! ensuring that schema violations are properly surfaced as findings.
+#![cfg(feature = "feature-schema")]
 
 use assert_cmd::Command;
 use std::fs;
