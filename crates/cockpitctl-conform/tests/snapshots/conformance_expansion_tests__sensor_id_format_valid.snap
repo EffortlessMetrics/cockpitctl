@@ -1,0 +1,7 @@
+---
+source: crates/cockpitctl-conform/tests/conformance_expansion_tests.rs
+expression: result
+---
+ConformResult {
+    violations: [],
+}

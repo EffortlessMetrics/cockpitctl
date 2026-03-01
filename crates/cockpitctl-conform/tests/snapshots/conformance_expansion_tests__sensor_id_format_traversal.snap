@@ -1,0 +1,12 @@
+---
+source: crates/cockpitctl-conform/tests/conformance_expansion_tests.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "sensor_id_format",
+            message: "sensor_id \"../traversal\" does not match [a-zA-Z0-9_-]+",
+        },
+    ],
+}
