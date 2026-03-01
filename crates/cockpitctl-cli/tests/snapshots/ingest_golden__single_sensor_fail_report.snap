@@ -1,0 +1,79 @@
+---
+source: crates/cockpitctl-cli/tests/ingest_golden.rs
+expression: report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.3.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T12:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "secaudit",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/secaudit/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "secaudit",
+      "finding": {
+        "severity": "error",
+        "code": "secaudit.sql_injection",
+        "message": "SQL injection vulnerability in query builder",
+        "location": {
+          "path": "src/db.rs",
+          "line": 88
+        },
+        "fingerprint": "01134e8c5417257f409fd5c0a4bfb3395185b6396d4d1340125f584ca0c23b66"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Security",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "secaudit",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Security",
+        "repro": "secaudit scan --strict"
+      }
+    ]
+  }
+}

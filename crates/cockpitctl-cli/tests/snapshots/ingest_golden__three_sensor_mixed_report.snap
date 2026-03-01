@@ -1,0 +1,146 @@
+---
+source: crates/cockpitctl-cli/tests/ingest_golden.rs
+expression: report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.3.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T12:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 1,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "builddiag",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/builddiag/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "allowed"
+    },
+    {
+      "id": "stylechecker",
+      "blocking": false,
+      "missing": "skip",
+      "presence": "present",
+      "report_path": "artifacts/stylechecker/report.json",
+      "verdict": {
+        "status": "warn",
+        "counts": {
+          "info": 0,
+          "warn": 1,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    },
+    {
+      "id": "secaudit",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "present",
+      "report_path": "artifacts/secaudit/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "secaudit",
+      "finding": {
+        "severity": "error",
+        "code": "secaudit.xss_vuln",
+        "message": "Cross-site scripting vulnerability in template rendering",
+        "location": {
+          "path": "src/render.rs",
+          "line": 33
+        },
+        "fingerprint": "e4251c015e1978d43ecde3248d21f44cda7f2e0601025059236f70d864ef3a93"
+      }
+    },
+    {
+      "sensor_id": "stylechecker",
+      "finding": {
+        "severity": "warn",
+        "code": "stylechecker.long_line",
+        "message": "Line exceeds 120 character limit",
+        "location": {
+          "path": "src/main.rs",
+          "line": 55
+        },
+        "fingerprint": "cd277f4c72eb6a3dc1cf05929f7738c809a1d5433d78186a5249789c19f72d27"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Build",
+      "Style",
+      "Security",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "builddiag",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Build",
+        "repro": "builddiag check"
+      },
+      {
+        "id": "secaudit",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Security",
+        "repro": "secaudit scan"
+      },
+      {
+        "id": "stylechecker",
+        "blocking": false,
+        "missing": "skip",
+        "section": "Style",
+        "repro": "stylechecker lint"
+      }
+    ]
+  }
+}

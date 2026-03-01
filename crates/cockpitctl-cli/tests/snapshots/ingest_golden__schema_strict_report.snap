@@ -1,0 +1,81 @@
+---
+source: crates/cockpitctl-cli/tests/ingest_golden.rs
+expression: report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "cockpitctl",
+    "version": "0.3.0"
+  },
+  "run": {
+    "started_at": "2026-02-02T12:00:00Z"
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "bad-sensor",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "invalid",
+      "report_path": "artifacts/bad-sensor/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": [
+          "schema_violation"
+        ]
+      },
+      "truncated": false,
+      "errors": [
+        "Additional properties are not allowed ('extra_not_allowed' was unexpected)"
+      ],
+      "policy_outcome": "blocked"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "bad-sensor",
+      "finding": {
+        "severity": "error",
+        "check_id": "cockpit.schema_violation",
+        "code": "cockpit.schema_violation",
+        "message": "Receipt for sensor `bad-sensor` at `artifacts/bad-sensor/report.json` does not conform to sensor.report.v1 schema: Additional properties are not allowed ('extra_not_allowed' was unexpected)",
+        "help": "Ensure the sensor output matches the JSON schema at contracts/schemas/sensor.report.v1.json.",
+        "fingerprint": "7d501a45062f6ed1d9f1186a8d527e20414e33a2ff3af844c80e91e3bbb39d6a"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Validation",
+      "Other"
+    ],
+    "sensors": [
+      {
+        "id": "bad-sensor",
+        "blocking": true,
+        "missing": "fail",
+        "section": "Validation",
+        "repro": "bad-sensor check --verify"
+      }
+    ]
+  }
+}
