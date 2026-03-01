@@ -1,0 +1,10 @@
+---
+source: crates/cockpitctl-io-schema/tests/schema_adapter_tests.rs
+expression: errors
+---
+[
+  "\"tool\" is a required property",
+  "\"run\" is a required property",
+  "\"verdict\" is a required property",
+  "\"findings\" is a required property"
+]

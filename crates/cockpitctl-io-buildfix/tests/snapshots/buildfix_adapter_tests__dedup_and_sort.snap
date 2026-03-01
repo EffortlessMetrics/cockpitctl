@@ -1,0 +1,19 @@
+---
+source: crates/cockpitctl-io-buildfix/tests/buildfix_adapter_tests.rs
+expression: "serde_json::json!({\n    \"applied_fix_ids\": out.applied_fix_ids, \"skipped_fix_ids\":\n    out.skipped_fix_ids, \"errors\": out.errors,\n})"
+---
+{
+  "applied_fix_ids": [
+    "a",
+    "m",
+    "z"
+  ],
+  "errors": [
+    "err1",
+    "err2"
+  ],
+  "skipped_fix_ids": [
+    "a",
+    "b"
+  ]
+}
