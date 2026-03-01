@@ -121,3 +121,39 @@ jobs:
       # Optional: mutation tests (expensive)
       # - name: Mutation tests
       #   run: cargo install cargo-mutants && cargo mutants --workspace
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Security audit
+        run: cargo audit
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read MSRV from rust-toolchain.toml
+        id: msrv
+        run: |
+          MSRV=$(grep '^channel' rust-toolchain.toml | sed 's/.*"\(.*\)"/\1/')
+          echo "version=$MSRV" >> "$GITHUB_OUTPUT"
+
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+
+      - name: Build with MSRV
+        run: cargo build --workspace --all-targets
+
+      - name: Test with MSRV
+        run: cargo test --workspace --all-targets
