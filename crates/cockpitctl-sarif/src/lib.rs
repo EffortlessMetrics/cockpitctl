@@ -7,7 +7,7 @@
 
 use std::collections::BTreeMap;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use cockpitctl_types::{CockpitReport, Highlight, Severity};
 
@@ -16,7 +16,7 @@ use cockpitctl_types::{CockpitReport, Highlight, Severity};
 // ============================================================================
 
 /// Top-level SARIF v2.1.0 log object.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifLog {
     /// JSON Schema URI for the SARIF format.
@@ -29,7 +29,7 @@ pub struct SarifLog {
 }
 
 /// A single analysis run within a SARIF log.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifRun {
     /// Tool that produced the results.
@@ -39,7 +39,7 @@ pub struct SarifRun {
 }
 
 /// Tool metadata in SARIF format.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifTool {
     /// Primary driver component of the tool.
@@ -47,7 +47,7 @@ pub struct SarifTool {
 }
 
 /// Driver component describing the analysis tool.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifToolComponent {
     /// Display name of the tool.
@@ -55,23 +55,23 @@ pub struct SarifToolComponent {
     /// Version string of the tool.
     pub version: String,
     /// Rules (checks) defined by this tool.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub rules: Vec<SarifRule>,
 }
 
 /// A rule (check) definition referenced by SARIF results.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifRule {
     /// Stable identifier for the rule.
     pub id: String,
     /// Optional short human-readable description.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub short_description: Option<SarifMessage>,
 }
 
 /// A human-readable SARIF message.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifMessage {
     /// Plain-text message content.
@@ -79,7 +79,7 @@ pub struct SarifMessage {
 }
 
 /// A single analysis result (finding) in SARIF format.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifResult {
     /// Rule identifier this result pertains to.
@@ -89,15 +89,15 @@ pub struct SarifResult {
     /// Human-readable description of the result.
     pub message: SarifMessage,
     /// Source locations associated with this result.
-    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub locations: Vec<SarifLocation>,
     /// Stable fingerprints for result matching across runs.
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub fingerprints: BTreeMap<String, String>,
 }
 
 /// Wrapper for a physical source location in SARIF.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifLocation {
     /// Physical location referenced by this wrapper.
@@ -105,18 +105,18 @@ pub struct SarifLocation {
 }
 
 /// Physical location combining an artifact path and optional region.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifPhysicalLocation {
     /// Artifact (file) location.
     pub artifact_location: SarifArtifactLocation,
     /// Optional line/column region within the artifact.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub region: Option<SarifRegion>,
 }
 
 /// URI-based artifact location in SARIF.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifArtifactLocation {
     /// URI of the artifact (typically a relative file path).
@@ -124,14 +124,14 @@ pub struct SarifArtifactLocation {
 }
 
 /// Line/column region within a source file.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SarifRegion {
     /// 1-based starting line number.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start_line: Option<u32>,
     /// 1-based starting column number.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start_column: Option<u32>,
 }
 

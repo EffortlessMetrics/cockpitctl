@@ -964,3 +964,154 @@ proptest! {
         prop_assert_eq!(evidence, parsed);
     }
 }
+
+// ============================================================================
+// Struct serde roundtrips — config types (BuildfixPolicy, Policy, CockpitConfig)
+// ============================================================================
+
+fn any_buildfix_actuator_config() -> impl Strategy<Value = BuildfixActuatorConfig> {
+    ("[a-z][a-z0-9/ ._-]{2,20}", 1000u64..120_000).prop_map(|(command, timeout_ms)| {
+        BuildfixActuatorConfig {
+            command,
+            timeout_ms,
+        }
+    })
+}
+
+fn any_buildfix_policy() -> impl Strategy<Value = BuildfixPolicy> {
+    (
+        any::<bool>(),
+        any_safety_level(),
+        any::<bool>(),
+        prop::option::of(any_buildfix_actuator_config()),
+    )
+        .prop_map(
+            |(auto_apply, max_auto_apply_safety, require_matched_finding, actuator)| {
+                BuildfixPolicy {
+                    auto_apply,
+                    max_auto_apply_safety,
+                    require_matched_finding,
+                    actuator,
+                }
+            },
+        )
+}
+
+fn any_schema_validation() -> impl Strategy<Value = SchemaValidation> {
+    prop_oneof![Just(SchemaValidation::Lax), Just(SchemaValidation::Strict),]
+}
+
+fn any_policy() -> impl Strategy<Value = Policy> {
+    (
+        any::<bool>(),
+        1usize..20,
+        1usize..50,
+        1usize..50,
+        prop::collection::vec("[A-Z][a-z]{2,10}", 0..4),
+        any_schema_validation(),
+        1usize..4_000_000,
+    )
+        .prop_map(
+            |(
+                warn_is_fail,
+                max_highlights,
+                max_per_sensor_findings,
+                max_annotations,
+                section_order,
+                schema_validation,
+                max_receipt_size_bytes,
+            )| {
+                Policy {
+                    warn_is_fail,
+                    max_highlights,
+                    max_per_sensor_findings,
+                    max_annotations,
+                    section_order,
+                    schema_validation,
+                    max_receipt_size_bytes,
+                }
+            },
+        )
+}
+
+fn any_cockpit_config() -> impl Strategy<Value = CockpitConfig> {
+    (
+        any_policy(),
+        any_buildfix_policy(),
+        any_policy_signing_config(),
+        prop::collection::btree_map("[a-z_]{3,8}", any_sensor_policy(), 0..3),
+        prop::collection::vec(any_hook_config(), 0..2),
+    )
+        .prop_map(
+            |(policy, buildfix, policy_signing, sensors, hooks)| CockpitConfig {
+                policy,
+                buildfix,
+                policy_signing,
+                sensors,
+                hooks,
+            },
+        )
+}
+
+proptest! {
+    #[test]
+    fn buildfix_actuator_config_roundtrip(c in any_buildfix_actuator_config()) {
+        let json = serde_json::to_string(&c).unwrap();
+        let parsed: BuildfixActuatorConfig = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(c, parsed);
+    }
+
+    #[test]
+    fn buildfix_policy_roundtrip(p in any_buildfix_policy()) {
+        let json = serde_json::to_string(&p).unwrap();
+        let parsed: BuildfixPolicy = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(p, parsed);
+    }
+
+    #[test]
+    fn policy_roundtrip(p in any_policy()) {
+        let json = serde_json::to_string(&p).unwrap();
+        let parsed: Policy = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(p, parsed);
+    }
+
+    #[test]
+    fn cockpit_config_roundtrip(c in any_cockpit_config()) {
+        let json = serde_json::to_string(&c).unwrap();
+        let parsed: CockpitConfig = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(c, parsed);
+    }
+}
+
+// ============================================================================
+// String roundtrips (serialize → string → parse → equals)
+// ============================================================================
+
+proptest! {
+    #[test]
+    fn cockpit_config_string_roundtrip(c in any_cockpit_config()) {
+        let json = serde_json::to_string(&c).unwrap();
+        let reparsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let json2 = serde_json::to_string(&reparsed).unwrap();
+        let final_parsed: CockpitConfig = serde_json::from_str(&json2).unwrap();
+        prop_assert_eq!(c, final_parsed);
+    }
+
+    #[test]
+    fn policy_string_roundtrip(p in any_policy()) {
+        let json = serde_json::to_string(&p).unwrap();
+        let reparsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let json2 = serde_json::to_string(&reparsed).unwrap();
+        let final_parsed: Policy = serde_json::from_str(&json2).unwrap();
+        prop_assert_eq!(p, final_parsed);
+    }
+
+    #[test]
+    fn buildfix_policy_string_roundtrip(p in any_buildfix_policy()) {
+        let json = serde_json::to_string(&p).unwrap();
+        let reparsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let json2 = serde_json::to_string(&reparsed).unwrap();
+        let final_parsed: BuildfixPolicy = serde_json::from_str(&json2).unwrap();
+        prop_assert_eq!(p, final_parsed);
+    }
+}
