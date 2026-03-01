@@ -19,6 +19,7 @@ time.workspace = true
 
 [dev-dependencies]
 insta = { workspace = true }
+jsonschema.workspace = true
 pretty_assertions.workspace = true
 proptest.workspace = true
 criterion.workspace = true
