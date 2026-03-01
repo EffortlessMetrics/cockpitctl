@@ -10,6 +10,7 @@ pub use cockpitctl_io as io;
 pub use cockpitctl_render as render;
 pub use cockpitctl_sarif as sarif;
 pub use cockpitctl_types as types;
+pub use cockpitctl_validate as validate;
 
 // Flatten the most-used ingest items.
 pub use cockpitctl_ingest::{
@@ -37,3 +38,6 @@ pub use cockpitctl_sarif::{cockpit_report_to_sarif, cockpit_report_to_sarif_json
 pub use cockpitctl_render::{
     GitHubAnnotationResult, append_comment_sections, render_comment, render_github_annotations,
 };
+
+// Flatten validation helpers.
+pub use cockpitctl_validate::validate_input_file;

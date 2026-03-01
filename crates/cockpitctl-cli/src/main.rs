@@ -2,13 +2,14 @@ use std::collections::BTreeMap;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
-use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator, SchemaValidator};
+use cockpitctl_ingest::{IngestRequest, IngestUseCase, NoOpSchemaValidator};
 use cockpitctl_io::{FsLayout, FsOutputSink, FsPolicySource, FsReceiptSource, JsonSchemaValidator};
 use cockpitctl_render::{append_comment_sections, render_comment, render_github_annotations};
 use cockpitctl_types::{
     BUILDFIX_APPLY_REQUEST_SCHEMA_ID, BuildfixActuatorConfig, BuildfixApplyRequest,
     BuildfixApplyStatus, BuildfixApplySummary, RunInfo, SafetyLevel, SchemaValidation, ToolInfo,
 };
+use cockpitctl_validate::validate_input_file;
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 /// CLI schema validation mode for sensor receipts.
@@ -646,83 +647,22 @@ fn cmd_init(path: &str) -> Result<i32> {
 }
 
 fn cmd_validate(input: &str, _strict: bool, lax: bool) -> Result<i32> {
-    let bytes = std::fs::read(input).with_context(|| format!("read {}", input))?;
     let mode = if lax {
         SchemaValidation::Lax
     } else {
         SchemaValidation::Strict
     };
 
+    validate_input_file(input, mode)?;
     match mode {
         SchemaValidation::Lax => {
-            // Try sensor report first, then cockpit report.
-            if serde_json::from_slice::<cockpitctl_types::SensorReport>(&bytes).is_ok() {
-                eprintln!("ok: parsed as sensor.report.v1 shape");
-                return Ok(0);
-            }
-            if serde_json::from_slice::<cockpitctl_types::CockpitReport>(&bytes).is_ok() {
-                eprintln!("ok: parsed as cockpit.report.v1 shape");
-                return Ok(0);
-            }
-
-            anyhow::bail!("input did not parse as SensorReport or CockpitReport")
+            eprintln!("ok: parsed as sensor.report.v1/cockpit.report.v1 shape")
         }
         SchemaValidation::Strict => {
-            let value: serde_json::Value =
-                serde_json::from_slice(&bytes).context("parse JSON input")?;
-            let schema_hint = value.get("schema").and_then(|s| s.as_str());
-
-            let mut candidates = Vec::new();
-            if schema_hint == Some("cockpit.report.v1") {
-                candidates.push((
-                    "cockpit.report.v1",
-                    JsonSchemaValidator::cockpit_report_v1()
-                        .context("load cockpit.report.v1 JSON schema")?,
-                ));
-            } else if schema_hint.is_some() {
-                candidates.push((
-                    "sensor.report.v1",
-                    JsonSchemaValidator::sensor_report_v1()
-                        .context("load sensor.report.v1 JSON schema")?,
-                ));
-            } else {
-                candidates.push((
-                    "sensor.report.v1",
-                    JsonSchemaValidator::sensor_report_v1()
-                        .context("load sensor.report.v1 JSON schema")?,
-                ));
-                candidates.push((
-                    "cockpit.report.v1",
-                    JsonSchemaValidator::cockpit_report_v1()
-                        .context("load cockpit.report.v1 JSON schema")?,
-                ));
-            }
-
-            let mut errors = Vec::new();
-            for (label, validator) in candidates {
-                match validator.validate_receipt(&bytes)? {
-                    cockpitctl_ingest::SchemaValidationResult::Valid => {
-                        eprintln!("ok: validated as {}", label);
-                        return Ok(0);
-                    }
-                    cockpitctl_ingest::SchemaValidationResult::Invalid(errs) => {
-                        errors.push(format_schema_errors(label, &errs));
-                    }
-                }
-            }
-
-            anyhow::bail!("strict validation failed:\n{}", errors.join("\n"))
+            eprintln!("ok: validated as sensor.report.v1/cockpit.report.v1")
         }
     }
-}
-
-fn format_schema_errors(label: &str, errs: &[String]) -> String {
-    let detail = if errs.is_empty() {
-        "schema validation failed".to_string()
-    } else {
-        errs.join("; ")
-    };
-    format!("{}: {}", label, detail)
+    Ok(0)
 }
 
 #[cfg(test)]
@@ -940,19 +880,6 @@ mod tests {
             SafetyLevel::from(SafetyLevelMode::Unsafe),
             SafetyLevel::Unsafe
         );
-    }
-
-    #[test]
-    fn format_schema_errors_handles_empty_and_non_empty() {
-        let empty = format_schema_errors("sensor.report.v1", &[]);
-        assert!(empty.contains("schema validation failed"));
-
-        let filled = format_schema_errors(
-            "sensor.report.v1",
-            &[String::from("missing schema"), String::from("bad status")],
-        );
-        assert!(filled.contains("missing schema"));
-        assert!(filled.contains("bad status"));
     }
 
     #[test]
