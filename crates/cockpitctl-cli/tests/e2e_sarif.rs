@@ -364,3 +364,410 @@ missing = "skip"
     let results = sarif["runs"][0]["results"].as_array().expect("results");
     assert_eq!(results.len(), 2, "should have two SARIF results");
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7) SARIF output with valid multi-sensor report
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn sarif_multi_sensor_report() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+warn_is_fail = false
+
+[sensors.alpha]
+blocking = false
+missing = "skip"
+
+[sensors.beta]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report(
+        "alpha",
+        r#"{
+  "schema": "alpha.report.v1",
+  "tool": { "name": "alpha", "version": "1.0.0" },
+  "run": { "started_at": "2026-02-02T11:00:00Z" },
+  "verdict": { "status": "warn", "counts": { "info": 0, "warn": 1, "error": 0 } },
+  "findings": [
+    {
+      "severity": "warn",
+      "code": "alpha.lint",
+      "message": "Alpha lint warning",
+      "location": { "path": "src/a.rs", "line": 5 }
+    }
+  ]
+}"#,
+    );
+    setup.write_sensor_report(
+        "beta",
+        r#"{
+  "schema": "beta.report.v1",
+  "tool": { "name": "beta", "version": "2.0.0" },
+  "run": { "started_at": "2026-02-02T11:00:00Z" },
+  "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 1 } },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "beta.crash",
+      "message": "Beta crash detected",
+      "location": { "path": "src/b.rs", "line": 42 }
+    }
+  ]
+}"#,
+    );
+
+    ingest_sarif(&setup).success();
+
+    let sarif: serde_json::Value = serde_json::from_str(&setup.read_sarif()).expect("parse sarif");
+
+    let runs = sarif["runs"].as_array().expect("runs array");
+    assert_eq!(runs.len(), 1, "should have exactly one run");
+
+    let results = runs[0]["results"].as_array().expect("results array");
+    assert!(
+        results.len() >= 2,
+        "multi-sensor should produce at least 2 results, got {}",
+        results.len()
+    );
+
+    let rule_ids: Vec<&str> = results
+        .iter()
+        .filter_map(|r| r["ruleId"].as_str())
+        .collect();
+    assert!(
+        rule_ids.contains(&"alpha.lint"),
+        "results should include alpha.lint"
+    );
+    assert!(
+        rule_ids.contains(&"beta.crash"),
+        "results should include beta.crash"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8) SARIF with no findings → valid but empty results
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn sarif_no_findings_produces_valid_empty_results() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+warn_is_fail = false
+
+[sensors.clean]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report(
+        "clean",
+        r#"{
+  "schema": "clean.report.v1",
+  "tool": { "name": "clean", "version": "1.0.0" },
+  "run": { "started_at": "2026-02-02T11:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+  "findings": []
+}"#,
+    );
+
+    ingest_sarif(&setup).success();
+
+    let sarif: serde_json::Value = serde_json::from_str(&setup.read_sarif()).expect("parse sarif");
+
+    // Valid structure
+    assert_eq!(sarif["version"].as_str(), Some("2.1.0"));
+    assert!(sarif["runs"].is_array());
+
+    let runs = sarif["runs"].as_array().unwrap();
+    assert_eq!(runs.len(), 1);
+
+    let results = runs[0]["results"].as_array().expect("results array");
+    assert!(
+        results.is_empty(),
+        "no findings should produce empty results, got {} results",
+        results.len()
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9) SARIF output format validation (check required SARIF fields)
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn sarif_required_fields_present() {
+    let setup = setup_from_fixture("happy_path");
+
+    ingest_sarif(&setup).success();
+
+    let sarif: serde_json::Value = serde_json::from_str(&setup.read_sarif()).expect("parse sarif");
+
+    // Top-level required fields
+    assert!(sarif["$schema"].is_string(), "$schema must be a string");
+    assert!(sarif["version"].is_string(), "version must be a string");
+    assert!(sarif["runs"].is_array(), "runs must be an array");
+
+    let runs = sarif["runs"].as_array().unwrap();
+    for (i, run) in runs.iter().enumerate() {
+        // Each run must have tool and results
+        assert!(run["tool"].is_object(), "run[{i}].tool must be an object");
+        assert!(
+            run["tool"]["driver"].is_object(),
+            "run[{i}].tool.driver must be an object"
+        );
+        assert!(
+            run["tool"]["driver"]["name"].is_string(),
+            "run[{i}].tool.driver.name must be a string"
+        );
+        assert!(
+            run["tool"]["driver"]["version"].is_string(),
+            "run[{i}].tool.driver.version must be a string"
+        );
+        assert!(
+            run["results"].is_array(),
+            "run[{i}].results must be an array"
+        );
+
+        // Each result must have ruleId, level, and message
+        let results = run["results"].as_array().unwrap();
+        for (j, result) in results.iter().enumerate() {
+            assert!(
+                result["ruleId"].is_string(),
+                "run[{i}].results[{j}].ruleId must be a string"
+            );
+            assert!(
+                result["level"].is_string(),
+                "run[{i}].results[{j}].level must be a string"
+            );
+            assert!(
+                result["message"]["text"].is_string(),
+                "run[{i}].results[{j}].message.text must be a string"
+            );
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10) SARIF with different severity levels → correct SARIF level mapping
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn sarif_severity_level_mapping() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+warn_is_fail = false
+
+[sensors.sev]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report(
+        "sev",
+        r#"{
+  "schema": "sev.report.v1",
+  "tool": { "name": "sev", "version": "1.0.0" },
+  "run": { "started_at": "2026-02-02T11:00:00Z" },
+  "verdict": { "status": "fail", "counts": { "info": 1, "warn": 1, "error": 1 } },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "sev.err",
+      "message": "An error finding",
+      "location": { "path": "src/e.rs", "line": 1 }
+    },
+    {
+      "severity": "warn",
+      "code": "sev.wrn",
+      "message": "A warning finding",
+      "location": { "path": "src/w.rs", "line": 2 }
+    },
+    {
+      "severity": "info",
+      "code": "sev.inf",
+      "message": "An info finding",
+      "location": { "path": "src/i.rs", "line": 3 }
+    }
+  ]
+}"#,
+    );
+
+    ingest_sarif(&setup).success();
+
+    let sarif: serde_json::Value = serde_json::from_str(&setup.read_sarif()).expect("parse sarif");
+    let results = sarif["runs"][0]["results"].as_array().expect("results");
+
+    // Collect level mappings by ruleId
+    let mut levels: std::collections::HashMap<&str, &str> = std::collections::HashMap::new();
+    for r in results {
+        if let (Some(id), Some(level)) = (r["ruleId"].as_str(), r["level"].as_str()) {
+            levels.insert(id, level);
+        }
+    }
+
+    // SARIF level mapping: error→error, warn→warning, info→note
+    if let Some(&level) = levels.get("sev.err") {
+        assert_eq!(level, "error", "error severity should map to SARIF 'error'");
+    }
+    if let Some(&level) = levels.get("sev.wrn") {
+        assert_eq!(
+            level, "warning",
+            "warn severity should map to SARIF 'warning'"
+        );
+    }
+    if let Some(&level) = levels.get("sev.inf") {
+        assert_eq!(level, "note", "info severity should map to SARIF 'note'");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11) SARIF output is deterministic (run twice, compare)
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn sarif_output_is_deterministic() {
+    // Run 1 — multi_error fixture exits with code 2 (policy fail), but SARIF is still written
+    let setup1 = setup_from_fixture("multi_error");
+    ingest_sarif(&setup1).code(2);
+    let sarif1 = setup1.read_sarif();
+
+    // Run 2
+    let setup2 = setup_from_fixture("multi_error");
+    ingest_sarif(&setup2).code(2);
+    let sarif2 = setup2.read_sarif();
+
+    assert_eq!(
+        sarif1, sarif2,
+        "SARIF output must be byte-identical across runs with identical inputs"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 12) SARIF with special characters in findings → valid JSON
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn sarif_special_characters_produce_valid_json() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+warn_is_fail = false
+
+[sensors.special]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report(
+        "special",
+        r#"{
+  "schema": "special.report.v1",
+  "tool": { "name": "special", "version": "1.0.0" },
+  "run": { "started_at": "2026-02-02T11:00:00Z" },
+  "verdict": { "status": "warn", "counts": { "info": 0, "warn": 1, "error": 0 } },
+  "findings": [
+    {
+      "severity": "warn",
+      "code": "special.chars",
+      "message": "Found issue with \"quotes\" and <angle> & ampersand \\ backslash",
+      "location": { "path": "src/spécial/naïve.rs", "line": 1 }
+    }
+  ]
+}"#,
+    );
+
+    ingest_sarif(&setup).success();
+
+    // Must parse as valid JSON
+    let sarif_str = setup.read_sarif();
+    let sarif: serde_json::Value =
+        serde_json::from_str(&sarif_str).expect("SARIF with special chars must be valid JSON");
+
+    let results = sarif["runs"][0]["results"].as_array().expect("results");
+    assert!(!results.is_empty(), "should have at least one result");
+
+    // The message should preserve the special characters
+    let msg = results[0]["message"]["text"]
+        .as_str()
+        .expect("message text");
+    assert!(
+        msg.contains("quotes") && msg.contains("ampersand"),
+        "special characters should be preserved in SARIF message, got: {msg}"
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 13) SARIF snapshot test for output stability (structure check)
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn sarif_snapshot_structural_stability() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+warn_is_fail = false
+
+[sensors.snap]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report(
+        "snap",
+        r#"{
+  "schema": "snap.report.v1",
+  "tool": { "name": "snap", "version": "1.0.0" },
+  "run": { "started_at": "2026-02-02T11:00:00Z" },
+  "verdict": { "status": "warn", "counts": { "info": 0, "warn": 1, "error": 0 } },
+  "findings": [
+    {
+      "severity": "warn",
+      "code": "snap.test_rule",
+      "message": "Snapshot test finding",
+      "location": { "path": "src/snap.rs", "line": 42 }
+    }
+  ]
+}"#,
+    );
+
+    ingest_sarif(&setup).success();
+
+    let sarif: serde_json::Value = serde_json::from_str(&setup.read_sarif()).expect("parse sarif");
+
+    // Verify structural invariants that should never change
+    assert_eq!(sarif["version"].as_str(), Some("2.1.0"));
+    assert!(
+        sarif["$schema"]
+            .as_str()
+            .unwrap_or("")
+            .contains("sarif-schema-2.1.0"),
+        "$schema should reference sarif-schema-2.1.0"
+    );
+
+    let run = &sarif["runs"][0];
+    assert_eq!(
+        run["tool"]["driver"]["name"].as_str(),
+        Some("cockpitctl"),
+        "driver name should be cockpitctl"
+    );
+
+    let results = run["results"].as_array().expect("results");
+    assert_eq!(results.len(), 1);
+
+    let result = &results[0];
+    assert_eq!(result["ruleId"].as_str(), Some("snap.test_rule"));
+    assert_eq!(result["level"].as_str(), Some("warning"));
+    assert_eq!(
+        result["message"]["text"].as_str(),
+        Some("Snapshot test finding")
+    );
+
+    let loc = &result["locations"][0]["physicalLocation"];
+    assert_eq!(loc["artifactLocation"]["uri"].as_str(), Some("src/snap.rs"));
+    assert_eq!(loc["region"]["startLine"].as_u64(), Some(42));
+}
