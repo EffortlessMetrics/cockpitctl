@@ -36,7 +36,16 @@ Requires `quality-gate` to pass first.
 | Publish in dependency order | crates.io dependency resolution | ✅ |
 | 30s waits between tiers | crates.io index propagation | ✅ |
 
-**Publish order:** types → conform → domain → render → ingest → io → sarif → core → cockpitctl → conformctl
+**Publish order (9 tiers):**
+1. types + feature-state
+2. conform + domain-buildfix + domain-signing + domain-trend + feature-grid + io-schema
+3. domain + io-buildfix + io-hooks + io-policy-signing
+4. render + ingest
+5. io
+6. sarif
+7. core
+8. cockpitctl
+9. conformctl
 
 ### 3. Build Binaries Job (`build-binaries`)
 
@@ -180,12 +189,21 @@ See the [Release Manager Checklist](docs/how-to/release-manager-checklist.md#rol
 
 Each release produces:
 
-**Crates.io packages (10 crates):**
+**Crates.io packages (19 crates):**
 - `cockpitctl-types` — Core DTOs and embedded schemas
+- `cockpitctl-feature-state` — Feature flag state management
+- `cockpitctl-feature-grid` — BDD feature toggle grid
 - `cockpitctl-conform` — Conformance checking library
+- `cockpitctl-domain-buildfix` — Buildfix domain logic
+- `cockpitctl-domain-signing` — Policy signing domain logic
+- `cockpitctl-domain-trend` — Trend analysis domain logic
 - `cockpitctl-domain` — Pure determinism and selection logic
-- `cockpitctl-render` — Markdown renderer
 - `cockpitctl-ingest` — Orchestration and ports
+- `cockpitctl-render` — Markdown renderer
+- `cockpitctl-io-schema` — Schema validation adapters
+- `cockpitctl-io-buildfix` — Buildfix I/O adapters
+- `cockpitctl-io-hooks` — Hook execution adapters
+- `cockpitctl-io-policy-signing` — Policy signing I/O adapters
 - `cockpitctl-io` — Filesystem adapters
 - `cockpitctl-sarif` — SARIF exporter
 - `cockpitctl-core` — Facade crate
