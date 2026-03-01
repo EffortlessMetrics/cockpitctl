@@ -1,0 +1,72 @@
+---
+source: crates/cockpitctl-sarif/tests/sarif_expansion_tests.rs
+expression: parsed
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "x.rs"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "err"
+          },
+          "ruleId": "E001"
+        },
+        {
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "y.rs"
+                },
+                "region": {
+                  "startLine": 2
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "info"
+          },
+          "ruleId": "I001"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "rules": [
+            {
+              "id": "E001",
+              "shortDescription": {
+                "text": "[clippy] E001"
+              }
+            },
+            {
+              "id": "I001",
+              "shortDescription": {
+                "text": "[lint] I001"
+              }
+            }
+          ],
+          "version": "0.3.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

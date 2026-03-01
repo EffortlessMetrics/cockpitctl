@@ -1,0 +1,97 @@
+---
+source: crates/cockpitctl-sarif/tests/sarif_expansion_tests.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "ERR",
+              "shortDescription": {
+                "text": "[s] ERR"
+              }
+            },
+            {
+              "id": "INFO",
+              "shortDescription": {
+                "text": "[s] INFO"
+              }
+            },
+            {
+              "id": "WARN",
+              "shortDescription": {
+                "text": "[s] WARN"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "ERR",
+          "level": "error",
+          "message": {
+            "text": "error msg"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "a.rs"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "WARN",
+          "level": "warning",
+          "message": {
+            "text": "warn msg"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "b.rs"
+                },
+                "region": {
+                  "startLine": 2
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "INFO",
+          "level": "note",
+          "message": {
+            "text": "info msg"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "c.rs"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
