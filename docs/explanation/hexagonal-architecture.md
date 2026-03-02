@@ -160,6 +160,7 @@ The following crates extend the core architecture for optional features
 | Crate | Layer | Purpose |
 |-------|-------|---------|
 | `cockpitctl-domain-buildfix` | Domain | Buildfix domain logic |
+| `cockpitctl-domain-explain` | Domain | Cockpit finding-code explanations catalog |
 | `cockpitctl-domain-signing` | Domain | Policy signing domain logic |
 | `cockpitctl-domain-trend` | Domain | Trend analysis domain logic |
 | `cockpitctl-io-hooks` | Adapter | Hook execution adapters |
@@ -170,7 +171,7 @@ The following crates extend the core architecture for optional features
 | `cockpitctl-feature-grid` | Infra | BDD feature toggle grid |
 | `cockpitctl-sarif` | Adapter | SARIF v2.1.0 export |
 
-Total: **19 publishable crates** (10 core + 9 feature-gated + SARIF).
+Total: **20 publishable crates** (10 core + 10 feature-gated + SARIF).
 
 ## The Rule
 

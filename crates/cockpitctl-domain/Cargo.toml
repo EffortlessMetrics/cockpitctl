@@ -15,6 +15,7 @@ categories = ["development-tools"]
 [dependencies]
 hex.workspace = true
 sha2.workspace = true
+cockpitctl-domain-explain = { path = "../cockpitctl-domain-explain", version = "0.3.0" }
 cockpitctl-domain-buildfix = { path = "../cockpitctl-domain-buildfix", version = "0.3.0" }
 cockpitctl-domain-signing = { path = "../cockpitctl-domain-signing", version = "0.3.0" }
 cockpitctl-domain-trend = { path = "../cockpitctl-domain-trend", version = "0.3.0" }
