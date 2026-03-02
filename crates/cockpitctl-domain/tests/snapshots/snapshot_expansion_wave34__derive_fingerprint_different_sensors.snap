@@ -1,0 +1,6 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: combined
+---
+sensor_a=0e110a4dff8ddb40c11c96f35704442041cb13f2b7e92081d0aca406f9e840a1
+sensor_b=32f3002b1ac5687f5f50e38c2d6b07fb33ed8c21dce6e68484812b361e47db7c

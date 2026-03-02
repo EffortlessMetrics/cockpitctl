@@ -1,0 +1,53 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: highlights
+---
+[
+  {
+    "sensor_id": "info-sensor",
+    "finding": {
+      "severity": "info",
+      "check_id": "cockpit.receipt_inconsistent",
+      "code": "cockpit.receipt_inconsistent",
+      "message": "Receipt counts for sensor `info-sensor` did not match findings: reported info=5, warn=0, error=0, computed info=3, warn=0, error=0.",
+      "help": "Ensure receipt verdict counts match the findings array.",
+      "fingerprint": "cockpit.receipt_inconsistent:info-sensor:5:0:0:3:0:0"
+    }
+  },
+  {
+    "sensor_id": "info-sensor",
+    "finding": {
+      "severity": "info",
+      "code": "I1",
+      "message": "Message for I1",
+      "location": {
+        "path": "src/a.rs",
+        "line": 1
+      }
+    }
+  },
+  {
+    "sensor_id": "info-sensor",
+    "finding": {
+      "severity": "info",
+      "code": "I2",
+      "message": "Message for I2",
+      "location": {
+        "path": "src/b.rs",
+        "line": 2
+      }
+    }
+  },
+  {
+    "sensor_id": "info-sensor",
+    "finding": {
+      "severity": "info",
+      "code": "I3",
+      "message": "Message for I3",
+      "location": {
+        "path": "src/c.rs",
+        "line": 3
+      }
+    }
+  }
+]

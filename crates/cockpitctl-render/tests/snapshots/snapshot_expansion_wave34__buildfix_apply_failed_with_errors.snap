@@ -1,0 +1,15 @@
+---
+source: crates/cockpitctl-render/tests/snapshot_expansion_wave34.rs
+expression: section
+---
+### Buildfix Apply
+
+Status: ❌ failed · max safety: `safe` · require matched finding: `false`
+
+Reason: `actuator_failed`
+
+Selected fixes: `fix-import`
+
+Errors:
+- actuator exited with code 1
+- file src/main.rs not found

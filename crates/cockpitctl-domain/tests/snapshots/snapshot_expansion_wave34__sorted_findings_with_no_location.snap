@@ -1,0 +1,34 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: findings
+---
+[
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "error without location"
+  },
+  {
+    "severity": "error",
+    "code": "E2",
+    "message": "another error without location"
+  },
+  {
+    "severity": "warn",
+    "code": "W1",
+    "message": "Message for W1",
+    "location": {
+      "path": "src/a.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "info",
+    "code": "I1",
+    "message": "Message for I1",
+    "location": {
+      "path": "src/b.rs",
+      "line": 5
+    }
+  }
+]

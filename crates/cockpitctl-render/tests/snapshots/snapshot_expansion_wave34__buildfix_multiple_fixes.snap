@@ -1,0 +1,13 @@
+---
+source: crates/cockpitctl-render/tests/snapshot_expansion_wave34.rs
+expression: section
+---
+### Buildfix
+
+3 fix(es) available (2 matched, 1 unmatched)
+
+| Fix | Safety | Matched | Description |
+|---|---|---:|---|
+| `fix-missing-import` | 🟢 safe | yes | Add missing import for std::io::Read |
+| `fix-type-mismatch` | 🟡 guarded | no | Cast i32 to bool at call site |
+| `fix-unsafe-block` | 🔴 unsafe | yes | Wrap raw pointer dereference in unsafe block |

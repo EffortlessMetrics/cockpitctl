@@ -1,0 +1,25 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: summary
+---
+{
+  "id": "info-sensor",
+  "blocking": false,
+  "missing": "skip",
+  "presence": "present",
+  "report_path": "artifacts/info-sensor/report.json",
+  "verdict": {
+    "status": "pass",
+    "counts": {
+      "info": 3,
+      "warn": 0,
+      "error": 0
+    },
+    "reasons": [
+      "receipt_inconsistent"
+    ]
+  },
+  "truncated": true,
+  "errors": [],
+  "policy_outcome": "informational"
+}

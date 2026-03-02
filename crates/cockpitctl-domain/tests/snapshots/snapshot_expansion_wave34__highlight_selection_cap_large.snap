@@ -1,0 +1,201 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: selected
+---
+[
+  {
+    "sensor_id": "sensor-0",
+    "finding": {
+      "severity": "error",
+      "code": "CODE-000",
+      "message": "Message for CODE-000",
+      "location": {
+        "path": "src/mod_0.rs",
+        "line": 1
+      },
+      "fingerprint": "a0e451e47d6e5a169a2960369625a3f4520e94264c987ffc6886a3a7ffce9863"
+    }
+  },
+  {
+    "sensor_id": "sensor-0",
+    "finding": {
+      "severity": "error",
+      "code": "CODE-012",
+      "message": "Message for CODE-012",
+      "location": {
+        "path": "src/mod_12.rs",
+        "line": 121
+      },
+      "fingerprint": "123bcbe318caafacec670cde9b9e60c02ed61074834bebbeb2491d9602029e61"
+    }
+  },
+  {
+    "sensor_id": "sensor-2",
+    "finding": {
+      "severity": "error",
+      "code": "CODE-006",
+      "message": "Message for CODE-006",
+      "location": {
+        "path": "src/mod_6.rs",
+        "line": 61
+      },
+      "fingerprint": "1210109c1e28075b87402d42f2b4f933fc18f38a8ca086319ccf15a780e68e17"
+    }
+  },
+  {
+    "sensor_id": "sensor-1",
+    "finding": {
+      "severity": "error",
+      "code": "CODE-009",
+      "message": "Message for CODE-009",
+      "location": {
+        "path": "src/mod_9.rs",
+        "line": 91
+      },
+      "fingerprint": "f40747eb2bc784d6a4fad8e8dc757a31fd28cc8c61358e04dcdade94992bf826"
+    }
+  },
+  {
+    "sensor_id": "sensor-3",
+    "finding": {
+      "severity": "error",
+      "code": "CODE-003",
+      "message": "Message for CODE-003",
+      "location": {
+        "path": "src/mod_3.rs",
+        "line": 31
+      },
+      "fingerprint": "b3f422ebce4eaeffe53d72263ce33aa79b9a20f67ff512bd4765e492c39b4388"
+    }
+  },
+  {
+    "sensor_id": "sensor-0",
+    "finding": {
+      "severity": "warn",
+      "code": "CODE-004",
+      "message": "Message for CODE-004",
+      "location": {
+        "path": "src/mod_4.rs",
+        "line": 41
+      },
+      "fingerprint": "70969110fdd5225a76220413b78ae2940478cbc4c619db0e5dda4569c0bbc6ea"
+    }
+  },
+  {
+    "sensor_id": "sensor-2",
+    "finding": {
+      "severity": "warn",
+      "code": "CODE-010",
+      "message": "Message for CODE-010",
+      "location": {
+        "path": "src/mod_10.rs",
+        "line": 101
+      },
+      "fingerprint": "dc147fbbb160d48fa4273662d452356b7801159598d61a119f8f1c538e722cd3"
+    }
+  },
+  {
+    "sensor_id": "sensor-1",
+    "finding": {
+      "severity": "warn",
+      "code": "CODE-001",
+      "message": "Message for CODE-001",
+      "location": {
+        "path": "src/mod_1.rs",
+        "line": 11
+      },
+      "fingerprint": "7da975f09998a286e97d2e88630379b3399b8fde1e17f6276a2fdbc3877cab64"
+    }
+  },
+  {
+    "sensor_id": "sensor-1",
+    "finding": {
+      "severity": "warn",
+      "code": "CODE-013",
+      "message": "Message for CODE-013",
+      "location": {
+        "path": "src/mod_13.rs",
+        "line": 131
+      },
+      "fingerprint": "715b1efc74bec816f28d6ce600f07bd9722fb219d316c53bc372e8905484467f"
+    }
+  },
+  {
+    "sensor_id": "sensor-3",
+    "finding": {
+      "severity": "warn",
+      "code": "CODE-007",
+      "message": "Message for CODE-007",
+      "location": {
+        "path": "src/mod_7.rs",
+        "line": 71
+      },
+      "fingerprint": "7ed22ca2221da3095038c0b3c10ed6e959606b9018e071cebfc787df12d03400"
+    }
+  },
+  {
+    "sensor_id": "sensor-0",
+    "finding": {
+      "severity": "info",
+      "code": "CODE-008",
+      "message": "Message for CODE-008",
+      "location": {
+        "path": "src/mod_8.rs",
+        "line": 81
+      },
+      "fingerprint": "63c075af4e8ab36da20ef028a76fdca35ce0fac1bf3758cd0c6960f2be6b62ae"
+    }
+  },
+  {
+    "sensor_id": "sensor-2",
+    "finding": {
+      "severity": "info",
+      "code": "CODE-014",
+      "message": "Message for CODE-014",
+      "location": {
+        "path": "src/mod_14.rs",
+        "line": 141
+      },
+      "fingerprint": "659d98c3031786fad81b4abddc64b5d9cecd4cfdd849b9454d4bd012db0050dc"
+    }
+  },
+  {
+    "sensor_id": "sensor-2",
+    "finding": {
+      "severity": "info",
+      "code": "CODE-002",
+      "message": "Message for CODE-002",
+      "location": {
+        "path": "src/mod_2.rs",
+        "line": 21
+      },
+      "fingerprint": "9f3ed156f64f6799b415b3f371fa5af21dda45614417c7f2771b85364172473e"
+    }
+  },
+  {
+    "sensor_id": "sensor-1",
+    "finding": {
+      "severity": "info",
+      "code": "CODE-005",
+      "message": "Message for CODE-005",
+      "location": {
+        "path": "src/mod_5.rs",
+        "line": 51
+      },
+      "fingerprint": "4953d751dfdda1176857e2b59c3ef06b0271b6dd269f92f8c16d006413756620"
+    }
+  },
+  {
+    "sensor_id": "sensor-3",
+    "finding": {
+      "severity": "info",
+      "code": "CODE-011",
+      "message": "Message for CODE-011",
+      "location": {
+        "path": "src/mod_11.rs",
+        "line": 111
+      },
+      "fingerprint": "1bacb5dc05565086e3083b93157012e8c98436ca264dafc57593c883b7a601b8"
+    }
+  }
+]

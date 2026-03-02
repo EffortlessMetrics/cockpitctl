@@ -1,0 +1,33 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: capped
+---
+[
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "Message for E1",
+    "location": {
+      "path": "src/a.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "error",
+    "code": "E2",
+    "message": "Message for E2",
+    "location": {
+      "path": "src/b.rs",
+      "line": 2
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "W1",
+    "message": "Message for W1",
+    "location": {
+      "path": "src/c.rs",
+      "line": 3
+    }
+  }
+]

@@ -1,0 +1,25 @@
+---
+source: crates/cockpitctl-render/tests/snapshot_expansion_wave34.rs
+expression: section
+---
+### Trend
+
+Verdict: ❌ fail → ⚠️ warn
+
+| Severity | Delta |
+|---|---:|
+| Error | -3 |
+| Warn | -1 |
+| Info | +2 |
+
+**2 new finding(s)**:
+- ⚠️ **clippy**: `clippy::needless_return` at `src/utils.rs:44`
+- ℹ️ **coverage**: `COV-BELOW`
+
+**3 fixed finding(s)**:
+- ~**builddiag**: `E0308`~ — mismatched types resolved
+- ~**clippy**: `clippy::unwrap_used`~ — unwrap replaced with expect
+- ~**builddiag**: `E0412`~ — missing type import added
+
+Sensors added: `coverage`
+Sensors removed: `deprecated-lint`

@@ -1,0 +1,20 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_expansion_wave34.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[0]: invalid token \"UPPERCASE_TOKEN\"",
+        },
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[1]: invalid token \"has-dashes\"",
+        },
+        Violation {
+            check: "reason_lint",
+            message: "verdict.reasons[2]: invalid token \"has spaces\"",
+        },
+    ],
+}

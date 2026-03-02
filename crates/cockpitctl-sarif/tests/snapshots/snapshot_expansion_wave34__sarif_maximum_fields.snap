@@ -1,0 +1,96 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_expansion_wave34.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "CVE-2024-99999",
+              "shortDescription": {
+                "text": "[security] CVE-2024-99999"
+              }
+            },
+            {
+              "id": "E0308",
+              "shortDescription": {
+                "text": "[builddiag] E0308"
+              }
+            },
+            {
+              "id": "clippy::unwrap_used",
+              "shortDescription": {
+                "text": "[clippy] clippy::unwrap_used"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "E0308",
+          "level": "error",
+          "message": {
+            "text": "mismatched types: expected `bool`, found `i32`"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/main.rs"
+                },
+                "region": {
+                  "startLine": 42,
+                  "startColumn": 10
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_e0308_main_42"
+          }
+        },
+        {
+          "ruleId": "clippy::unwrap_used",
+          "level": "warning",
+          "message": {
+            "text": "used `unwrap()` on `Option` value"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/config.rs"
+                },
+                "region": {
+                  "startLine": 88,
+                  "startColumn": 22
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_clippy_unwrap_88"
+          }
+        },
+        {
+          "ruleId": "CVE-2024-99999",
+          "level": "error",
+          "message": {
+            "text": "critical vulnerability in serde_json < 1.0.100"
+          },
+          "fingerprints": {
+            "cockpitctl/v1": "fp_cve_serde"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_expansion_wave34.rs
+expression: parsed
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "fingerprints": {
+            "cockpitctl/v1": "fp_a"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/a.rs"
+                },
+                "region": {
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "type mismatch"
+          },
+          "ruleId": "E0308"
+        },
+        {
+          "fingerprints": {
+            "cockpitctl/v1": "fp_b"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/b.rs"
+                },
+                "region": {
+                  "startLine": 2
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "another type mismatch"
+          },
+          "ruleId": "E0308"
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/c.rs"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "TODO found"
+          },
+          "ruleId": "clippy::todo"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "scan note"
+          },
+          "ruleId": "SCAN-001"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "rules": [
+            {
+              "id": "E0308",
+              "shortDescription": {
+                "text": "[builddiag] E0308"
+              }
+            },
+            {
+              "id": "SCAN-001",
+              "shortDescription": {
+                "text": "[scanner] SCAN-001"
+              }
+            },
+            {
+              "id": "clippy::todo",
+              "shortDescription": {
+                "text": "[clippy] clippy::todo"
+              }
+            }
+          ],
+          "version": "0.3.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

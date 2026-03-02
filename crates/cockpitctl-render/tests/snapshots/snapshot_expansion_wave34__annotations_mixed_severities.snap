@@ -1,0 +1,10 @@
+---
+source: crates/cockpitctl-render/tests/snapshot_expansion_wave34.rs
+expression: result.content
+---
+1. ❌ **builddiag**: `E0308` at `src/core.rs:10` — mismatched types
+2. ❌ **builddiag**: `E0412` at `src/types.rs:22` — cannot find type `Foo`
+3. ❌ **security**: `SEC-001` at `src/db.rs:99` — potential SQL injection
+4. ⚠️ **clippy**: `clippy::todo` at `src/lib.rs:55` — TODO found in code
+5. ℹ️ **clippy**: `clippy::missing_docs` at `src/api.rs:3` — missing documentation for public fn
+6. ℹ️ **coverage**: `COV-LOW` — function coverage below threshold

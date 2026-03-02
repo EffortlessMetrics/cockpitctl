@@ -1,0 +1,27 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: summary
+---
+{
+  "id": "optional-lint",
+  "blocking": false,
+  "missing": "skip",
+  "presence": "invalid",
+  "report_path": "artifacts/optional-lint/report.json",
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": [
+      "invalid_receipt"
+    ]
+  },
+  "truncated": false,
+  "errors": [
+    "invalid JSON: expected ident at line 1 column 2"
+  ],
+  "policy_outcome": "informational"
+}
