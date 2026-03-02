@@ -13,6 +13,7 @@ keywords = ["ci", "feature-flags", "bdd", "interop", "ingest"]
 categories = ["development-tools"]
 
 [dependencies]
+cockpitctl-feature-eval = { path = "../cockpitctl-feature-eval", version = "0.3.0", default-features = false }
 cockpitctl-feature-state = { path = "../cockpitctl-feature-state", version = "0.3.0", default-features = false }
 
 [dev-dependencies]
@@ -20,6 +21,6 @@ insta.workspace = true
 
 [features]
 default = ["feature-hooks", "feature-buildfix", "feature-policy-signing"]
-feature-hooks = ["cockpitctl-feature-state/feature-hooks"]
-feature-buildfix = ["cockpitctl-feature-state/feature-buildfix"]
-feature-policy-signing = ["cockpitctl-feature-state/feature-policy-signing"]
+feature-hooks = ["cockpitctl-feature-state/feature-hooks", "cockpitctl-feature-eval/feature-hooks"]
+feature-buildfix = ["cockpitctl-feature-state/feature-buildfix", "cockpitctl-feature-eval/feature-buildfix"]
+feature-policy-signing = ["cockpitctl-feature-state/feature-policy-signing", "cockpitctl-feature-eval/feature-policy-signing"]

@@ -8,6 +8,7 @@ members = [
   "crates/cockpitctl-domain-trend",
   "crates/cockpitctl-feature-grid",
   "crates/cockpitctl-feature-state",
+  "crates/cockpitctl-feature-eval",
   "crates/cockpitctl-ingest",
   "crates/cockpitctl-render",
   "crates/cockpitctl-io",

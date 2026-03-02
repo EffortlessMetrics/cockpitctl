@@ -5,6 +5,7 @@
 
 #![warn(missing_docs)]
 
+pub use cockpitctl_feature_eval::{feature_runtime_present, parse_feature_state};
 use cockpitctl_feature_state::Feature;
 
 /// Expected feature presence in a BDD matrix cell.
@@ -85,24 +86,6 @@ pub const FEATURE_TOGGLE_GRID: &[FeatureGridCase] = &[
         FeatureGridState::Absent,
     ),
 ];
-
-/// Feature-toggle runtime helper for BDD and CLI assertions.
-pub fn feature_runtime_present<S: AsRef<str>>(feature: Feature, cli_args: &[S]) -> bool {
-    if !feature.is_available() {
-        return false;
-    }
-    let disable_flag = feature.disable_flag();
-    !cli_args.iter().any(|arg| arg.as_ref() == disable_flag)
-}
-
-/// Parse a BDD feature-state token into a boolean presence expectation.
-pub fn parse_feature_state(token: &str) -> Option<bool> {
-    match token.to_ascii_lowercase().as_str() {
-        "present" | "enabled" | "on" => Some(true),
-        "absent" | "disabled" | "off" => Some(false),
-        _ => None,
-    }
-}
 
 #[cfg(test)]
 mod tests {
