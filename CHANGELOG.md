@@ -31,11 +31,12 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Packaging hygiene check scripts for CI (`check_state.js`, `check_state.ps1`)
   (PR #50)
 
-#### Testing expansion (2600+ tests across 19 crates)
+#### Testing expansion (2900+ tests across 19 crates)
 
 Unit and integration tests:
 - Comprehensive unit tests across all 19 microcrates (PR #9)
 - Doc tests across all public API crates (PR #25, #58)
+- Doc test expansion across workspace — domain, render, conform, ingest (PR #143)
 - Edge case and error path coverage for safety-critical code (PR #26, #63)
 - Cross-crate integration tests: full pipeline, determinism, and safety (PR #29)
 - Cross-crate pipeline integration tests with in-memory doubles (PR #56)
@@ -62,6 +63,12 @@ Unit and integration tests:
 - Conformance hardening tests — 47 tests (PR #132)
 - Render and SARIF edge case tests — 46 tests (PR #133)
 - IO safety hardening tests — 16 tests (PR #134)
+- SARIF schema integration tests — 29 tests (PR #139)
+- Cross-crate contract verification tests — 12 tests (PR #144)
+- Render edge case and boundary tests (PR #145)
+- Error message quality and actionability tests — 21 tests (PR #146)
+- Comprehensive conformance validation tests — 92 tests (PR #147)
+- Types serde roundtrip and invariant tests — 121 tests (PR #148)
 
 Golden and snapshot tests:
 - Golden/snapshot test expansion: 29 test functions, 34 snapshot files covering
@@ -94,6 +101,7 @@ E2E tests:
 - SARIF advanced output tests — 25 tests (PR #96)
 - Config precedence E2E tests — 13 tests (PR #104)
 - CLI precedence E2E expansion — 56 total, 22 new tests (PR #136)
+- conformctl E2E expansion — 30 tests (PR #140)
 
 Fuzz and property-based testing:
 - Fuzz testing expansion: 6 targets covering receipt parsing, policy evaluation,
@@ -126,6 +134,7 @@ Examples and benchmarks:
 
 Mutation testing:
 - Improved mutation testing config and manual CI workflow (PR #35)
+- Mutation-targeted tests for test quality improvement (PR #142)
 
 #### CI hardening
 - No-default-features build and test steps in CI (PR #11)
@@ -152,6 +161,7 @@ Mutation testing:
 - GitHub issue templates (bug report, feature request) and PR template (PR #112)
 - Comprehensive public API doc comments and `deny(missing_docs)` enforcement
   across all crates (PR #126)
+- CHANGELOG waves 30–31 update (PR #141)
 
 #### Release infrastructure
 - 9-tier dependency-ordered publish in release workflow
