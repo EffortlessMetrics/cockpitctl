@@ -49,7 +49,13 @@ fn golden_findings_sort_all_keys() {
         finding("Z100", Severity::Info, "src/z.rs", 99, "last info"),
         finding("A001", Severity::Error, "src/a.rs", 1, "first error"),
         finding("M050", Severity::Warn, "src/m.rs", 50, "mid warning"),
-        finding("A001", Severity::Error, "src/a.rs", 10, "second same-code error"),
+        finding(
+            "A001",
+            Severity::Error,
+            "src/a.rs",
+            10,
+            "second same-code error",
+        ),
         finding("B002", Severity::Error, "src/b.rs", 5, "error in b"),
         finding("A001", Severity::Error, "src/a.rs", 1, "alpha message"),
         finding("M050", Severity::Warn, "src/a.rs", 1, "warn in a"),
@@ -246,8 +252,5 @@ fn golden_highlights_tiebreak_sensor_path_line_code() {
     ];
 
     let selected = select_highlights(candidates, &cfg, &blocking);
-    insta::assert_json_snapshot!(
-        "golden_highlights_tiebreak_sensor_path_line_code",
-        selected
-    );
+    insta::assert_json_snapshot!("golden_highlights_tiebreak_sensor_path_line_code", selected);
 }
