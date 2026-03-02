@@ -24,6 +24,7 @@ cockpitctl-io-hooks = { path = "../cockpitctl-io-hooks", version = "0.3.0" }
 cockpitctl-io-policy-signing = { path = "../cockpitctl-io-policy-signing", version = "0.3.0" }
 cockpitctl-io-schema = { path = "../cockpitctl-io-schema", version = "0.3.0" }
 cockpitctl-feature-state = { path = "../cockpitctl-feature-state", version = "0.3.0" }
+cockpitctl-feature-runtime = { path = "../cockpitctl-feature-runtime", version = "0.3.0" }
 cockpitctl-feature-grid = { path = "../cockpitctl-feature-grid", version = "0.3.0" }
 cockpitctl-sarif = { path = "../cockpitctl-sarif", version = "0.3.0" }
 cockpitctl-domain-buildfix = { path = "../cockpitctl-domain-buildfix", version = "0.3.0" }

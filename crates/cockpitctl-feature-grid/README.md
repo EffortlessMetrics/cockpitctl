@@ -5,8 +5,9 @@ layers.
 
 ## Scope
 
-The crate intentionally keeps feature-gating data and expected runtime state logic
-in one place so feature matrices, BDD assertions, and runtime checks stay aligned.
+The crate intentionally keeps the canonical feature matrix in one place so
+BDD fixtures and parity tests stay aligned. Runtime evaluation helpers live in
+`cockpitctl-feature-runtime`.
 
 ## Architecture
 

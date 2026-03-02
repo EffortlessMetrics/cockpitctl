@@ -7,6 +7,8 @@
 
 use cockpitctl_feature_state::Feature;
 
+pub use cockpitctl_feature_runtime::{feature_runtime_present, parse_feature_state};
+
 /// Expected feature presence in a BDD matrix cell.
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum FeatureGridState {
@@ -85,24 +87,6 @@ pub const FEATURE_TOGGLE_GRID: &[FeatureGridCase] = &[
         FeatureGridState::Absent,
     ),
 ];
-
-/// Feature-toggle runtime helper for BDD and CLI assertions.
-pub fn feature_runtime_present<S: AsRef<str>>(feature: Feature, cli_args: &[S]) -> bool {
-    if !feature.is_available() {
-        return false;
-    }
-    let disable_flag = feature.disable_flag();
-    !cli_args.iter().any(|arg| arg.as_ref() == disable_flag)
-}
-
-/// Parse a BDD feature-state token into a boolean presence expectation.
-pub fn parse_feature_state(token: &str) -> Option<bool> {
-    match token.to_ascii_lowercase().as_str() {
-        "present" | "enabled" | "on" => Some(true),
-        "absent" | "disabled" | "off" => Some(false),
-        _ => None,
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -280,113 +264,5 @@ mod tests {
                 );
             }
         }
-    }
-
-    // ── feature_runtime_present ─────────────────────────────────────
-
-    #[test]
-    fn runtime_present_no_args() {
-        assert!(feature_runtime_present::<&str>(Feature::Hooks, &[]));
-        assert!(feature_runtime_present::<&str>(Feature::Buildfix, &[]));
-        assert!(feature_runtime_present::<&str>(Feature::PolicySigning, &[]));
-    }
-
-    #[test]
-    fn runtime_present_with_own_disable_flag() {
-        assert!(!feature_runtime_present(
-            Feature::Hooks,
-            &["--disable-hooks"]
-        ));
-        assert!(!feature_runtime_present(
-            Feature::Buildfix,
-            &["--disable-buildfix"]
-        ));
-        assert!(!feature_runtime_present(
-            Feature::PolicySigning,
-            &["--disable-policy-signing"]
-        ));
-    }
-
-    #[test]
-    fn runtime_present_unrelated_flag_does_not_disable() {
-        assert!(feature_runtime_present(
-            Feature::Hooks,
-            &["--disable-buildfix"]
-        ));
-        assert!(feature_runtime_present(
-            Feature::Buildfix,
-            &["--disable-hooks"]
-        ));
-        assert!(feature_runtime_present(
-            Feature::PolicySigning,
-            &["--disable-hooks"]
-        ));
-    }
-
-    #[test]
-    fn runtime_present_multiple_flags() {
-        let args = ["--disable-hooks", "--disable-buildfix"];
-        assert!(!feature_runtime_present(Feature::Hooks, &args));
-        assert!(!feature_runtime_present(Feature::Buildfix, &args));
-        assert!(feature_runtime_present(Feature::PolicySigning, &args));
-    }
-
-    #[test]
-    fn runtime_present_works_with_string_vec() {
-        let args: Vec<String> = vec!["--disable-hooks".to_owned()];
-        assert!(!feature_runtime_present(Feature::Hooks, &args));
-        assert!(feature_runtime_present(Feature::Buildfix, &args));
-    }
-
-    #[test]
-    fn runtime_present_extra_noise_args_ignored() {
-        let args = ["--verbose", "--config=foo.toml", "--disable-hooks"];
-        assert!(!feature_runtime_present(Feature::Hooks, &args));
-        assert!(feature_runtime_present(Feature::Buildfix, &args));
-    }
-
-    // ── parse_feature_state ─────────────────────────────────────────
-
-    #[test]
-    fn parse_feature_state_present_variants() {
-        assert_eq!(parse_feature_state("present"), Some(true));
-        assert_eq!(parse_feature_state("enabled"), Some(true));
-        assert_eq!(parse_feature_state("on"), Some(true));
-    }
-
-    #[test]
-    fn parse_feature_state_absent_variants() {
-        assert_eq!(parse_feature_state("absent"), Some(false));
-        assert_eq!(parse_feature_state("disabled"), Some(false));
-        assert_eq!(parse_feature_state("off"), Some(false));
-    }
-
-    #[test]
-    fn parse_feature_state_case_insensitive() {
-        assert_eq!(parse_feature_state("PRESENT"), Some(true));
-        assert_eq!(parse_feature_state("Absent"), Some(false));
-        assert_eq!(parse_feature_state("ON"), Some(true));
-        assert_eq!(parse_feature_state("Off"), Some(false));
-        assert_eq!(parse_feature_state("Enabled"), Some(true));
-        assert_eq!(parse_feature_state("DISABLED"), Some(false));
-    }
-
-    #[test]
-    fn parse_feature_state_unknown_returns_none() {
-        assert_eq!(parse_feature_state("weird"), None);
-        assert_eq!(parse_feature_state(""), None);
-        assert_eq!(parse_feature_state("yes"), None);
-        assert_eq!(parse_feature_state("no"), None);
-        assert_eq!(parse_feature_state("true"), None);
-        assert_eq!(parse_feature_state("false"), None);
-        assert_eq!(parse_feature_state("1"), None);
-        assert_eq!(parse_feature_state("0"), None);
-    }
-
-    #[test]
-    fn parse_feature_state_whitespace_not_trimmed() {
-        // Leading/trailing whitespace should not match
-        assert_eq!(parse_feature_state(" present"), None);
-        assert_eq!(parse_feature_state("present "), None);
     }
 }

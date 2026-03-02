@@ -213,6 +213,14 @@ fn module_feature_grid_accessible() {
 }
 
 #[test]
+fn module_feature_runtime_accessible() {
+    use cockpitctl_core::feature_runtime;
+
+    let _ = &feature_runtime::feature_runtime_present::<&str>;
+    let _ = &feature_runtime::parse_feature_state;
+}
+
+#[test]
 fn module_feature_state_accessible() {
     use cockpitctl_core::feature_state;
 
