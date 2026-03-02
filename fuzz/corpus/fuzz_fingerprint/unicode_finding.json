@@ -1,0 +1,9 @@
+{
+  "severity": "error",
+  "check_id": "ünïcödé",
+  "code": "中文代码",
+  "message": "日本語メッセージ with emoji 🎉🚀 and العربية",
+  "location": { "path": "src/日本語.rs", "line": 1, "col": 1 },
+  "help": "ヘルプ message",
+  "url": "https://example.com/日本語"
+}

@@ -1,0 +1,11 @@
+[policy]
+warn_is_fail = false
+
+[sensors."日本語-sensor"]
+blocking = true
+missing = "fail"
+section = "中文セクション"
+
+[sensors."café-sensor"]
+blocking = false
+missing = "skip"

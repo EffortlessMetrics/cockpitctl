@@ -1,0 +1,33 @@
+[policy]
+warn_is_fail = true
+max_highlights = 4294967295
+max_per_sensor_findings = 4294967295
+max_annotations = 4294967295
+schema_validation = "strict"
+section_order = ["Highlights", "Repo contract", "Policy", "Other"]
+
+[sensors.builddiag]
+blocking = true
+missing = "fail"
+section = "Repo contract"
+repro = "builddiag check --profile team"
+
+[sensors.diffguard]
+blocking = true
+missing = "fail"
+section = "Policy"
+repro = "diffguard check --base $BASE_SHA --head $HEAD_SHA"
+
+[sensors.testrunner]
+blocking = false
+missing = "skip"
+section = "Other"
+
+[sensors.coverage]
+blocking = false
+missing = "warn"
+
+[sensors.licensecheck]
+blocking = true
+missing = "fail"
+section = "Policy"

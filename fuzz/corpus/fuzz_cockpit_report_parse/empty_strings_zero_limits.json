@@ -1,0 +1,9 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": "", "version": "" },
+  "run": { "started_at": "" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] },
+  "sensors": [],
+  "highlights": [],
+  "policy": { "warn_is_fail": false, "max_highlights": 0, "max_per_sensor_findings": 0, "max_annotations": 0, "section_order": [], "sensors": [] }
+}

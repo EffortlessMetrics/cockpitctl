@@ -1,0 +1,12 @@
+sensor with spaces
+sensor	with	tabs
+sensor/with/slashes
+sensor\with\backslashes
+sensor:with:colons
+sensor;with;semicolons
+sensor<with>angle
+sensor"with"quotes
+sensor'with'quotes
+sensor|with|pipes
+sensor*with*stars
+sensor?with?questions

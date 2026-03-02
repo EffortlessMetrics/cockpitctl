@@ -1,0 +1,11 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": 42, "version": true },
+  "run": { "started_at": null },
+  "verdict": { "status": "invalid", "counts": "not_an_object" },
+  "sensors": "not_an_array",
+  "highlights": null,
+  "policy": [],
+  "extra_field_1": "should be ignored",
+  "extra_field_2": { "nested": { "deeply": { "value": true } } }
+}

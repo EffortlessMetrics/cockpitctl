@@ -1,0 +1,13 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": "cockpitctl", "version": "0.1.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 4294967295 }, "reasons": [] },
+  "sensors": [
+    { "id": "x", "blocking": true, "missing": "fail", "presence": "present", "report_path": "a", "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 4294967295 } }, "truncated": true, "errors": [] }
+  ],
+  "highlights": [
+    { "sensor_id": "x", "finding": { "severity": "error", "code": "X", "message": "extreme", "location": { "path": "f", "line": 4294967295, "col": 4294967295 } } }
+  ],
+  "policy": { "warn_is_fail": true, "max_highlights": 18446744073709551615, "max_per_sensor_findings": 18446744073709551615, "max_annotations": 18446744073709551615, "section_order": [], "sensors": [{ "id": "x", "blocking": true, "missing": "fail" }] }
+}

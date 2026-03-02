@@ -1,0 +1,7 @@
+[policy]
+warn_is_fail = true
+max_highlights = 4294967295
+max_per_sensor_findings = 4294967295
+max_annotations = 4294967295
+schema_validation = "strict"
+section_order = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]

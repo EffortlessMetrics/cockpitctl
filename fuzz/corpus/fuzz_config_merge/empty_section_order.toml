@@ -1,0 +1,6 @@
+[policy]
+warn_is_fail = false
+max_highlights = 0
+max_per_sensor_findings = 0
+max_annotations = 0
+section_order = []

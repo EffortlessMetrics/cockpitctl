@@ -1,0 +1,10 @@
+{
+  "schema": 123,
+  "tool": "not_an_object",
+  "run": null,
+  "verdict": [],
+  "findings": "not_array",
+  "artifacts": {},
+  "extra": true,
+  "another_extra": [1, 2, 3]
+}

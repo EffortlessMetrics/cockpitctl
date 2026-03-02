@@ -1,0 +1,15 @@
+[policy]
+warn_is_fail = false
+max_highlights = 7
+max_per_sensor_findings = 20
+max_annotations = 25
+
+[sensors."ünïcödé-sensor"]
+blocking = true
+missing = "fail"
+section = "日本語セクション"
+repro = "echo 'héllo wörld'"
+
+[sensors."sensor-with-special.chars"]
+blocking = false
+missing = "skip"

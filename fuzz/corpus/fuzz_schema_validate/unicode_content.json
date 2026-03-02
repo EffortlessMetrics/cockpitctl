@@ -1,0 +1,9 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "ünïcödé-tööl", "version": "∞" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "warn", "counts": { "info": 0, "warn": 1, "error": 0 }, "reasons": ["日本語"] },
+  "findings": [
+    { "severity": "warn", "code": "ÜNÏCÖDÉ", "message": "中文 العربية 🎉", "location": { "path": "src/日本語.rs", "line": 1 } }
+  ]
+}

@@ -1,0 +1,7 @@
+sensor\x00id
+null\x00byte
+tab\there
+newline
+here
+cr\rhere
+bell\x07char

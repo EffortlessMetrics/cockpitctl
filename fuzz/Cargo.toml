@@ -113,3 +113,10 @@ path = "fuzz_targets/fuzz_config_merge.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "fuzz_cockpit_report_parse"
+path = "fuzz_targets/fuzz_cockpit_report_parse.rs"
+test = false
+doc = false
+bench = false

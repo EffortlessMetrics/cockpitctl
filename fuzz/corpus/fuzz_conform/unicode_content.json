@@ -1,0 +1,21 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "ünïcödé-tööl", "version": "∞" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": {
+    "status": "warn",
+    "counts": { "info": 0, "warn": 1, "error": 0 },
+    "reasons": ["日本語テスト", "🚀launch"]
+  },
+  "findings": [
+    {
+      "severity": "warn",
+      "code": "ÜNÏCÖDÉ_CÖDÉ",
+      "message": "中文消息 with mixed ASCII and 日本語 and العربية and Кириллица 🎉",
+      "location": { "path": "src/日本語/ファイル.rs", "line": 1 }
+    }
+  ],
+  "artifacts": [
+    { "id": "ünïcödé-artifact", "path": "artifacts/日本語/output.txt", "mime": "text/plain" }
+  ]
+}

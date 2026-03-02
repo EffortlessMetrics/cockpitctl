@@ -155,6 +155,18 @@ performs serialization round-trips, and verifies deterministic BTreeMap ordering
 cargo +nightly fuzz run fuzz_config_merge
 ```
 
+### fuzz_cockpit_report_parse
+
+Fuzzes `CockpitReport` JSON parsing and round-trip serialization. Parses
+arbitrary bytes as a `CockpitReport`, then verifies that serialize → deserialize
+produces stable, identical output.
+
+**Goal:** Ensure cockpit report parsing and round-trip serialization never panic.
+
+```bash
+cargo +nightly fuzz run fuzz_cockpit_report_parse
+```
+
 ## Running Fuzz Tests
 
 Basic usage (runs indefinitely until stopped or crash found):
@@ -172,6 +184,7 @@ cargo +nightly fuzz run fuzz_fingerprint
 cargo +nightly fuzz run fuzz_conform
 cargo +nightly fuzz run fuzz_render_budgets
 cargo +nightly fuzz run fuzz_config_merge
+cargo +nightly fuzz run fuzz_cockpit_report_parse
 ```
 
 Run for a specific duration:
@@ -203,6 +216,7 @@ Seed inputs are stored in `corpus/<target>/`:
 - `corpus/fuzz_conform/` — `SensorReport` JSON for full conformance suite (path hygiene violations, ordering, tool errors)
 - `corpus/fuzz_render_budgets/` — `CockpitReport` JSON for budget-varied rendering (empty, many highlights, Unicode)
 - `corpus/fuzz_config_merge/` — `CockpitConfig` TOML for sensor policy merge (minimal, many sensors, zero limits)
+- `corpus/fuzz_cockpit_report_parse/` — `CockpitReport` JSON for parse round-trips (valid, all fields, extreme values, unicode, malformed)
 
 The fuzzer will use these as starting points and mutate them to explore edge cases.
 
@@ -296,13 +310,20 @@ cargo +nightly fuzz coverage parse_receipt
 - `cap_findings` at various limits (0, 1, 100, usize::MAX)
 - `compute_counts` on arbitrary finding slices
 
+### fuzz_cockpit_report_parse
+
+- `CockpitReport` JSON deserialization from arbitrary bytes
+- Round-trip serialization stability (serialize → deserialize → serialize)
+- Pretty-print and compact JSON serialization paths
+- Edge cases: empty reports, extreme values, unicode content, wrong types
+
 ## Integration with CI
 
 For CI integration, run fuzzing for a bounded time:
 
 ```bash
 # Quick smoke test (60 seconds per target)
-for target in parse_receipt parse_config sarif_convert render_comment fuzz_sensor_id fuzz_schema_validate fuzz_domain_pipeline fuzz_render_annotations fuzz_fingerprint fuzz_conform fuzz_render_budgets fuzz_config_merge; do
+for target in parse_receipt parse_config sarif_convert render_comment fuzz_sensor_id fuzz_schema_validate fuzz_domain_pipeline fuzz_render_annotations fuzz_fingerprint fuzz_conform fuzz_render_budgets fuzz_config_merge fuzz_cockpit_report_parse; do
   cargo +nightly fuzz run "$target" -- -max_total_time=60
 done
 
@@ -327,6 +348,7 @@ From CLAUDE.md, receipts are untrusted input. The fuzzer helps ensure:
 10. Conformance checks must not panic on any input (path hygiene, ordering, reason lint)
 11. Rendering must not panic under any budget configuration (zero, large, warn_is_fail)
 12. Config round-trip serialization must not panic
+13. Cockpit report round-trip serialization must produce stable output
 13. Memory usage is bounded (via file size caps at IO boundary)
 14. Invalid input yields proper errors instead of crashes
 

@@ -1,0 +1,13 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": "cockpitctl", "version": "0.1.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 1, "warn": 0, "error": 0 }, "reasons": [] },
+  "sensors": [
+    { "id": "solo", "blocking": true, "missing": "fail", "presence": "present", "report_path": "artifacts/solo/report.json", "verdict": { "status": "pass", "counts": { "info": 1, "warn": 0, "error": 0 } }, "truncated": false, "errors": [] }
+  ],
+  "highlights": [
+    { "sensor_id": "solo", "finding": { "severity": "info", "code": "NOTE", "message": "single finding for budget testing" } }
+  ],
+  "policy": { "warn_is_fail": false, "max_highlights": 7, "max_per_sensor_findings": 20, "max_annotations": 25, "section_order": [], "sensors": [{ "id": "solo", "blocking": true, "missing": "fail" }] }
+}

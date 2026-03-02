@@ -1,0 +1,22 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "tool-error-test", "version": "1.0.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": {
+    "status": "fail",
+    "counts": { "info": 0, "warn": 0, "error": 1 },
+    "reasons": ["tool_error"]
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "TOOL_ERROR",
+      "message": "tool crashed unexpectedly"
+    },
+    {
+      "severity": "error",
+      "code": "OTHER_CODE",
+      "message": "not a tool error"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+[buildfix]
+enabled = true
+auto_apply = false
+
+[policy_signing]
+enabled = false
+
+[[hooks]]
+name = "post-ingest"
+command = "echo done"

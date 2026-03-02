@@ -1,0 +1,7 @@
+{
+  "severity": "error",
+  "code": "X",
+  "message": "m",
+  "location": { "path": "f", "line": 4294967295, "col": 4294967295 },
+  "fingerprint": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+}

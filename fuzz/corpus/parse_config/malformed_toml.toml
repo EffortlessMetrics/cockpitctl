@@ -1,0 +1,4 @@
+this is not valid TOML
+[policy
+warn_is_fail = "not_a_bool"
+max_highlights = "not_a_number"

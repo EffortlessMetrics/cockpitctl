@@ -1,0 +1,9 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "t", "version": "1" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 4294967295, "warn": 4294967295, "error": 4294967295 } },
+  "findings": [
+    { "severity": "error", "code": "X", "message": "m", "location": { "path": "f", "line": 4294967295, "col": 4294967295 } }
+  ]
+}
