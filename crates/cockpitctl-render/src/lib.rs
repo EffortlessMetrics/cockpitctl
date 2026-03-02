@@ -7,7 +7,7 @@
 //!
 //! It should not parse sensor-specific markdown. Link only.
 
-#![warn(missing_docs)]
+#![deny(missing_docs)]
 
 use cockpitctl_types::{
     BuildfixApplyStatus, BuildfixApplySummary, BuildfixSummary, CockpitConfig, CockpitReport,
@@ -16,6 +16,9 @@ use cockpitctl_types::{
 };
 
 /// Result of annotation rendering, tracking whether truncation occurred.
+///
+/// When the number of highlights exceeds [`CockpitConfig::policy::max_annotations`],
+/// the renderer truncates and sets `truncated = true` so callers can surface a notice.
 pub struct AnnotationRenderResult {
     /// The rendered markdown content for annotations.
     pub content: String,
@@ -385,7 +388,8 @@ pub fn render_annotations(
 
 /// Render annotations section for the PR comment.
 ///
-/// This is a convenience function that wraps `render_annotations` with a section header.
+/// Wraps [`render_annotations`] with a `### Annotations` header. Returns a
+/// self-contained markdown fragment ready to be appended to the comment body.
 pub fn render_annotations_section(
     highlights: &[Highlight],
     cfg: &CockpitConfig,
@@ -404,6 +408,9 @@ pub fn render_annotations_section(
 // ============================================================================
 
 /// Render a trend delta as a markdown section for the PR comment.
+///
+/// Produces a `### Trend` section showing per-sensor count changes and the
+/// overall delta between baseline and current runs.
 pub fn render_trend_section(trend: &TrendDelta) -> String {
     let mut out = String::new();
     out.push_str("### Trend\n\n");
@@ -525,6 +532,10 @@ fn safety_badge(s: &SafetyLevel) -> &'static str {
 }
 
 /// Render a buildfix summary as a markdown section for the PR comment.
+///
+/// Produces a `### Buildfix` section with a table of available fixes, their
+/// safety level, match status, and description. Returns a short notice when
+/// no fixes are available.
 pub fn render_buildfix_section(summary: &BuildfixSummary) -> String {
     let mut out = String::new();
     out.push_str("### Buildfix\n\n");
@@ -566,6 +577,9 @@ fn apply_status_badge(status: BuildfixApplyStatus) -> &'static str {
 }
 
 /// Render buildfix apply evidence (if present) as a markdown section.
+///
+/// Produces a `### Buildfix Apply` section showing the overall apply status,
+/// safety threshold, and a per-fix table with status badges.
 pub fn render_buildfix_apply_section(summary: &BuildfixApplySummary) -> String {
     let mut out = String::new();
     out.push_str("### Buildfix Apply\n\n");
@@ -626,6 +640,10 @@ fn policy_signature_algorithm_label(algorithm: PolicySignatureAlgorithm) -> &'st
 }
 
 /// Render policy signature evidence as a markdown section for the PR comment.
+///
+/// Produces a `### Policy Signature` section listing the signing algorithm,
+/// optional key ID, the SHA-256 digest of the policy snapshot, and the
+/// computed signature.
 pub fn render_policy_signature_section(signature: &PolicySignatureEvidence) -> String {
     let mut out = String::new();
     out.push_str("### Policy Signature\n\n");
@@ -646,6 +664,9 @@ pub fn render_policy_signature_section(signature: &PolicySignatureEvidence) -> S
 // ============================================================================
 
 /// Result of GitHub annotation rendering.
+///
+/// Contains rendered `::error` / `::warning` / `::notice` workflow command lines
+/// for GitHub Actions, along with truncation metadata.
 pub struct GitHubAnnotationResult {
     /// Rendered `::error`/`::warning`/`::notice` lines.
     pub lines: Vec<String>,

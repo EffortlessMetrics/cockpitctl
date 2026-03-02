@@ -14,7 +14,7 @@
 //! assert!(matches!(result, SchemaValidationResult::Valid));
 //! ```
 
-#![warn(missing_docs)]
+#![deny(missing_docs)]
 
 use anyhow::{Context, Result};
 use cockpitctl_domain::{

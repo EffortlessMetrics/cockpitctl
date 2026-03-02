@@ -7,7 +7,7 @@
 //!
 //! It must not depend on filesystem, clap, or network.
 
-#![warn(missing_docs)]
+#![deny(missing_docs)]
 
 use std::collections::BTreeMap;
 

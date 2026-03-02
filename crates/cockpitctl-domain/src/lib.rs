@@ -5,7 +5,7 @@
 //!
 //! No filesystem, no clap, no network.
 
-#![warn(missing_docs)]
+#![deny(missing_docs)]
 
 pub use cockpitctl_domain_buildfix::{match_buildfix_plan, select_auto_apply_fixes};
 pub use cockpitctl_domain_signing::{
@@ -375,7 +375,11 @@ pub fn sort_findings(sensor_id: &str, findings: &mut [Finding]) {
     findings.sort_by_key(|f| finding_sort_key(sensor_id, f));
 }
 
-/// Sort sensor summaries by section order (from config) then by sensor ID.
+/// Sort sensor summaries by section order (from config), then by sensor ID.
+///
+/// Sensors whose section appears in [`CockpitConfig::policy::section_order`] are ranked
+/// by position; unknown sections sort after all known ones. Within the same section,
+/// sensors are ordered lexically by ID to guarantee deterministic output.
 pub fn sort_sensor_summaries(summaries: &mut [SensorSummary], cfg: &CockpitConfig) {
     // Order by section order, then by id.
     let mut section_rank = std::collections::BTreeMap::<String, usize>::new();
@@ -403,6 +407,11 @@ pub fn sort_sensor_summaries(summaries: &mut [SensorSummary], cfg: &CockpitConfi
 }
 
 /// Select, deduplicate, sort, and cap highlights for the cockpit report.
+///
+/// Highlights are deduplicated by fingerprint (derived if absent), then sorted
+/// deterministically: severity descending (error first), blocking sensors first,
+/// then by sensor_id / path / line / code. The result is capped at
+/// [`CockpitConfig::policy::max_highlights`].
 pub fn select_highlights(
     mut candidates: Vec<Highlight>,
     cfg: &CockpitConfig,
@@ -577,6 +586,10 @@ pub fn overall_verdict(sensor_summaries: &[SensorSummary], cfg: &CockpitConfig) 
 }
 
 /// Synthesize a sensor summary and optional highlight for a missing receipt.
+///
+/// The sensor's [`MissingPolicy`] controls the resulting verdict: `Skip` produces
+/// no highlight, `Warn` emits a warning-level finding, and `Fail` emits an error.
+/// The returned highlight (if any) carries code `cockpit.missing_receipt`.
 pub fn synthesize_missing_sensor(
     sensor_id: &str,
     policy: &SensorPolicy,
@@ -648,6 +661,9 @@ pub fn synthesize_missing_sensor(
 }
 
 /// Synthesize a sensor summary and highlight for an unparseable (invalid JSON) receipt.
+///
+/// Always produces a `Fail` verdict with code `cockpit.invalid_receipt`. The raw
+/// parse error is preserved in both the finding message and `SensorSummary::errors`.
 pub fn synthesize_invalid_sensor(
     sensor_id: &str,
     policy: &SensorPolicy,
@@ -701,8 +717,11 @@ pub fn synthesize_invalid_sensor(
 }
 
 /// Synthesize a sensor summary when the receipt violates the JSON schema.
-/// This is distinct from invalid_receipt (JSON parse error): the receipt is valid JSON
-/// but does not conform to the sensor.report.v1 schema (e.g., missing required fields).
+///
+/// This is distinct from `synthesize_invalid_sensor` (JSON parse error): here the
+/// receipt is valid JSON but does not conform to the `sensor.report.v1` schema
+/// (e.g., missing required fields). All validation errors are collected into a single
+/// finding with code `cockpit.schema_violation`.
 pub fn synthesize_schema_violation_sensor(
     sensor_id: &str,
     policy: &SensorPolicy,
@@ -769,6 +788,10 @@ pub fn synthesize_schema_violation_sensor(
 }
 
 /// Synthesize a cockpit-level highlight for an unsafe path traversal attempt.
+///
+/// Emits an error-severity finding with code `cockpit.path_traversal`, attributed
+/// to the `_cockpit` pseudo-sensor. The fingerprint is deterministic:
+/// `cockpit.path_traversal:<sensor_id>:<path>`.
 pub fn synthesize_path_traversal_highlight(
     sensor_id: &str,
     path: &str,
@@ -800,6 +823,9 @@ pub fn synthesize_path_traversal_highlight(
 }
 
 /// Synthesize a sensor summary for an unsafe path traversal attempt.
+///
+/// Returns a `Fail` / `Blocked` summary and the path-traversal highlight.
+/// The sensor is recorded with `Presence::Missing` since no receipt was loaded.
 pub fn synthesize_path_traversal_sensor(
     sensor_id: &str,
     policy: &SensorPolicy,
@@ -833,6 +859,10 @@ pub fn synthesize_path_traversal_sensor(
 }
 
 /// Synthesize a sensor summary for an oversized receipt.
+///
+/// Emits an error-severity finding with code `cockpit.receipt_oversized` that
+/// includes the actual file size and the configured cap. The summary's
+/// `PolicyOutcome` is always `Blocked`.
 pub fn synthesize_receipt_oversized_sensor(
     sensor_id: &str,
     policy: &SensorPolicy,
@@ -887,6 +917,10 @@ pub fn synthesize_receipt_oversized_sensor(
 }
 
 /// Synthesize an informational highlight when receipt counts are inconsistent.
+///
+/// This is an `Info`-severity finding (not blocking) that alerts when a sensor's
+/// self-reported verdict counts don't match the actual findings array. The
+/// fingerprint encodes all six count values for deterministic deduplication.
 pub fn synthesize_receipt_inconsistent(
     sensor_id: &str,
     reported: &VerdictCounts,
@@ -970,7 +1004,10 @@ pub fn build_cockpit_report(
     }
 }
 
-/// Create a warning highlight when sensor discovery was truncated due to max_receipts cap.
+/// Create a warning highlight when sensor discovery was truncated due to the `max_receipts` cap.
+///
+/// Attributed to the `_cockpit` pseudo-sensor. Serves as a safety-limit notice so
+/// operators know that not all discovered sensors were processed.
 pub fn synthesize_sensors_truncated(processed: usize, total_found: usize) -> Highlight {
     let finding = Finding {
         severity: Severity::Warn,
@@ -999,6 +1036,11 @@ pub fn synthesize_sensors_truncated(processed: usize, total_found: usize) -> Hig
 }
 
 /// Convert a parsed sensor report into a cockpit sensor summary.
+///
+/// Sorts findings deterministically, caps them at `max_findings`, recomputes
+/// verdict counts from the capped list, and extracts candidate highlights.
+/// If self-reported counts differ from computed counts a
+/// `cockpit.receipt_inconsistent` highlight is added.
 pub fn summarize_sensor_report(
     sensor_id: &str,
     report_path: &str,
