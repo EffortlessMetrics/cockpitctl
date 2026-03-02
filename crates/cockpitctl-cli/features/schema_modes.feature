@@ -81,3 +81,48 @@ Feature: Schema validation modes
     And a file "bad.json" with content "{\"tool\": {\"name\": \"x\", \"version\": \"1.0\"}}"
     When I run "cockpitctl validate --input bad.json --strict"
     Then the exit code is 1
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Multiple Schema Violations in One Run
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @feature-schema
+  Scenario: strict mode with multiple schema-violating sensors catches all
+    Given a dynamic artifacts directory with sensors "bad1,bad2,good"
+    And dynamic sensor "bad1" has a schema-violating receipt
+    And dynamic sensor "bad2" has a schema-violating receipt
+    And dynamic sensor "good" has verdict "pass"
+    And a cockpit config with schema_validation "strict" and blocking sensors "bad1,bad2,good"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the cockpit report is valid JSON
+    And the cockpit report contains a highlight "cockpit.schema_violation"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Schema Violation Combined with Other Errors
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @feature-schema
+  Scenario: strict mode schema violation combined with corrupt receipt
+    Given a dynamic artifacts directory with sensors "schema_bad,corrupt,good"
+    And dynamic sensor "schema_bad" has a schema-violating receipt
+    And dynamic sensor "corrupt" has corrupt JSON content
+    And dynamic sensor "good" has verdict "pass"
+    And a cockpit config with schema_validation "strict" and blocking sensors "schema_bad,corrupt,good"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the cockpit report is valid JSON
+    And the cockpit report contains a highlight "cockpit.schema_violation"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Default Schema Validation Behavior
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: default schema validation mode is lax
+    Given a dynamic artifacts directory with sensors "checksensor"
+    And dynamic sensor "checksensor" has a schema-violating receipt
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the cockpit report does not contain a highlight "cockpit.schema_violation"
+    And the cockpit report is valid JSON

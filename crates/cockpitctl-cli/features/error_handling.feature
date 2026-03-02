@@ -139,3 +139,68 @@ Feature: Error handling
     When I run "cockpitctl ingest" on the fixture
     Then the cockpit report is valid JSON
     And the cockpit report contains a highlight "cockpit.invalid_receipt"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Config Edge Cases
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @new
+  Scenario: empty config file uses defaults gracefully
+    Given a temporary directory
+    And a file "cockpit.toml" with content ""
+    And an empty artifacts subdirectory
+    When I run "cockpitctl ingest --artifacts artifacts --config cockpit.toml"
+    Then the exit code is 0
+    And the file "artifacts/cockpit/report.json" exists
+    And the file "artifacts/cockpit/comment.md" exists
+
+  @new
+  Scenario: config with only policy section and no sensors works
+    Given a temporary directory
+    And a minimal cockpit config
+    And an empty artifacts subdirectory
+    When I run "cockpitctl ingest --artifacts artifacts --config cockpit.toml"
+    Then the exit code is 0
+    And the file "artifacts/cockpit/report.json" exists
+    And the file "artifacts/cockpit/comment.md" exists
+
+  @new
+  Scenario: sensors in artifacts but not in config are still discovered
+    Given a dynamic artifacts directory with sensors "discovered"
+    And dynamic sensor "discovered" has verdict "pass"
+    And a minimal cockpit config
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the cockpit report is valid JSON
+    And the sensors count is at most 1
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Receipt Content Edge Cases
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @new
+  Scenario: receipt with JSON array instead of object produces a finding
+    Given a dynamic artifacts directory with sensors "arrayreceipt"
+    And dynamic sensor "arrayreceipt" has content "[1, 2, 3]"
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the cockpit report is valid JSON
+    And the cockpit report contains a highlight "cockpit.invalid_receipt"
+
+  @new
+  Scenario: receipt with wrong schema field produces a finding
+    Given a dynamic artifacts directory with sensors "wrongschema"
+    And dynamic sensor "wrongschema" has content "{\"schema\": \"unknown.schema.v99\", \"tool\": {\"name\": \"x\", \"version\": \"1.0\"}, \"findings\": []}"
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the cockpit report is valid JSON
+    And the cockpit report contains a highlight "cockpit.invalid_receipt"
+
+  @new
+  Scenario: receipt with null bytes in content produces a finding
+    Given a dynamic artifacts directory with sensors "nullbytes"
+    And dynamic sensor "nullbytes" has corrupt JSON content
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the cockpit report is valid JSON
+    And the cockpit report contains a highlight "cockpit.invalid_receipt"

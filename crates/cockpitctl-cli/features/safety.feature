@@ -77,3 +77,57 @@ Feature: Safety boundaries
     Then the exit code is 0
     And the sensors count is exactly 1
     And the cockpit report is valid JSON
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Dot-only Sensor IDs
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @new
+  Scenario: Sensor ID that is exactly dot-dot is rejected
+    Given a dynamic artifacts directory with sensors "safe"
+    And a raw sensor directory ".." with a valid receipt
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the sensors count is exactly 1
+    And the cockpit report is valid JSON
+
+  @new
+  Scenario: Nested path traversal in sensor ID is rejected
+    Given a dynamic artifacts directory with sensors "safe"
+    And a raw sensor directory "foo/../../escape" with a valid receipt
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the sensors count is exactly 1
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Oversized Receipt with Legitimate Siblings
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @new
+  Scenario: Oversized receipt does not block legitimate sibling sensors
+    Given a fixture "receipt_oversized"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the cockpit report is valid JSON
+    And the file "artifacts/cockpit/report.json" exists
+    And the file "artifacts/cockpit/comment.md" exists
+    And the report schema is "cockpit.report.v1"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Mixed Traversal Patterns
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @new
+  Scenario: Mix of traversal and legitimate sensors preserves determinism
+    Given a dynamic artifacts directory with sensors "alpha,beta"
+    And a raw sensor directory "../evil" with a valid receipt
+    And a raw sensor directory "..\\winattack" with a valid receipt
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    And I capture the report
+    And I run "cockpitctl ingest" on the fixture again
+    Then the reports are identical
+    And the sensors count is exactly 2
+    And the sensors are in lexical order
