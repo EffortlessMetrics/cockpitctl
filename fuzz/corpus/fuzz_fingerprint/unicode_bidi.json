@@ -1,0 +1,6 @@
+{
+  "severity": "error",
+  "code": "\u200e\u200f\u202a\u202b\u202c\u202d\u202e",
+  "message": "\u200bzero\u200cwidth\u200d chars in \u202ertl\u202c bidi text",
+  "location": { "path": "src/\u00e9\u00e8\u00ea.rs", "line": 42 }
+}

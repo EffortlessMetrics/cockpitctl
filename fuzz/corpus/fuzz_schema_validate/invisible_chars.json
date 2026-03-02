@@ -1,0 +1,7 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "\u200b\u200c\u200d\ufeff", "version": "\u200e\u200f\u202a\u202b" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+  "findings": []
+}
