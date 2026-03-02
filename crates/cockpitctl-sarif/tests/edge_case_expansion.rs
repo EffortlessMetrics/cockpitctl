@@ -62,6 +62,7 @@ fn minimal_report(highlights: Vec<Highlight>) -> CockpitReport {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn make_highlight(
     sensor_id: &str,
     severity: Severity,
