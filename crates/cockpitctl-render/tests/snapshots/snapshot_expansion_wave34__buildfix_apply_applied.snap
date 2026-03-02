@@ -1,0 +1,11 @@
+---
+source: crates/cockpitctl-render/tests/snapshot_expansion_wave34.rs
+expression: section
+---
+### Buildfix Apply
+
+Status: ✅ applied · max safety: `guarded` · require matched finding: `true`
+
+Selected fixes: `fix-import`, `fix-cast`
+
+Applied fixes: `fix-import`, `fix-cast`

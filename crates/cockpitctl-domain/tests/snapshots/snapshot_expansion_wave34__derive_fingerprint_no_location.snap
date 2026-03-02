@@ -1,0 +1,5 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: fp
+---
+47a02692d271469d486d5f38fda51607ef438aa0844c07952b4f18f824c4c1e5

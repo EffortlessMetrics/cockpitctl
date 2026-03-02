@@ -1,0 +1,42 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: findings
+---
+[
+  {
+    "severity": "warn",
+    "code": "W4",
+    "message": "Message for W4",
+    "location": {
+      "path": "src/main.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "W1",
+    "message": "Message for W1",
+    "location": {
+      "path": "src/main.rs",
+      "line": 5
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "W2",
+    "message": "Message for W2",
+    "location": {
+      "path": "src/main.rs",
+      "line": 50
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "W3",
+    "message": "Message for W3",
+    "location": {
+      "path": "src/main.rs",
+      "line": 100
+    }
+  }
+]

@@ -1,0 +1,120 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_expansion_wave34.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "SHARED-001",
+              "shortDescription": {
+                "text": "[sensor-a] SHARED-001"
+              }
+            },
+            {
+              "id": "UNIQUE-A",
+              "shortDescription": {
+                "text": "[sensor-a] UNIQUE-A"
+              }
+            },
+            {
+              "id": "UNIQUE-B",
+              "shortDescription": {
+                "text": "[sensor-b] UNIQUE-B"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "SHARED-001",
+          "level": "error",
+          "message": {
+            "text": "shared code from sensor A"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/a.rs"
+                },
+                "region": {
+                  "startLine": 10
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SHARED-001",
+          "level": "warning",
+          "message": {
+            "text": "shared code from sensor B"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/b.rs"
+                },
+                "region": {
+                  "startLine": 20
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "UNIQUE-A",
+          "level": "note",
+          "message": {
+            "text": "unique to sensor A"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/a.rs"
+                },
+                "region": {
+                  "startLine": 30
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "UNIQUE-B",
+          "level": "error",
+          "message": {
+            "text": "unique to sensor B"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/b.rs"
+                },
+                "region": {
+                  "startLine": 40,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_unique_b"
+          }
+        }
+      ]
+    }
+  ]
+}

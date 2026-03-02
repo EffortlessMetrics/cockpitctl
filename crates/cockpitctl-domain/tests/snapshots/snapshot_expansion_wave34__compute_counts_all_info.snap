@@ -1,0 +1,9 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: counts
+---
+{
+  "info": 3,
+  "warn": 0,
+  "error": 0
+}

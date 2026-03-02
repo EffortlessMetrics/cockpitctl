@@ -1,0 +1,45 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: selected
+---
+[
+  {
+    "sensor_id": "a-sensor",
+    "finding": {
+      "severity": "warn",
+      "code": "CODE-A",
+      "message": "Message for CODE-A",
+      "location": {
+        "path": "src/a.rs",
+        "line": 1
+      },
+      "fingerprint": "6eb975279be9b9609a9480d82f02bdc86dac6d1f9273e299c0bd6f2ef79e5679"
+    }
+  },
+  {
+    "sensor_id": "a-sensor",
+    "finding": {
+      "severity": "warn",
+      "code": "CODE-B",
+      "message": "Message for CODE-B",
+      "location": {
+        "path": "src/b.rs",
+        "line": 25
+      },
+      "fingerprint": "9af306fd3cc2511ff3c3daaab6ba5d77ac6ecd1864175b085a1fc71b020c5f8e"
+    }
+  },
+  {
+    "sensor_id": "m-sensor",
+    "finding": {
+      "severity": "warn",
+      "code": "CODE-M",
+      "message": "Message for CODE-M",
+      "location": {
+        "path": "src/m.rs",
+        "line": 50
+      },
+      "fingerprint": "2cce98cd27a048aa10fab3a1c358da5b055c98f41b88eae1d1cba749cdf4f232"
+    }
+  }
+]

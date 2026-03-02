@@ -1,0 +1,38 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: results
+---
+[
+    (
+        "blocking_pass",
+        Allowed,
+    ),
+    (
+        "blocking_warn",
+        Allowed,
+    ),
+    (
+        "blocking_fail",
+        Blocked,
+    ),
+    (
+        "blocking_skip",
+        Allowed,
+    ),
+    (
+        "nonblocking_pass",
+        Informational,
+    ),
+    (
+        "nonblocking_warn",
+        Informational,
+    ),
+    (
+        "nonblocking_fail",
+        Informational,
+    ),
+    (
+        "nonblocking_skip",
+        Informational,
+    ),
+]

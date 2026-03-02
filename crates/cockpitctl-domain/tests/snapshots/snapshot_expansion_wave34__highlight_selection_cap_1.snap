@@ -1,0 +1,19 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: selected
+---
+[
+  {
+    "sensor_id": "a",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "Message for E1",
+      "location": {
+        "path": "src/a.rs",
+        "line": 10
+      },
+      "fingerprint": "a93bc1c74611aa03dc05da13ce4029ce2dbedc68d052f05d7afa697359bb3eed"
+    }
+  }
+]

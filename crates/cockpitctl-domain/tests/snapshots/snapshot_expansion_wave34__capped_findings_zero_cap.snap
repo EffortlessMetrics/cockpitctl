@@ -1,0 +1,5 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: capped
+---
+[]

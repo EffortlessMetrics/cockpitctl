@@ -1,0 +1,10 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_expansion_wave34.rs
+expression: violations
+---
+[
+    Violation {
+        check: "reason_lint",
+        message: "verdict.reasons[0]: invalid token \"BAD-REASON\"",
+    },
+]

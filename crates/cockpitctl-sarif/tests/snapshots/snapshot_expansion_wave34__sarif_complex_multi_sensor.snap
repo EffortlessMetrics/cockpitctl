@@ -1,0 +1,207 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_expansion_wave34.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "COV-BELOW",
+              "shortDescription": {
+                "text": "[coverage] COV-BELOW"
+              }
+            },
+            {
+              "id": "E0308",
+              "shortDescription": {
+                "text": "[builddiag] E0308"
+              }
+            },
+            {
+              "id": "E0412",
+              "shortDescription": {
+                "text": "[builddiag] E0412"
+              }
+            },
+            {
+              "id": "SEC-CVE-2024-001",
+              "shortDescription": {
+                "text": "[security] SEC-CVE-2024-001"
+              }
+            },
+            {
+              "id": "SEC-OUTDATED",
+              "shortDescription": {
+                "text": "[security] SEC-OUTDATED"
+              }
+            },
+            {
+              "id": "clippy::missing_docs",
+              "shortDescription": {
+                "text": "[clippy] clippy::missing_docs"
+              }
+            },
+            {
+              "id": "clippy::todo",
+              "shortDescription": {
+                "text": "[clippy] clippy::todo"
+              }
+            },
+            {
+              "id": "clippy::unwrap_used",
+              "shortDescription": {
+                "text": "[clippy] clippy::unwrap_used"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "E0308",
+          "level": "error",
+          "message": {
+            "text": "mismatched types: expected &str, found String"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/parser.rs"
+                },
+                "region": {
+                  "startLine": 42,
+                  "startColumn": 10
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_parser_e0308"
+          }
+        },
+        {
+          "ruleId": "E0412",
+          "level": "error",
+          "message": {
+            "text": "cannot find type `Config` in this scope"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/main.rs"
+                },
+                "region": {
+                  "startLine": 5,
+                  "startColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "clippy::unwrap_used",
+          "level": "warning",
+          "message": {
+            "text": "used `unwrap()` on a Result value"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/io.rs"
+                },
+                "region": {
+                  "startLine": 88
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_io_unwrap"
+          }
+        },
+        {
+          "ruleId": "clippy::todo",
+          "level": "warning",
+          "message": {
+            "text": "TODO macro found"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/renderer.rs"
+                },
+                "region": {
+                  "startLine": 15,
+                  "startColumn": 5
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "clippy::missing_docs",
+          "level": "note",
+          "message": {
+            "text": "missing documentation for function"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/api.rs"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "SEC-CVE-2024-001",
+          "level": "error",
+          "message": {
+            "text": "known vulnerability in dependency"
+          },
+          "fingerprints": {
+            "cockpitctl/v1": "fp_sec_dep"
+          }
+        },
+        {
+          "ruleId": "SEC-OUTDATED",
+          "level": "warning",
+          "message": {
+            "text": "dependency version is outdated"
+          }
+        },
+        {
+          "ruleId": "COV-BELOW",
+          "level": "note",
+          "message": {
+            "text": "line coverage 72% below threshold 80%"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/complex_module.rs"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

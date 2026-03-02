@@ -1,0 +1,12 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_expansion_wave34.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "sensor_id_format",
+            message: "sensor_id \"bad.sensor.id!\" does not match [a-zA-Z0-9_-]+",
+        },
+    ],
+}

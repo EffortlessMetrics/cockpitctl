@@ -1,0 +1,14 @@
+---
+source: crates/cockpitctl-render/tests/snapshot_expansion_wave34.rs
+expression: section
+---
+### Trend
+
+Verdict: ✅ pass → ❌ fail
+
+| Severity | Delta |
+|---|---:|
+| Error | +5 |
+
+**1 new finding(s)**:
+- ❌ **builddiag**: `E0308` at `src/new_module.rs:1`

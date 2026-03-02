@@ -1,0 +1,14 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: highlight
+---
+{
+  "sensor_id": "optional-lint",
+  "finding": {
+    "severity": "error",
+    "check_id": "cockpit.invalid_receipt",
+    "code": "cockpit.invalid_receipt",
+    "message": "Invalid receipt for sensor `optional-lint` at `artifacts/optional-lint/report.json`: invalid JSON: expected ident at line 1 column 2",
+    "help": "Validate that the sensor wrote JSON matching sensor.report.v1."
+  }
+}

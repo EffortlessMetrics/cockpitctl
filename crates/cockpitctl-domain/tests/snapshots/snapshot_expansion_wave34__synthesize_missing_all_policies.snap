@@ -1,0 +1,100 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_expansion_wave34.rs
+expression: results
+---
+[
+  [
+    "skip",
+    {
+      "id": "sensor-skip",
+      "blocking": true,
+      "missing": "skip",
+      "presence": "missing",
+      "report_path": "artifacts/sensor-skip/report.json",
+      "verdict": {
+        "status": "skip",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "missing_policy_applied": "skip",
+      "policy_outcome": "allowed"
+    },
+    null
+  ],
+  [
+    "warn",
+    {
+      "id": "sensor-warn",
+      "blocking": true,
+      "missing": "warn",
+      "presence": "missing",
+      "report_path": "artifacts/sensor-warn/report.json",
+      "verdict": {
+        "status": "warn",
+        "counts": {
+          "info": 0,
+          "warn": 1,
+          "error": 0
+        },
+        "reasons": [
+          "missing_receipt"
+        ]
+      },
+      "truncated": false,
+      "errors": [],
+      "missing_policy_applied": "warn",
+      "policy_outcome": "allowed"
+    },
+    {
+      "sensor_id": "sensor-warn",
+      "finding": {
+        "severity": "warn",
+        "check_id": "cockpit.missing_receipt",
+        "code": "cockpit.missing_receipt",
+        "message": "Expected receipt for sensor `sensor-warn` but it was not found at `artifacts/sensor-warn/report.json`.",
+        "help": "Ensure the sensor ran and wrote artifacts/<sensor>/report.json."
+      }
+    }
+  ],
+  [
+    "fail",
+    {
+      "id": "sensor-fail",
+      "blocking": true,
+      "missing": "fail",
+      "presence": "missing",
+      "report_path": "artifacts/sensor-fail/report.json",
+      "verdict": {
+        "status": "fail",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 1
+        },
+        "reasons": [
+          "missing_receipt"
+        ]
+      },
+      "truncated": false,
+      "errors": [],
+      "missing_policy_applied": "fail",
+      "policy_outcome": "blocked"
+    },
+    {
+      "sensor_id": "sensor-fail",
+      "finding": {
+        "severity": "error",
+        "check_id": "cockpit.missing_receipt",
+        "code": "cockpit.missing_receipt",
+        "message": "Expected receipt for sensor `sensor-fail` but it was not found at `artifacts/sensor-fail/report.json`.",
+        "help": "Ensure the sensor ran and wrote artifacts/<sensor>/report.json."
+      }
+    }
+  ]
+]

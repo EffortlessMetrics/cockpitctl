@@ -1,0 +1,12 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_expansion_wave34.rs
+expression: result
+---
+ConformResult {
+    violations: [
+        Violation {
+            check: "schema",
+            message: "\"\" is shorter than 1 character",
+        },
+    ],
+}

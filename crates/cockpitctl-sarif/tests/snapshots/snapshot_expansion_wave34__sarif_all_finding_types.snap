@@ -1,0 +1,156 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_expansion_wave34.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "ERR-FULL",
+              "shortDescription": {
+                "text": "[sensor-a] ERR-FULL"
+              }
+            },
+            {
+              "id": "ERR-NOLOC",
+              "shortDescription": {
+                "text": "[sensor-a] ERR-NOLOC"
+              }
+            },
+            {
+              "id": "INFO-ALL",
+              "shortDescription": {
+                "text": "[sensor-c] INFO-ALL"
+              }
+            },
+            {
+              "id": "INFO-BARE",
+              "shortDescription": {
+                "text": "[sensor-c] INFO-BARE"
+              }
+            },
+            {
+              "id": "WARN-LINE",
+              "shortDescription": {
+                "text": "[sensor-b] WARN-LINE"
+              }
+            },
+            {
+              "id": "WARN-PATH",
+              "shortDescription": {
+                "text": "[sensor-b] WARN-PATH"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "ERR-FULL",
+          "level": "error",
+          "message": {
+            "text": "error with full location"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/full.rs"
+                },
+                "region": {
+                  "startLine": 100,
+                  "startColumn": 25
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_full_err"
+          }
+        },
+        {
+          "ruleId": "ERR-NOLOC",
+          "level": "error",
+          "message": {
+            "text": "error without any location"
+          }
+        },
+        {
+          "ruleId": "WARN-PATH",
+          "level": "warning",
+          "message": {
+            "text": "warning with path only"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/partial.rs"
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_partial_warn"
+          }
+        },
+        {
+          "ruleId": "WARN-LINE",
+          "level": "warning",
+          "message": {
+            "text": "warning with line no col"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/line_only.rs"
+                },
+                "region": {
+                  "startLine": 50
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "INFO-ALL",
+          "level": "note",
+          "message": {
+            "text": "informational with all fields"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/info.rs"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1
+                }
+              }
+            }
+          ],
+          "fingerprints": {
+            "cockpitctl/v1": "fp_info_all"
+          }
+        },
+        {
+          "ruleId": "INFO-BARE",
+          "level": "note",
+          "message": {
+            "text": "bare informational finding"
+          }
+        }
+      ]
+    }
+  ]
+}
