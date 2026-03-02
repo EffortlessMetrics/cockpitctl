@@ -1,0 +1,34 @@
+---
+source: crates/cockpitctl-domain/tests/golden_determinism.rs
+assertion_line: 107
+expression: findings
+---
+[
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "Alpha",
+    "location": {
+      "path": "src/lib.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "Middle",
+    "location": {
+      "path": "src/lib.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "Zebra",
+    "location": {
+      "path": "src/lib.rs",
+      "line": 10
+    }
+  }
+]
