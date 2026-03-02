@@ -479,3 +479,32 @@ Feature: cockpitctl ingest
     And the sensor "linter" has verdict status "fail"
     And the sensor "builddiag" has verdict status "pass"
     And the cockpit report is valid JSON
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Tokmd Sensor Integration
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: tokmd sensor receipt is ingested successfully
+    Given a fixture "tokmd_receipt"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "pass"
+    And the sensor "tokmd" has verdict status "pass"
+    And the cockpit report is valid JSON
+    And the report schema is "cockpit.report.v1"
+
+  Scenario: tokmd sensor findings appear as highlights
+    Given a fixture "tokmd_receipt"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the cockpit report contains a highlight "token-count"
+    And the comment contains "tokmd"
+    And the comment contains "<!-- cockpit:begin -->"
+    And the comment contains "<!-- cockpit:end -->"
+
+  Scenario: tokmd sensor output is deterministic across runs
+    Given a fixture "tokmd_receipt"
+    When I run "cockpitctl ingest" on the fixture
+    And I capture the report
+    And I run "cockpitctl ingest" on the fixture again
+    Then the reports are identical
