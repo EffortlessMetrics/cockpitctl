@@ -1,0 +1,220 @@
+---
+source: crates/cockpitctl-ingest/tests/golden_report_ordering.rs
+assertion_line: 285
+expression: report
+---
+{
+  "highlights": [
+    {
+      "finding": {
+        "code": "test/failure",
+        "fingerprint": "eca6d150a16880f92a4bc80cf85c178748c6fec81c341091c8030372dae8cc3d",
+        "location": {
+          "line": 88,
+          "path": "tests/integration.rs"
+        },
+        "message": "Message for test/failure",
+        "severity": "error"
+      },
+      "sensor_id": "gamma"
+    },
+    {
+      "finding": {
+        "code": "lint/unused",
+        "fingerprint": "0e1342a26a0fa060e530fd74fd959bff81ebc9d5f96c737f065d282841372e9c",
+        "location": {
+          "line": 1,
+          "path": "src/lib.rs"
+        },
+        "message": "Message for lint/unused",
+        "severity": "warn"
+      },
+      "sensor_id": "beta"
+    },
+    {
+      "finding": {
+        "code": "lint/complexity",
+        "fingerprint": "f16c8e0e49e1a74ee30249579860577bec5b959954e12fb08b3f7bd5461b3bea",
+        "location": {
+          "line": 42,
+          "path": "src/main.rs"
+        },
+        "message": "Message for lint/complexity",
+        "severity": "warn"
+      },
+      "sensor_id": "beta"
+    },
+    {
+      "finding": {
+        "code": "cov/report",
+        "fingerprint": "f9c55f3795e6444dd345d4d5855edbae08b33428f87a70e774985e5bc49590b4",
+        "location": {
+          "line": 1,
+          "path": "src/lib.rs"
+        },
+        "message": "Message for cov/report",
+        "severity": "info"
+      },
+      "sensor_id": "delta"
+    }
+  ],
+  "policy": {
+    "max_annotations": 25,
+    "max_highlights": 10,
+    "max_per_sensor_findings": 20,
+    "section_order": [
+      "Build",
+      "Lint",
+      "Tests",
+      "Coverage",
+      "Optional"
+    ],
+    "sensors": [
+      {
+        "blocking": true,
+        "id": "alpha",
+        "missing": "fail",
+        "section": "Build"
+      },
+      {
+        "blocking": true,
+        "id": "beta",
+        "missing": "fail",
+        "section": "Lint"
+      },
+      {
+        "blocking": false,
+        "id": "delta",
+        "missing": "warn",
+        "section": "Coverage"
+      },
+      {
+        "blocking": false,
+        "id": "epsilon",
+        "missing": "skip",
+        "section": "Optional"
+      },
+      {
+        "blocking": true,
+        "id": "gamma",
+        "missing": "fail",
+        "section": "Tests"
+      }
+    ],
+    "warn_is_fail": false
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "schema": "cockpit.report.v1",
+  "sensors": [
+    {
+      "blocking": true,
+      "errors": [],
+      "id": "alpha",
+      "missing": "fail",
+      "policy_outcome": "allowed",
+      "presence": "present",
+      "report_path": "artifacts/alpha/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 0,
+          "info": 0,
+          "warn": 0
+        },
+        "reasons": [],
+        "status": "pass"
+      }
+    },
+    {
+      "blocking": true,
+      "errors": [],
+      "id": "beta",
+      "missing": "fail",
+      "policy_outcome": "allowed",
+      "presence": "present",
+      "report_path": "artifacts/beta/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 0,
+          "info": 0,
+          "warn": 2
+        },
+        "reasons": [],
+        "status": "warn"
+      }
+    },
+    {
+      "blocking": true,
+      "errors": [],
+      "id": "gamma",
+      "missing": "fail",
+      "policy_outcome": "blocked",
+      "presence": "present",
+      "report_path": "artifacts/gamma/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 1,
+          "info": 0,
+          "warn": 0
+        },
+        "reasons": [],
+        "status": "fail"
+      }
+    },
+    {
+      "blocking": false,
+      "errors": [],
+      "id": "delta",
+      "missing": "warn",
+      "policy_outcome": "informational",
+      "presence": "present",
+      "report_path": "artifacts/delta/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 0,
+          "info": 1,
+          "warn": 0
+        },
+        "reasons": [],
+        "status": "pass"
+      }
+    },
+    {
+      "blocking": false,
+      "errors": [],
+      "id": "epsilon",
+      "missing": "skip",
+      "policy_outcome": "informational",
+      "presence": "present",
+      "report_path": "artifacts/epsilon/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 0,
+          "info": 0,
+          "warn": 0
+        },
+        "reasons": [],
+        "status": "pass"
+      }
+    }
+  ],
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "verdict": {
+    "counts": {
+      "error": 1,
+      "info": 1,
+      "warn": 2
+    },
+    "reasons": [],
+    "status": "fail"
+  }
+}

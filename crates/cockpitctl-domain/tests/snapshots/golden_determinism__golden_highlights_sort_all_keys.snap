@@ -1,0 +1,85 @@
+---
+source: crates/cockpitctl-domain/tests/golden_determinism.rs
+assertion_line: 153
+expression: selected
+---
+[
+  {
+    "sensor_id": "blocker",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "error blocker",
+      "location": {
+        "path": "src/a.rs",
+        "line": 1
+      },
+      "fingerprint": "93ce06a499ea7b45289483ef27e74cbefe72ec512963033d4d1a92f177102f04"
+    }
+  },
+  {
+    "sensor_id": "blocker",
+    "finding": {
+      "severity": "error",
+      "code": "E3",
+      "message": "error blocker 2",
+      "location": {
+        "path": "src/d.rs",
+        "line": 20
+      },
+      "fingerprint": "a8ba041bb8567c8f68894532e123db75fd1c66a3f90a04f3fc22ea1dec95d4b8"
+    }
+  },
+  {
+    "sensor_id": "advisory",
+    "finding": {
+      "severity": "error",
+      "code": "E2",
+      "message": "error advisory",
+      "location": {
+        "path": "src/c.rs",
+        "line": 5
+      },
+      "fingerprint": "5981f894f817662be6c27b2ae88a0441c677554880985d4116c4b20e268e159d"
+    }
+  },
+  {
+    "sensor_id": "blocker",
+    "finding": {
+      "severity": "warn",
+      "code": "W2",
+      "message": "warn blocker",
+      "location": {
+        "path": "src/b.rs",
+        "line": 10
+      },
+      "fingerprint": "5cf61aab4711436cf3184ac397a0954d6e7f9360c78b8c074fee37cca2b1132f"
+    }
+  },
+  {
+    "sensor_id": "advisory",
+    "finding": {
+      "severity": "warn",
+      "code": "W1",
+      "message": "warn advisory",
+      "location": {
+        "path": "src/m.rs",
+        "line": 50
+      },
+      "fingerprint": "13035945f29d1a663cc1f0e266125c12d10f4d3d0546769d0a69345e5828de83"
+    }
+  },
+  {
+    "sensor_id": "advisory",
+    "finding": {
+      "severity": "info",
+      "code": "I1",
+      "message": "info advisory",
+      "location": {
+        "path": "src/z.rs",
+        "line": 99
+      },
+      "fingerprint": "c11e1ce5bba52ef22e894bbe6a0099587aace62d41c5fe556c3976053dd5167e"
+    }
+  }
+]

@@ -1,0 +1,33 @@
+---
+source: crates/cockpitctl-domain/tests/golden_determinism.rs
+assertion_line: 213
+expression: selected
+---
+[
+  {
+    "sensor_id": "advisory",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "advisory error",
+      "location": {
+        "path": "src/a.rs",
+        "line": 1
+      },
+      "fingerprint": "b508227bad92804faa28c24984640f0577e36008ecf3010227e57b69131d1a7c"
+    }
+  },
+  {
+    "sensor_id": "blocker",
+    "finding": {
+      "severity": "warn",
+      "code": "W1",
+      "message": "blocking warn",
+      "location": {
+        "path": "src/a.rs",
+        "line": 1
+      },
+      "fingerprint": "4beca724548db22478828611d907d8ee09e1409112388083d88dd8cc3a1dbd5c"
+    }
+  }
+]

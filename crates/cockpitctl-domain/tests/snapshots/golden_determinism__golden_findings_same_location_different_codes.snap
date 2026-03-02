@@ -1,0 +1,34 @@
+---
+source: crates/cockpitctl-domain/tests/golden_determinism.rs
+assertion_line: 95
+expression: findings
+---
+[
+  {
+    "severity": "error",
+    "code": "A01",
+    "message": "msg",
+    "location": {
+      "path": "src/lib.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "error",
+    "code": "M50",
+    "message": "msg",
+    "location": {
+      "path": "src/lib.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "error",
+    "code": "Z99",
+    "message": "msg",
+    "location": {
+      "path": "src/lib.rs",
+      "line": 10
+    }
+  }
+]

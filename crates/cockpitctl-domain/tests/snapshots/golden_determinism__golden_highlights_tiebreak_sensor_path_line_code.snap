@@ -1,0 +1,59 @@
+---
+source: crates/cockpitctl-domain/tests/golden_determinism.rs
+assertion_line: 249
+expression: selected
+---
+[
+  {
+    "sensor_id": "alpha",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "msg a alpha",
+      "location": {
+        "path": "src/a.rs",
+        "line": 5
+      },
+      "fingerprint": "fa50b2fca8c2134eee274922ee7c53f95489548fb3a460cac41edb9bf5b0f10b"
+    }
+  },
+  {
+    "sensor_id": "alpha",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "msg a early",
+      "location": {
+        "path": "src/a.rs",
+        "line": 5
+      },
+      "fingerprint": "3739418c4fedac0dbc472829b0dfc788b76aa68577c9e5cdb2b9c65f23811eb5"
+    }
+  },
+  {
+    "sensor_id": "alpha",
+    "finding": {
+      "severity": "error",
+      "code": "E2",
+      "message": "msg a",
+      "location": {
+        "path": "src/a.rs",
+        "line": 10
+      },
+      "fingerprint": "495de32c3edcb234bb750b1c8db03eb7f822afb8824657345993d171b7923b2b"
+    }
+  },
+  {
+    "sensor_id": "beta",
+    "finding": {
+      "severity": "error",
+      "code": "E1",
+      "message": "msg b",
+      "location": {
+        "path": "src/b.rs",
+        "line": 20
+      },
+      "fingerprint": "39c35787ba26bccdc7c3bd7b95c9f4b8cb33a8165d691ce9df74beee0e3f53cf"
+    }
+  }
+]
