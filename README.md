@@ -1,6 +1,7 @@
 # cockpitctl
 
 [![CI](https://github.com/EffortlessMetrics/cockpitctl/actions/workflows/ci.yml/badge.svg)](https://github.com/EffortlessMetrics/cockpitctl/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/cockpitctl.svg)](https://crates.io/crates/cockpitctl)
 [![License](https://img.shields.io/badge/license-Apache--2.0%20%2F%20MIT-blue)](LICENSE-APACHE)
 
 `cockpitctl` is the **director** for the Effortless Metrics PR cockpit.
@@ -14,6 +15,8 @@ It does one job: **ingest receipts** emitted by sensors and **render one merge s
 - Produce:
   - `artifacts/cockpit/report.json` (`cockpit.report.v1`)
   - `artifacts/cockpit/comment.md` (comment contract v1)
+- SARIF v2.1.0 export for IDE/CI integration
+- GitHub Actions annotations (`::error`, `::warning`, `::notice`)
 
 ## What it is not
 - Not a runner/orchestrator (no installing tools, no running sensors)
@@ -65,6 +68,23 @@ See: `docs/reference/config.md` for full reference.
 - `templates/cockpit.comment.v1.md` (comment contract)
 - `contracts/docs/tokens.md` (reason token registry)
 - `contracts/docs/identity-spec.md` (vocabulary and fingerprint rules)
+
+## Supported sensors
+
+Any tool that emits a `sensor.report.v1` receipt can participate. Known sensors
+with fixtures or integration documentation:
+
+| Sensor | Description |
+|--------|-------------|
+| `builddiag` | Build diagnostics (compiler errors/warnings) |
+| `diffguard` | Diff-based change detection |
+| `tokmd` | LLM/AI handoff manifest generation ([protocol](docs/issues/tokmd.md)) |
+| `linter` | Generic linter output |
+| `secaudit` | Security audit findings |
+| `coverage` | Code coverage reporting |
+
+To add a new sensor, emit `artifacts/<sensor_id>/report.json` conforming to
+`sensor.report.v1` and validate with `conformctl check --all`.
 
 ## Repository layout
 
@@ -171,7 +191,7 @@ jobs:
 
 ## Test coverage
 
-cockpitctl has 2400+ tests across 19 crates, spanning all major modalities:
+cockpitctl has 2900+ tests across 19 crates, spanning all major modalities:
 
 | Modality | Description |
 |----------|-------------|
@@ -181,7 +201,7 @@ cockpitctl has 2400+ tests across 19 crates, spanning all major modalities:
 | BDD scenarios | Cucumber/Gherkin scenarios for ingest, validate, init |
 | Golden/snapshot | Deterministic output verification via insta |
 | Property-based | Proptest across types, domain, ingest, render, IO, conform |
-| Fuzz testing | 9 cargo-fuzz targets with corpus seeds |
+| Fuzz testing | 12 cargo-fuzz targets with corpus seeds |
 | Stress tests | Caps, budgets, and load testing |
 | Doc tests | Executable examples in rustdoc for public APIs |
 | Benchmarks | Performance benchmarks for critical paths |
@@ -196,6 +216,10 @@ cockpitctl ingest --artifacts artifacts --config cockpit.toml
 cockpitctl init --path cockpit.toml          # Write starter config
 cockpitctl validate --input report.json       # Validate receipt/report
 cockpitctl explain <CODE|all>                 # Explain finding codes
+
+# Standalone conformance checker
+conformctl check --report report.json --all --sensor-id builddiag
+conformctl check-dir --dir artifacts --all --validate-cockpit
 ```
 
 ## License
