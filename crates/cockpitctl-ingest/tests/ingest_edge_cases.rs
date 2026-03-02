@@ -11,9 +11,9 @@ use cockpitctl_ingest::{
     PolicySource, ReceiptSource, ReportRead, SchemaValidationResult, SchemaValidator,
 };
 use cockpitctl_types::{
-    severity_rank, CockpitConfig, CockpitReport, Finding, MissingPolicy, Presence, RunInfo,
-    SchemaValidation, SensorPolicy, SensorReport, Severity, ToolInfo, Verdict, VerdictCounts,
-    VerdictStatus,
+    CockpitConfig, CockpitReport, Finding, MissingPolicy, Presence, RunInfo, SchemaValidation,
+    SensorPolicy, SensorReport, Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus,
+    severity_rank,
 };
 
 // =============================================================================
