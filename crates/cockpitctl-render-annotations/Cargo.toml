@@ -1,0 +1,16 @@
+[package]
+name = "cockpitctl-render-annotations"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Deterministic markdown and GitHub annotation rendering for cockpitctl highlights."
+readme = "README.md"
+keywords = ["ci", "annotations", "rendering", "deterministic"]
+categories = ["development-tools", "text-processing"]
+
+[dependencies]
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
