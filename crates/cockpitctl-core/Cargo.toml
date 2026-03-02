@@ -17,6 +17,7 @@ exclude = ["tests/"]
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.3.0" }
 cockpitctl-ingest = { path = "../cockpitctl-ingest", version = "0.3.0" }
+cockpitctl-ingest-precedence = { path = "../cockpitctl-ingest-precedence", version = "0.3.0" }
 cockpitctl-render = { path = "../cockpitctl-render", version = "0.3.0" }
 cockpitctl-io = { path = "../cockpitctl-io", version = "0.3.0" }
 cockpitctl-io-buildfix = { path = "../cockpitctl-io-buildfix", version = "0.3.0" }

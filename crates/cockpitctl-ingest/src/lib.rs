@@ -24,6 +24,7 @@ use cockpitctl_domain::{
     synthesize_receipt_oversized_sensor, synthesize_schema_violation_sensor,
     synthesize_sensors_truncated,
 };
+use cockpitctl_ingest_precedence::{effective_schema_validation, expected_sensors};
 use cockpitctl_types::{
     BuildfixSummary, CockpitConfig, CockpitReport, MissingPolicy, RunInfo, SchemaValidation,
     ToolInfo, is_valid_sensor_id,
@@ -221,16 +222,13 @@ where
             .context("load cockpit.toml")?
             .unwrap_or_default();
 
-        let effective_schema_validation = req
-            .schema_validation_override
-            .unwrap_or(cfg.policy.schema_validation);
+        let effective_schema_validation = effective_schema_validation(
+            cfg.policy.schema_validation,
+            req.schema_validation_override,
+        );
 
         // Expected sensors are those declared in policy; if empty, treat discovered as expected.
-        let expected: Vec<String> = if !cfg.sensors.is_empty() {
-            cfg.sensors.keys().cloned().collect()
-        } else {
-            discovered.clone()
-        };
+        let expected = expected_sensors(&cfg, &discovered);
 
         let mut sensor_summaries = Vec::new();
         let mut highlight_candidates = Vec::new();

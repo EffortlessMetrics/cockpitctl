@@ -29,6 +29,7 @@ pub use cockpitctl_domain_signing as domain_signing;
 pub use cockpitctl_feature_grid as feature_grid;
 pub use cockpitctl_feature_state as feature_state;
 pub use cockpitctl_ingest as ingest;
+pub use cockpitctl_ingest_precedence as ingest_precedence;
 pub use cockpitctl_io as io;
 pub use cockpitctl_io_buildfix as io_buildfix;
 pub use cockpitctl_io_hooks as io_hooks;
@@ -43,6 +44,7 @@ pub use cockpitctl_ingest::{
     IngestRequest, IngestResult, IngestUseCase, NoOpSchemaValidator, OutputSink, PolicySource,
     ReceiptSource, SchemaValidator,
 };
+pub use cockpitctl_ingest_precedence::{effective_schema_validation, expected_sensors};
 
 // Flatten the most-used types.
 pub use cockpitctl_types::{
