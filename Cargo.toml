@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "crates/cockpitctl-types",
   "crates/cockpitctl-domain",
+  "crates/cockpitctl-domain-codes",
   "crates/cockpitctl-domain-buildfix",
   "crates/cockpitctl-domain-signing",
   "crates/cockpitctl-domain-trend",
