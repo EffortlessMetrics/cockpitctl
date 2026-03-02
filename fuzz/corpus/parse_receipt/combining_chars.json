@@ -1,0 +1,14 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "a\u0300\u0301\u0302\u0303\u0304\u0305\u0306\u0307\u0308\u0309", "version": "1.0.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 1, "warn": 0, "error": 0 } },
+  "findings": [
+    {
+      "severity": "info",
+      "code": "COMBINE",
+      "message": "Z\u0336\u0335\u0334a\u0338\u0337l\u033a\u033bg\u033c\u033do\u033e\u033f",
+      "location": { "path": "src/\u0041\u030a\u0041\u030a.rs", "line": 1 }
+    }
+  ]
+}

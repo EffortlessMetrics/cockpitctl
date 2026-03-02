@@ -1,0 +1,7 @@
+[
+  { "severity": "error", "code": "A", "message": "same" },
+  { "severity": "error", "code": "A", "message": "same" },
+  { "severity": "error", "code": "A", "message": "same" },
+  { "severity": "warn", "code": "A", "message": "same" },
+  { "severity": "info", "code": "A", "message": "same" }
+]

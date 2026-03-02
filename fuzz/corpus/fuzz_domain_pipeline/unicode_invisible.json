@@ -1,0 +1,14 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "t", "version": "1" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 1 } },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "\u200b\u200c\u200d\ufeff\u202e",
+      "message": "\u200bzero\u200cwidth\u200djoiner\ufeffbom\u202ertl",
+      "location": { "path": "\u200b\u200csrc/\u202efile.rs", "line": 1 }
+    }
+  ]
+}

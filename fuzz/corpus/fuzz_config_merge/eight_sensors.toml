@@ -1,0 +1,46 @@
+[policy]
+warn_is_fail = true
+max_highlights = 1
+max_per_sensor_findings = 1
+max_annotations = 1
+section_order = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+
+[sensors.a]
+blocking = true
+missing = "fail"
+section = "A"
+
+[sensors.b]
+blocking = true
+missing = "fail"
+section = "B"
+
+[sensors.c]
+blocking = false
+missing = "skip"
+section = "C"
+
+[sensors.d]
+blocking = false
+missing = "skip"
+section = "D"
+
+[sensors.e]
+blocking = true
+missing = "fail"
+section = "E"
+
+[sensors.f]
+blocking = false
+missing = "skip"
+section = "F"
+
+[sensors.g]
+blocking = true
+missing = "fail"
+section = "G"
+
+[sensors.h]
+blocking = false
+missing = "skip"
+section = "H"

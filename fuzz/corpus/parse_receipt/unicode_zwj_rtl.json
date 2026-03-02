@@ -1,0 +1,14 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "z\u200dw\u200bj", "version": "1.\u200e0.\u200f0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "fail", "counts": { "info": 0, "warn": 0, "error": 1 }, "reasons": ["\u202eRTL override\u202c"] },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "ZWJ\u200d.\u034f\u0300\u0301\u0302\u0303\u0304",
+      "message": "zero\u200bwidth\u00adsoft\u2060word\ufeffBOM",
+      "location": { "path": "src/\u202a\u202b\u202c\u202d\u202emixed.rs", "line": 1 }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "cockpit.report.v1",
+  "tool": { "name": "cockpitctl", "version": "0.3.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "fail", "counts": { "info": 10, "warn": 10, "error": 10 }, "reasons": [] },
+  "sensors": [],
+  "highlights": [
+    {"sensor_id":"a","finding":{"severity":"error","code":"E1","message":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","location":{"path":"very/long/path/that/goes/on/and/on/and/on/and/on/and/on/and/on/and/on.rs","line":999999999},"fingerprint":"a1"}},
+    {"sensor_id":"b","finding":{"severity":"warn","code":"W1","message":"short","fingerprint":"b1"}},
+    {"sensor_id":"c","finding":{"severity":"info","code":"I1","message":"","fingerprint":"c1"}}
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 1,
+    "max_per_sensor_findings": 1,
+    "max_annotations": 1,
+    "section_order": [],
+    "sensors": []
+  }
+}

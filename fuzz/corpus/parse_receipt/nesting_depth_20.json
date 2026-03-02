@@ -1,0 +1,8 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "nested", "version": "1.0.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+  "findings": [],
+  "data": {"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":{"j":{"k":{"l":{"m":{"n":{"o":{"p":{"q":{"r":{"s":{"t":"20 levels deep"}}}}}}}}}}}}}}}}}}}}
+}

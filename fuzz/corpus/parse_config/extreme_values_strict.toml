@@ -1,0 +1,13 @@
+[policy]
+warn_is_fail = true
+max_highlights = 0
+max_per_sensor_findings = 0
+max_annotations = 0
+section_order = []
+skip_missing = false
+schema_validation = "strict"
+
+[sensors.sensor-with-very-long-name-that-goes-on-and-on-and-on-and-on-and-on-and-on-and-on]
+blocking = true
+missing = "fail"
+section = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
