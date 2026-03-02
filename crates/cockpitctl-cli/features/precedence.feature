@@ -75,3 +75,25 @@ Feature: Precedence contract
     Then the exit code is 2
     And the highlights count is at most 3
     And the highlights are ordered by severity descending
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Config and CLI Combined Overrides
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  @new
+  Scenario: Config warn_is_fail=true with a pass sensor still passes
+    Given a dynamic artifacts directory with sensors "clean"
+    And dynamic sensor "clean" has verdict "pass"
+    And a cockpit config with warn_is_fail true and blocking sensors "clean"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "pass"
+
+  @new
+  Scenario: Config max_highlights=1 with multiple findings caps to one
+    Given a dynamic artifacts directory with sensors "loud"
+    And dynamic sensor "loud" has verdict "fail" with 5 findings prefixed "loud"
+    And a cockpit config with max highlights 1 and all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the highlights count is at most 1

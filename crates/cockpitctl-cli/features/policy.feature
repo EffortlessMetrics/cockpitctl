@@ -129,3 +129,76 @@ Feature: Policy evaluation edge cases
     When I run "cockpitctl ingest" on the fixture
     Then the comment contains "<!-- cockpit:begin -->"
     And the comment contains "<!-- cockpit:end -->"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Exit Code Semantics — Verdict Combinations
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  Scenario: all pass sensors yield exit code 0
+    Given a dynamic artifacts directory with sensors "a,b,c"
+    And all dynamic sensors have verdict "pass"
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "pass"
+
+  Scenario: all skip sensors yield exit code 0
+    Given a dynamic artifacts directory with sensors "a,b"
+    And dynamic sensor "a" has verdict "skip"
+    And dynamic sensor "b" has verdict "skip"
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the highlights array is empty
+
+  Scenario: only warn sensors without warn_is_fail yield exit code 0
+    Given a dynamic artifacts directory with sensors "w1,w2"
+    And dynamic sensor "w1" has verdict "warn" with finding "w1.minor"
+    And dynamic sensor "w2" has verdict "warn" with finding "w2.minor"
+    And a cockpit config with warn_is_fail false and blocking sensors "w1,w2"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "warn"
+
+  Scenario: only warn sensors with warn_is_fail yield exit code 2
+    Given a dynamic artifacts directory with sensors "w1,w2"
+    And dynamic sensor "w1" has verdict "warn" with finding "w1.minor"
+    And dynamic sensor "w2" has verdict "warn" with finding "w2.minor"
+    And a cockpit config with warn_is_fail true and blocking sensors "w1,w2"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the verdict status is "fail"
+
+  Scenario: pass and skip combined yield exit code 0
+    Given a dynamic artifacts directory with sensors "passer,skipper"
+    And dynamic sensor "passer" has verdict "pass"
+    And dynamic sensor "skipper" has verdict "skip"
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the verdict status is "pass"
+    And the sensor "passer" has verdict status "pass"
+    And the sensor "skipper" has verdict status "skip"
+
+  Scenario: blocking fail with pass and skip yields exit code 2
+    Given a dynamic artifacts directory with sensors "good,bad,skipped"
+    And dynamic sensor "good" has verdict "pass"
+    And dynamic sensor "bad" has verdict "fail" with finding "bad.error"
+    And dynamic sensor "skipped" has verdict "skip"
+    And a cockpit config with all sensors blocking
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 2
+    And the verdict status is "fail"
+    And the sensor "good" has verdict status "pass"
+    And the sensor "bad" has verdict status "fail"
+    And the sensor "skipped" has verdict status "skip"
+
+  Scenario: non-blocking fail with all other pass yields exit code 0
+    Given a dynamic artifacts directory with sensors "core,addon"
+    And dynamic sensor "core" has verdict "pass"
+    And dynamic sensor "addon" has verdict "fail" with finding "addon.issue"
+    And a cockpit config with blocking sensors "core"
+    When I run "cockpitctl ingest" on the fixture
+    Then the exit code is 0
+    And the sensor "core" has verdict status "pass"
+    And the sensor "addon" has verdict status "fail"
