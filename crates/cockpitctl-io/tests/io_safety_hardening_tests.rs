@@ -95,12 +95,12 @@ fn percent_encoded_traversal_rejected() {
 
     // These contain non-alphanumeric characters (%, .) that is_valid_sensor_id blocks
     let attacks = [
-        "%2e%2e",         // URL-encoded ".."
-        "%2e%2e%2f",      // URL-encoded "../"
-        "%2e%2e%5c",      // URL-encoded "..\\"
-        "..%2f",          // mixed: literal dots + encoded slash
-        "%2e%2e/escape",  // encoded dots + literal slash
-        "sensor%00id",    // percent-encoded null
+        "%2e%2e",        // URL-encoded ".."
+        "%2e%2e%2f",     // URL-encoded "../"
+        "%2e%2e%5c",     // URL-encoded "..\\"
+        "..%2f",         // mixed: literal dots + encoded slash
+        "%2e%2e/escape", // encoded dots + literal slash
+        "sensor%00id",   // percent-encoded null
     ];
     for attack in &attacks {
         assert!(
@@ -125,11 +125,7 @@ fn unix_absolute_path_sensor_id_rejected() {
     fs::create_dir_all(&artifacts).unwrap();
     let src = FsReceiptSource::new(FsLayout::new(&artifacts, tmp.path().join("c.toml")));
 
-    let attacks = [
-        "/etc/passwd",
-        "/tmp/evil",
-        "/home/user/.ssh/id_rsa",
-    ];
+    let attacks = ["/etc/passwd", "/tmp/evil", "/home/user/.ssh/id_rsa"];
     for attack in &attacks {
         assert!(
             matches!(
@@ -152,7 +148,7 @@ fn windows_absolute_path_sensor_id_rejected() {
     let attacks = [
         "C:\\Windows\\System32",
         "D:\\data\\secrets",
-        "\\\\server\\share",    // UNC path
+        "\\\\server\\share",     // UNC path
         "\\\\?\\C:\\long\\path", // extended-length path prefix
     ];
     for attack in &attacks {
@@ -223,8 +219,7 @@ fn windows_junction_escape_is_guarded() {
 
     match status {
         Ok(s) if s.success() => {
-            let src =
-                FsReceiptSource::new(FsLayout::new(&artifacts, tmp.path().join("c.toml")));
+            let src = FsReceiptSource::new(FsLayout::new(&artifacts, tmp.path().join("c.toml")));
             match src.read_report_bytes("junctioned").unwrap() {
                 ReportRead::UnsafePath => {} // ideal: junction outside root rejected
                 ReportRead::Bytes(_) => {
@@ -398,12 +393,12 @@ fn control_characters_in_sensor_id_rejected() {
     let src = FsReceiptSource::new(FsLayout::new(&artifacts, tmp.path().join("c.toml")));
 
     let attacks = [
-        "sensor\x01id",  // SOH
-        "sensor\x7Fid",  // DEL
-        "sensor\tid",    // tab
-        "sensor\nid",    // newline
-        "sensor\rid",    // carriage return
-        "sensor\x0Bid",  // vertical tab
+        "sensor\x01id", // SOH
+        "sensor\x7Fid", // DEL
+        "sensor\tid",   // tab
+        "sensor\nid",   // newline
+        "sensor\rid",   // carriage return
+        "sensor\x0Bid", // vertical tab
     ];
     for attack in &attacks {
         assert!(
