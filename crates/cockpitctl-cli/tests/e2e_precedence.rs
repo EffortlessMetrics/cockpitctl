@@ -1532,3 +1532,905 @@ auto_apply = true
         serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
     assert_eq!(json["verdict"]["status"].as_str(), Some("pass"));
 }
+
+// =============================================================================
+// Schema validation: no config file, CLI says lax → uses lax
+// =============================================================================
+
+/// No config file, CLI explicitly says --schema-validation lax → uses lax.
+#[test]
+fn schema_no_config_cli_lax_uses_lax() {
+    let setup = TestSetup::new();
+    setup.write_sensor_report("alpha", &extra_field_sensor_report("alpha"));
+
+    let nonexistent_config = setup._temp_dir.path().join("nonexistent.toml");
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            nonexistent_config.to_string_lossy().as_ref(),
+            "--schema-validation",
+            "lax",
+        ])
+        .assert()
+        .success();
+
+    let report = setup.read_cockpit_report();
+    let json: serde_json::Value = serde_json::from_str(&report).expect("parse report");
+
+    let highlights = json["highlights"].as_array().expect("highlights");
+    let has_violation = highlights
+        .iter()
+        .any(|h| h["finding"]["code"].as_str() == Some("cockpit.schema_violation"));
+    assert!(
+        !has_violation,
+        "no config + CLI lax should skip schema validation"
+    );
+}
+
+/// No config file, CLI explicitly says --schema-validation strict → uses strict.
+#[cfg(feature = "feature-schema")]
+#[test]
+fn schema_no_config_cli_strict_uses_strict() {
+    let setup = TestSetup::new();
+    setup.write_sensor_report("alpha", &extra_field_sensor_report("alpha"));
+
+    let nonexistent_config = setup._temp_dir.path().join("nonexistent.toml");
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            nonexistent_config.to_string_lossy().as_ref(),
+            "--schema-validation",
+            "strict",
+        ])
+        .assert()
+        .success(); // no sensors configured → sensor not blocking
+
+    let report = setup.read_cockpit_report();
+    let json: serde_json::Value = serde_json::from_str(&report).expect("parse report");
+
+    // With strict mode and extra fields, the sensor should have schema_violation findings.
+    let highlights = json["highlights"].as_array().expect("highlights");
+    let has_violation = highlights
+        .iter()
+        .any(|h| h["finding"]["code"].as_str() == Some("cockpit.schema_violation"));
+    // Sensor is unconfigured/non-blocking, so violation surfaces but doesn't fail.
+    assert!(
+        has_violation,
+        "no config + CLI strict should enforce schema validation"
+    );
+}
+
+// =============================================================================
+// Schema validation: report reflects effective schema_validation
+// =============================================================================
+
+/// Config lax + valid report → no schema violation in highlights (lax honoured).
+#[test]
+fn schema_validation_lax_no_violations_in_report() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+schema_validation = "lax"
+
+[sensors.alpha]
+blocking = true
+missing = "fail"
+"#,
+    );
+    setup.write_sensor_report("alpha", &extra_field_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    let highlights = json["highlights"].as_array().expect("highlights");
+    let has_violation = highlights
+        .iter()
+        .any(|h| h["finding"]["code"].as_str() == Some("cockpit.schema_violation"));
+    assert!(
+        !has_violation,
+        "config lax should produce no schema violations even with extra fields"
+    );
+}
+
+/// Config lax + CLI strict → report shows schema violations (CLI override effective).
+#[cfg(feature = "feature-schema")]
+#[test]
+fn schema_validation_cli_strict_produces_violations_in_report() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+schema_validation = "lax"
+
+[sensors.alpha]
+blocking = true
+missing = "fail"
+"#,
+    );
+    setup.write_sensor_report("alpha", &extra_field_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+            "--schema-validation",
+            "strict",
+        ])
+        .assert()
+        .code(2);
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    let highlights = json["highlights"].as_array().expect("highlights");
+    let has_violation = highlights
+        .iter()
+        .any(|h| h["finding"]["code"].as_str() == Some("cockpit.schema_violation"));
+    assert!(
+        has_violation,
+        "CLI --schema-validation strict should produce schema violations in report"
+    );
+}
+
+// =============================================================================
+// Feature flag precedence: buildfix
+// =============================================================================
+
+/// Config enables buildfix (auto_apply = true), CLI disables → no buildfix sidecar.
+#[test]
+fn feature_buildfix_config_enabled_cli_disabled() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.alpha]
+blocking = false
+missing = "skip"
+
+[buildfix]
+auto_apply = true
+max_auto_apply_safety = "safe"
+"#,
+    );
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+            "--disable-buildfix",
+        ])
+        .assert()
+        .success();
+
+    assert!(setup.cockpit_report_path().exists());
+    let sidecar = setup
+        .artifacts_dir
+        .join("cockpit")
+        .join("buildfix.apply.json");
+    assert!(
+        !sidecar.exists(),
+        "--disable-buildfix should suppress buildfix even when config enables auto_apply"
+    );
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    if let Some(data) = json.get("data") {
+        assert!(
+            data.get("_buildfix_apply").is_none(),
+            "buildfix data should be absent when --disable-buildfix is passed"
+        );
+    }
+}
+
+/// Config does not mention buildfix, CLI does not disable → succeeds without sidecar.
+#[test]
+fn feature_buildfix_config_absent_cli_absent() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.alpha]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+
+    // With no buildfix config and no CLI flag, buildfix sidecar should be absent.
+    let sidecar = setup
+        .artifacts_dir
+        .join("cockpit")
+        .join("buildfix.apply.json");
+    assert!(
+        !sidecar.exists(),
+        "buildfix sidecar should not exist when buildfix not configured"
+    );
+}
+
+// =============================================================================
+// Feature flag precedence: hooks
+// =============================================================================
+
+/// Config with sensors, CLI disables hooks → no hooks output.
+#[test]
+fn feature_hooks_config_present_cli_disabled() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.alpha]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    // Even if hooks were enabled by default feature, --disable-hooks suppresses them.
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+            "--disable-hooks",
+        ])
+        .assert()
+        .success();
+
+    assert!(setup.cockpit_report_path().exists());
+    let hook_output = setup.artifacts_dir.join("cockpit").join("hooks.json");
+    assert!(
+        !hook_output.exists(),
+        "--disable-hooks should suppress hooks"
+    );
+}
+
+/// Hooks not configured, not disabled via CLI → succeeds without hooks output.
+#[test]
+fn feature_hooks_config_absent_cli_absent() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.alpha]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+
+    let hook_output = setup.artifacts_dir.join("cockpit").join("hooks.json");
+    assert!(
+        !hook_output.exists(),
+        "hooks output should not exist when hooks are not configured"
+    );
+}
+
+// =============================================================================
+// Feature flag precedence: policy signing
+// =============================================================================
+
+/// Config enables signing, CLI disables → no signature sidecar.
+#[test]
+fn feature_signing_config_enabled_cli_disabled() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.alpha]
+blocking = false
+missing = "skip"
+
+[policy_signing]
+enabled = true
+"#,
+    );
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+            "--disable-policy-signing",
+        ])
+        .assert()
+        .success();
+
+    assert!(setup.cockpit_report_path().exists());
+    let sidecar = setup
+        .artifacts_dir
+        .join("cockpit")
+        .join("policy.signature.json");
+    assert!(
+        !sidecar.exists(),
+        "--disable-policy-signing should suppress signing even when config enables it"
+    );
+}
+
+// =============================================================================
+// Artifact path precedence
+// =============================================================================
+
+/// Default artifact path ("artifacts") is used when --artifacts is not explicitly overridden.
+#[test]
+fn artifact_path_default_used_when_not_overridden() {
+    let temp_dir = TempDir::new().expect("create temp dir");
+    let cwd = temp_dir.path();
+    let artifacts_dir = cwd.join("artifacts");
+    let sensor_dir = artifacts_dir.join("alpha");
+    fs::create_dir_all(&sensor_dir).expect("create sensor dir");
+    fs::write(
+        sensor_dir.join("report.json"),
+        valid_sensor_report("alpha"),
+    )
+    .expect("write report");
+
+    let config = cwd.join("cockpit.toml");
+    fs::write(
+        &config,
+        r#"[policy]
+
+[sensors.alpha]
+blocking = true
+missing = "fail"
+"#,
+    )
+    .expect("write config");
+
+    // Run without --artifacts, relying on default "artifacts" path.
+    cmd()
+        .current_dir(cwd)
+        .args(["ingest", "--config", config.to_string_lossy().as_ref()])
+        .assert()
+        .success();
+
+    // Output should be under cwd/artifacts/cockpit/
+    assert!(
+        artifacts_dir.join("cockpit").join("report.json").exists(),
+        "default artifacts path should produce output in ./artifacts/cockpit/"
+    );
+}
+
+/// --artifacts overrides the default path.
+#[test]
+fn artifact_path_cli_override() {
+    let temp_dir = TempDir::new().expect("create temp dir");
+    let custom_artifacts = temp_dir.path().join("custom_output");
+    let sensor_dir = custom_artifacts.join("alpha");
+    fs::create_dir_all(&sensor_dir).expect("create sensor dir");
+    fs::write(
+        sensor_dir.join("report.json"),
+        valid_sensor_report("alpha"),
+    )
+    .expect("write report");
+
+    let config = temp_dir.path().join("cockpit.toml");
+    fs::write(
+        &config,
+        r#"[policy]
+
+[sensors.alpha]
+blocking = true
+missing = "fail"
+"#,
+    )
+    .expect("write config");
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            custom_artifacts.to_string_lossy().as_ref(),
+            "--config",
+            config.to_string_lossy().as_ref(),
+        ])
+        .assert()
+        .success();
+
+    assert!(
+        custom_artifacts
+            .join("cockpit")
+            .join("report.json")
+            .exists(),
+        "CLI --artifacts should direct output to the specified path"
+    );
+}
+
+/// Two different --artifacts paths produce independent outputs.
+#[test]
+fn artifact_path_cli_override_independent() {
+    let temp_dir = TempDir::new().expect("create temp dir");
+
+    // Setup two independent artifacts directories.
+    let artifacts_a = temp_dir.path().join("artifacts_a");
+    let artifacts_b = temp_dir.path().join("artifacts_b");
+    for (dir, sensor) in [(&artifacts_a, "alpha"), (&artifacts_b, "beta")] {
+        let sensor_dir = dir.join(sensor);
+        fs::create_dir_all(&sensor_dir).expect("create dir");
+        fs::write(
+            sensor_dir.join("report.json"),
+            valid_sensor_report(sensor),
+        )
+        .expect("write report");
+    }
+
+    let config = temp_dir.path().join("cockpit.toml");
+    fs::write(&config, "[policy]\n").expect("write config");
+
+    // First ingest: artifacts_a
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            artifacts_a.to_string_lossy().as_ref(),
+            "--config",
+            config.to_string_lossy().as_ref(),
+        ])
+        .assert()
+        .success();
+
+    // Second ingest: artifacts_b
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            artifacts_b.to_string_lossy().as_ref(),
+            "--config",
+            config.to_string_lossy().as_ref(),
+        ])
+        .assert()
+        .success();
+
+    // Both should produce output in their respective directories.
+    let report_a: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(artifacts_a.join("cockpit").join("report.json")).unwrap(),
+    )
+    .unwrap();
+    let report_b: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(artifacts_b.join("cockpit").join("report.json")).unwrap(),
+    )
+    .unwrap();
+
+    // Reports should contain different sensors.
+    let sensors_a: Vec<&str> = report_a["sensors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|s| s["id"].as_str())
+        .collect();
+    let sensors_b: Vec<&str> = report_b["sensors"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|s| s["id"].as_str())
+        .collect();
+    assert!(sensors_a.contains(&"alpha"), "artifacts_a should have alpha");
+    assert!(sensors_b.contains(&"beta"), "artifacts_b should have beta");
+}
+
+// =============================================================================
+// Exit code: runtime error (exit 1)
+// =============================================================================
+
+/// Malformed config file (invalid TOML) → exit 1 (runtime error).
+#[test]
+fn exit_code_malformed_config_is_one() {
+    let setup = TestSetup::new();
+    setup.write_config("this is not valid toml {{{{");
+    setup.write_sensor_report("alpha", &valid_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .code(1);
+}
+
+/// Malformed receipt JSON (not valid JSON at all) → still exits 0 or 2, not 1,
+/// because bad receipts produce findings, not runtime errors.
+#[test]
+fn exit_code_malformed_receipt_json_not_runtime_error() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.broken]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report("broken", "{{not valid json at all!!!");
+
+    let assert = cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert();
+
+    // Exit code should be 0 or 2 (policy), never 1 (runtime error).
+    // Bad receipts are handled as findings, not crashes.
+    let code = assert.get_output().status.code().unwrap();
+    assert!(
+        code == 0 || code == 2,
+        "malformed receipt should produce a finding, not a runtime error (got exit {})",
+        code
+    );
+}
+
+// =============================================================================
+// Exit code: pass/fail for each combination
+// =============================================================================
+
+/// Non-blocking sensor with fail verdict + blocking sensor with pass → exit 0.
+#[test]
+fn exit_code_non_blocking_fail_plus_blocking_pass_is_zero() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.critical]
+blocking = true
+missing = "fail"
+
+[sensors.advisory]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report("critical", &valid_sensor_report("critical"));
+    setup.write_sensor_report("advisory", &fail_sensor_report("advisory"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+}
+
+/// All sensors skip → exit 0.
+#[test]
+fn exit_code_all_skip_is_zero() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.optional_a]
+blocking = true
+missing = "skip"
+
+[sensors.optional_b]
+blocking = true
+missing = "skip"
+"#,
+    );
+    // Write no sensor reports — all missing sensors treated as skip.
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    let status = json["verdict"]["status"].as_str().expect("verdict status");
+    assert_ne!(status, "fail", "all-skip should not fail");
+}
+
+/// Schema violation on blocking sensor in strict mode → exit 2 (not 1).
+#[cfg(feature = "feature-schema")]
+#[test]
+fn exit_code_schema_violation_blocking_is_two() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+schema_validation = "strict"
+
+[sensors.alpha]
+blocking = true
+missing = "fail"
+"#,
+    );
+    setup.write_sensor_report("alpha", &extra_field_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .code(2);
+}
+
+/// Schema violation on non-blocking sensor in strict mode → exit 0.
+#[cfg(feature = "feature-schema")]
+#[test]
+fn exit_code_schema_violation_non_blocking_is_zero() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+schema_validation = "strict"
+
+[sensors.advisory]
+blocking = false
+missing = "skip"
+"#,
+    );
+    setup.write_sensor_report("advisory", &extra_field_sensor_report("advisory"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .success();
+}
+
+// =============================================================================
+// Outputs always written (even with multiple failures)
+// =============================================================================
+
+/// Outputs written even when multiple blocking sensors fail.
+#[test]
+fn outputs_written_multi_blocking_fail() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+
+[sensors.alpha]
+blocking = true
+missing = "fail"
+
+[sensors.beta]
+blocking = true
+missing = "fail"
+"#,
+    );
+    setup.write_sensor_report("alpha", &fail_sensor_report("alpha"));
+    setup.write_sensor_report("beta", &fail_sensor_report("beta"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+        ])
+        .assert()
+        .code(2);
+
+    assert!(
+        setup.cockpit_report_path().exists(),
+        "report.json must be written even with multiple blocking failures"
+    );
+    assert!(
+        setup.cockpit_comment_path().exists(),
+        "comment.md must be written even with multiple blocking failures"
+    );
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    assert_eq!(json["verdict"]["status"].as_str(), Some("fail"));
+    let sensors = json["sensors"].as_array().expect("sensors");
+    assert_eq!(sensors.len(), 2, "both sensors should appear in the report");
+}
+
+// =============================================================================
+// Config path precedence: --config flag vs default
+// =============================================================================
+
+/// --config flag to a specific file overrides the default "cockpit.toml" location.
+#[test]
+fn config_path_cli_override_changes_policy() {
+    let temp_dir = TempDir::new().expect("create temp dir");
+    let cwd = temp_dir.path();
+
+    // Default cockpit.toml in cwd: warn_is_fail = false
+    let default_config = cwd.join("cockpit.toml");
+    fs::write(
+        &default_config,
+        r#"[policy]
+warn_is_fail = false
+
+[sensors.linter]
+blocking = true
+missing = "fail"
+"#,
+    )
+    .unwrap();
+
+    // Alternative config: warn_is_fail = true
+    let alt_config = cwd.join("strict-policy.toml");
+    fs::write(
+        &alt_config,
+        r#"[policy]
+warn_is_fail = true
+
+[sensors.linter]
+blocking = true
+missing = "fail"
+"#,
+    )
+    .unwrap();
+
+    let artifacts = cwd.join("artifacts");
+    let sensor_dir = artifacts.join("linter");
+    fs::create_dir_all(&sensor_dir).unwrap();
+    fs::write(
+        sensor_dir.join("report.json"),
+        warn_sensor_report("linter"),
+    )
+    .unwrap();
+
+    // Run with default config → pass (warn_is_fail = false)
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            artifacts.to_string_lossy().as_ref(),
+            "--config",
+            default_config.to_string_lossy().as_ref(),
+        ])
+        .assert()
+        .success();
+
+    // Clean output for second run.
+    let _ = fs::remove_dir_all(artifacts.join("cockpit"));
+
+    // Run with alt config → fail (warn_is_fail = true)
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            artifacts.to_string_lossy().as_ref(),
+            "--config",
+            alt_config.to_string_lossy().as_ref(),
+        ])
+        .assert()
+        .code(2);
+}
+
+// =============================================================================
+// Combined precedence: multiple CLI overrides together
+// =============================================================================
+
+/// All disable flags + schema lax → everything disabled, lax validation, still pass.
+#[test]
+fn combined_all_cli_overrides_together() {
+    let setup = TestSetup::new();
+    setup.write_config(
+        r#"[policy]
+schema_validation = "strict"
+
+[sensors.alpha]
+blocking = false
+missing = "skip"
+
+[buildfix]
+auto_apply = true
+
+[policy_signing]
+enabled = true
+"#,
+    );
+    setup.write_sensor_report("alpha", &extra_field_sensor_report("alpha"));
+
+    cmd()
+        .args([
+            "ingest",
+            "--artifacts",
+            &setup.artifacts_arg(),
+            "--config",
+            &setup.config_arg(),
+            "--schema-validation",
+            "lax",
+            "--disable-hooks",
+            "--disable-buildfix",
+            "--disable-policy-signing",
+        ])
+        .assert()
+        .success();
+
+    assert!(setup.cockpit_report_path().exists());
+    assert!(setup.cockpit_comment_path().exists());
+
+    let json: serde_json::Value =
+        serde_json::from_str(&setup.read_cockpit_report()).expect("parse");
+    // Lax should have been honoured: no schema violation.
+    let highlights = json["highlights"].as_array().expect("highlights");
+    let has_violation = highlights
+        .iter()
+        .any(|h| h["finding"]["code"].as_str() == Some("cockpit.schema_violation"));
+    assert!(
+        !has_violation,
+        "CLI lax + all disable flags should produce no schema violations"
+    );
+    // No buildfix sidecar.
+    let sidecar = setup
+        .artifacts_dir
+        .join("cockpit")
+        .join("buildfix.apply.json");
+    assert!(!sidecar.exists());
+    // No signing sidecar.
+    let sig = setup
+        .artifacts_dir
+        .join("cockpit")
+        .join("policy.signature.json");
+    assert!(!sig.exists());
+}
