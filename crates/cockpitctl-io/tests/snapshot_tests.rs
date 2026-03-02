@@ -49,10 +49,7 @@ fn snapshot_fs_layout_cockpit_output_paths() {
             "cockpit_comment",
             norm(layout.cockpit_comment_file().display()),
         ),
-        (
-            "sarif_report",
-            norm(layout.sarif_report_file().display()),
-        ),
+        ("sarif_report", norm(layout.sarif_report_file().display())),
     ];
     insta::assert_debug_snapshot!("fs_layout_cockpit_output_paths", paths);
 }
