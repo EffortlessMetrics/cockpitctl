@@ -152,6 +152,56 @@ fn empty_key_is_rejected() {
     );
 }
 
+#[test]
+fn empty_key_rejected_via_dispatcher() {
+    let result = sign_policy_snapshot(
+        &empty_policy(),
+        PolicySignatureAlgorithm::HmacSha256,
+        b"",
+        None,
+    );
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("empty"));
+}
+
+// ── signing determinism across many iterations ───────────────────────
+
+#[test]
+fn signing_determinism_100_iterations() {
+    let policy = realistic_policy();
+    let key = b"iteration-key";
+    let reference = sign_policy_snapshot_hmac_sha256(&policy, key, Some("iter".into())).unwrap();
+    for i in 0..100 {
+        let ev = sign_policy_snapshot_hmac_sha256(&policy, key, Some("iter".into())).unwrap();
+        assert_eq!(
+            reference.signature, ev.signature,
+            "signature diverged at iteration {i}"
+        );
+        assert_eq!(reference.policy_sha256, ev.policy_sha256);
+    }
+}
+
+// ── signature hex encoding is always lowercase ───────────────────────
+
+#[test]
+fn signature_hex_is_lowercase() {
+    let ev = sign_policy_snapshot_hmac_sha256(&realistic_policy(), b"hex-key", None).unwrap();
+    assert!(
+        ev.signature
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
+        "signature should be lowercase hex: {}",
+        ev.signature
+    );
+    assert!(
+        ev.policy_sha256
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()),
+        "policy_sha256 should be lowercase hex: {}",
+        ev.policy_sha256
+    );
+}
+
 // ── signing policy evaluation (evidence fields) ──────────────────────
 
 #[test]
@@ -201,4 +251,155 @@ fn different_keys_yield_different_signatures() {
     // Same policy → same digest, but different signatures.
     assert_eq!(e1.policy_sha256, e2.policy_sha256);
     assert_ne!(e1.signature, e2.signature);
+}
+
+// ── tamper detection: each field mutation invalidates signature ───────
+
+#[test]
+fn tampered_max_highlights_changes_signature() {
+    let key = b"tamper-field-key";
+    let original = sign_policy_snapshot_hmac_sha256(&realistic_policy(), key, None).unwrap();
+
+    let mut policy = realistic_policy();
+    policy.max_highlights += 1;
+    let tampered = sign_policy_snapshot_hmac_sha256(&policy, key, None).unwrap();
+
+    assert_ne!(original.signature, tampered.signature);
+    assert_ne!(original.policy_sha256, tampered.policy_sha256);
+}
+
+#[test]
+fn tampered_max_per_sensor_findings_changes_signature() {
+    let key = b"tamper-findings";
+    let original = sign_policy_snapshot_hmac_sha256(&realistic_policy(), key, None).unwrap();
+
+    let mut policy = realistic_policy();
+    policy.max_per_sensor_findings += 1;
+    let tampered = sign_policy_snapshot_hmac_sha256(&policy, key, None).unwrap();
+
+    assert_ne!(original.signature, tampered.signature);
+}
+
+#[test]
+fn tampered_max_annotations_changes_signature() {
+    let key = b"tamper-annotations";
+    let original = sign_policy_snapshot_hmac_sha256(&realistic_policy(), key, None).unwrap();
+
+    let mut policy = realistic_policy();
+    policy.max_annotations += 1;
+    let tampered = sign_policy_snapshot_hmac_sha256(&policy, key, None).unwrap();
+
+    assert_ne!(original.signature, tampered.signature);
+}
+
+#[test]
+fn tampered_section_order_changes_signature() {
+    let key = b"tamper-sections";
+    let original = sign_policy_snapshot_hmac_sha256(&realistic_policy(), key, None).unwrap();
+
+    let mut policy = realistic_policy();
+    policy.section_order.reverse();
+    let tampered = sign_policy_snapshot_hmac_sha256(&policy, key, None).unwrap();
+
+    assert_ne!(original.signature, tampered.signature);
+}
+
+#[test]
+fn tampered_blocking_flag_changes_signature() {
+    let key = b"tamper-blocking";
+    let original = sign_policy_snapshot_hmac_sha256(&realistic_policy(), key, None).unwrap();
+
+    let mut policy = realistic_policy();
+    policy.sensors[0].blocking = !policy.sensors[0].blocking;
+    let tampered = sign_policy_snapshot_hmac_sha256(&policy, key, None).unwrap();
+
+    assert_ne!(original.signature, tampered.signature);
+}
+
+// ── unicode content in policy fields ─────────────────────────────────
+
+#[test]
+fn unicode_sensor_id_signs_correctly() {
+    let policy = PolicySnapshot {
+        warn_is_fail: false,
+        max_highlights: 5,
+        max_per_sensor_findings: 10,
+        max_annotations: 5,
+        section_order: vec!["品質".into()],
+        sensors: vec![PolicySensorSnapshot {
+            id: "lint-日本語".into(),
+            blocking: true,
+            missing: MissingPolicy::Fail,
+            section: Some("品質".into()),
+            require_label: None,
+            repro: None,
+        }],
+    };
+    let ev = sign_policy_snapshot_hmac_sha256(&policy, b"unicode-key", None).unwrap();
+    assert_eq!(ev.signature.len(), 64);
+    // Deterministic.
+    let ev2 = sign_policy_snapshot_hmac_sha256(&policy, b"unicode-key", None).unwrap();
+    assert_eq!(ev.signature, ev2.signature);
+}
+
+// ── policy with all optional fields populated ────────────────────────
+
+#[test]
+fn all_optional_fields_populated_affects_signature() {
+    let key = b"optionals-key";
+
+    let mut policy_without = realistic_policy();
+    policy_without.sensors[0].require_label = None;
+    policy_without.sensors[0].repro = None;
+    let ev_without = sign_policy_snapshot_hmac_sha256(&policy_without, key, None).unwrap();
+
+    let mut policy_with = realistic_policy();
+    policy_with.sensors[0].require_label = Some("needs-review".into());
+    policy_with.sensors[0].repro = Some("cargo clippy".into());
+    let ev_with = sign_policy_snapshot_hmac_sha256(&policy_with, key, None).unwrap();
+
+    assert_ne!(ev_without.signature, ev_with.signature);
+}
+
+// ── policy deserialization roundtrip preserves signing ────────────────
+
+#[test]
+fn policy_deserialize_roundtrip_preserves_signature() {
+    let policy = realistic_policy();
+    let key = b"roundtrip-key";
+    let original = sign_policy_snapshot_hmac_sha256(&policy, key, None).unwrap();
+
+    // Serialize → deserialize → re-sign.
+    let bytes = canonical_policy_snapshot_bytes(&policy).unwrap();
+    let deserialized: PolicySnapshot = serde_json::from_slice(&bytes).unwrap();
+    let re_signed = sign_policy_snapshot_hmac_sha256(&deserialized, key, None).unwrap();
+
+    assert_eq!(original.signature, re_signed.signature);
+    assert_eq!(original.policy_sha256, re_signed.policy_sha256);
+}
+
+// ── evidence JSON serialization roundtrip ────────────────────────────
+
+#[test]
+fn evidence_json_serialization_roundtrip() {
+    let ev =
+        sign_policy_snapshot_hmac_sha256(&realistic_policy(), b"json-key", Some("kid-1".into()))
+            .unwrap();
+    let json = serde_json::to_string(&ev).unwrap();
+    let deserialized: cockpitctl_types::PolicySignatureEvidence =
+        serde_json::from_str(&json).unwrap();
+    assert_eq!(ev, deserialized);
+}
+
+// ── key with null bytes ──────────────────────────────────────────────
+
+#[test]
+fn key_with_null_bytes_produces_valid_signature() {
+    let key = b"\x00\x01\x00\x02\x00\x03";
+    let ev = sign_policy_snapshot_hmac_sha256(&empty_policy(), key, None).unwrap();
+    assert_eq!(ev.signature.len(), 64);
+    // Different from an all-ones key of the same length.
+    let ev2 = sign_policy_snapshot_hmac_sha256(&empty_policy(), b"\x01\x01\x01\x02\x01\x03", None)
+        .unwrap();
+    assert_ne!(ev.signature, ev2.signature);
 }
