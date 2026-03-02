@@ -92,3 +92,24 @@ path = "fuzz_targets/fuzz_fingerprint.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "fuzz_conform"
+path = "fuzz_targets/fuzz_conform.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_render_budgets"
+path = "fuzz_targets/fuzz_render_budgets.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_config_merge"
+path = "fuzz_targets/fuzz_config_merge.rs"
+test = false
+doc = false
+bench = false

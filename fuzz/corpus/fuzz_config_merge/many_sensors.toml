@@ -1,0 +1,34 @@
+[policy]
+warn_is_fail = true
+max_highlights = 100
+max_per_sensor_findings = 500
+max_annotations = 200
+section_order = ["Highlights", "Build", "Lint", "Coverage", "Security", "Other"]
+
+[sensors.builddiag]
+blocking = true
+missing = "fail"
+section = "Build"
+repro = "builddiag check"
+
+[sensors.clippy]
+blocking = true
+missing = "warn"
+section = "Lint"
+repro = "cargo clippy"
+
+[sensors.coverage]
+blocking = false
+missing = "skip"
+section = "Coverage"
+
+[sensors.security-audit]
+blocking = true
+missing = "fail"
+section = "Security"
+require_label = "security-review"
+
+[sensors.perftest]
+blocking = false
+missing = "skip"
+section = "Other"

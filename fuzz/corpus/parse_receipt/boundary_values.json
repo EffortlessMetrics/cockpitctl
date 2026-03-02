@@ -1,0 +1,35 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "boundary", "version": "1.0.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": {
+    "status": "fail",
+    "counts": { "info": 0, "warn": 0, "error": 3 }
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "",
+      "message": "",
+      "location": { "path": "", "line": 0, "col": 0 },
+      "help": "",
+      "url": "",
+      "fingerprint": "",
+      "data": {}
+    },
+    {
+      "severity": "error",
+      "code": "MAX",
+      "message": "max line and col values",
+      "location": { "path": "a", "line": 4294967295, "col": 4294967295 }
+    },
+    {
+      "severity": "error",
+      "code": "WHITESPACE",
+      "message": "  leading and trailing whitespace  \t\t",
+      "location": { "path": "  spaces in path  ", "line": 1 },
+      "help": "\n\n\n",
+      "fingerprint": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ]
+}

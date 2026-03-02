@@ -1,0 +1,17 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "dupes", "version": "1.0.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": {
+    "status": "warn",
+    "counts": { "info": 0, "warn": 6, "error": 0 }
+  },
+  "findings": [
+    { "severity": "warn", "code": "DUP", "message": "duplicate finding", "location": { "path": "src/lib.rs", "line": 10 }, "fingerprint": "aaaa" },
+    { "severity": "warn", "code": "DUP", "message": "duplicate finding", "location": { "path": "src/lib.rs", "line": 10 }, "fingerprint": "aaaa" },
+    { "severity": "warn", "code": "DUP", "message": "duplicate finding", "location": { "path": "src/lib.rs", "line": 10 }, "fingerprint": "aaaa" },
+    { "severity": "warn", "code": "DUP", "message": "duplicate finding different line", "location": { "path": "src/lib.rs", "line": 20 }, "fingerprint": "bbbb" },
+    { "severity": "warn", "code": "DUP", "message": "duplicate finding different file", "location": { "path": "src/main.rs", "line": 10 }, "fingerprint": "cccc" },
+    { "severity": "warn", "code": "OTHER", "message": "different code same location", "location": { "path": "src/lib.rs", "line": 10 }, "fingerprint": "dddd" }
+  ]
+}

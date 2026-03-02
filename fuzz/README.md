@@ -119,6 +119,42 @@ valid `Finding` data.
 cargo +nightly fuzz run fuzz_fingerprint
 ```
 
+### fuzz_conform
+
+Fuzzes the full conformance checking suite: `conform_single` with all checks
+enabled and disabled, plus individual check functions (`check_path_hygiene`,
+`check_ordering`, `check_reason_tokens`, `check_tool_error_identity`,
+`check_artifact_pointers`, `check_sensor_id_format`) on parsed `SensorReport`.
+
+**Goal:** Ensure no combination of receipt JSON causes a panic in any conformance check.
+
+```bash
+cargo +nightly fuzz run fuzz_conform
+```
+
+### fuzz_render_budgets
+
+Fuzzes PR comment rendering with varied budget configurations. Parses arbitrary
+bytes as a `CockpitReport`, then renders comments with zero budgets, very large
+budgets, and `warn_is_fail` enabled.
+
+**Goal:** Ensure rendering never panics under extreme budget constraints.
+
+```bash
+cargo +nightly fuzz run fuzz_render_budgets
+```
+
+### fuzz_config_merge
+
+Fuzzes CockpitConfig TOML parsing with sensor policy maps. Parses config,
+performs serialization round-trips, and verifies deterministic BTreeMap ordering.
+
+**Goal:** Ensure config parsing and serialization round-trips never panic.
+
+```bash
+cargo +nightly fuzz run fuzz_config_merge
+```
+
 ## Running Fuzz Tests
 
 Basic usage (runs indefinitely until stopped or crash found):
@@ -133,6 +169,9 @@ cargo +nightly fuzz run fuzz_schema_validate
 cargo +nightly fuzz run fuzz_domain_pipeline
 cargo +nightly fuzz run fuzz_render_annotations
 cargo +nightly fuzz run fuzz_fingerprint
+cargo +nightly fuzz run fuzz_conform
+cargo +nightly fuzz run fuzz_render_budgets
+cargo +nightly fuzz run fuzz_config_merge
 ```
 
 Run for a specific duration:
@@ -161,6 +200,9 @@ Seed inputs are stored in `corpus/<target>/`:
 - `corpus/fuzz_domain_pipeline/` — `SensorReport` JSON for full domain pipeline (valid, inconsistent counts, edge cases)
 - `corpus/fuzz_render_annotations/` — `CockpitReport` JSON for annotation rendering (empty, truncated, special chars, blocking)
 - `corpus/fuzz_fingerprint/` — `Finding` JSON for fingerprint/sort logic (single, arrays, duplicates, edge cases)
+- `corpus/fuzz_conform/` — `SensorReport` JSON for full conformance suite (path hygiene violations, ordering, tool errors)
+- `corpus/fuzz_render_budgets/` — `CockpitReport` JSON for budget-varied rendering (empty, many highlights, Unicode)
+- `corpus/fuzz_config_merge/` — `CockpitConfig` TOML for sensor policy merge (minimal, many sensors, zero limits)
 
 The fuzzer will use these as starting points and mutate them to explore edge cases.
 
@@ -260,7 +302,7 @@ For CI integration, run fuzzing for a bounded time:
 
 ```bash
 # Quick smoke test (60 seconds per target)
-for target in parse_receipt parse_config sarif_convert render_comment fuzz_sensor_id fuzz_schema_validate fuzz_domain_pipeline fuzz_render_annotations fuzz_fingerprint; do
+for target in parse_receipt parse_config sarif_convert render_comment fuzz_sensor_id fuzz_schema_validate fuzz_domain_pipeline fuzz_render_annotations fuzz_fingerprint fuzz_conform fuzz_render_budgets fuzz_config_merge; do
   cargo +nightly fuzz run "$target" -- -max_total_time=60
 done
 
@@ -282,8 +324,11 @@ From CLAUDE.md, receipts are untrusted input. The fuzzer helps ensure:
 7. Domain pipeline (sort, cap, fingerprint, verdict) must not panic
 8. Annotation rendering must not panic on any valid CockpitReport
 9. Fingerprint derivation must not panic on any valid Finding
-10. Memory usage is bounded (via file size caps at IO boundary)
-11. Invalid input yields proper errors instead of crashes
+10. Conformance checks must not panic on any input (path hygiene, ordering, reason lint)
+11. Rendering must not panic under any budget configuration (zero, large, warn_is_fail)
+12. Config round-trip serialization must not panic
+13. Memory usage is bounded (via file size caps at IO boundary)
+14. Invalid input yields proper errors instead of crashes
 
 ## Tips
 

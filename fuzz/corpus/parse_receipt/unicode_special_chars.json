@@ -1,0 +1,31 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "ユニコード", "version": "1.0.0-β" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": {
+    "status": "fail",
+    "counts": { "info": 1, "warn": 1, "error": 1 },
+    "reasons": ["Ошибка компиляции", "エラー"]
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "中文错误",
+      "message": "Ошибка: неожиданный символ «∞» в строке — 日本語テスト — العربية — 한국어",
+      "location": { "path": "src/données/über/αρχείο.rs", "line": 1 },
+      "help": "Ζητήστε βοήθεια: 请查看文档 📖"
+    },
+    {
+      "severity": "warn",
+      "code": "EMOJI.🦀",
+      "message": "🔥 Warning: 🚨 potential issue 💣 detected 🐛 in code 🔧",
+      "location": { "path": "src/🦀/main.rs", "line": 42 }
+    },
+    {
+      "severity": "info",
+      "code": "RTL.MIXED",
+      "message": "Mixed RTL/LTR text: Hello مرحبا World عالم",
+      "help": "See \t tab \n newline \\backslash handling"
+    }
+  ]
+}

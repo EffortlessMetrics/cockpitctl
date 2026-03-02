@@ -1,0 +1,92 @@
+{
+  "schema": "builddiag.report.v1",
+  "tool": {
+    "name": "builddiag",
+    "version": "2.1.0",
+    "commit": "a1b2c3d4e5f6789012345678"
+  },
+  "run": {
+    "started_at": "2026-06-15T14:30:00.000Z",
+    "ended_at": "2026-06-15T14:35:42.123Z",
+    "duration_ms": 342123,
+    "host": {
+      "os": "linux",
+      "arch": "aarch64",
+      "hostname": "ci-runner-42.internal.example.com"
+    },
+    "git": {
+      "repo": "org/monorepo",
+      "base_ref": "refs/heads/main",
+      "head_ref": "refs/heads/feature/all-fields-test",
+      "base_sha": "0000000000000000000000000000000000000001",
+      "head_sha": "ffffffffffffffffffffffffffffffffffffffff",
+      "merge_base": "abcdef1234567890abcdef1234567890abcdef12"
+    },
+    "ci": {
+      "provider": "github",
+      "run_id": "9999999999",
+      "run_url": "https://github.com/org/monorepo/actions/runs/9999999999",
+      "job": "build-and-test"
+    },
+    "capabilities": {
+      "git": { "status": "available", "reason": "git binary found" },
+      "baseline": { "status": "unavailable", "reason": "no baseline configured" },
+      "lcov": { "status": "skipped", "reason": "coverage not requested" }
+    }
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": { "info": 2, "warn": 3, "error": 5, "suppressed": 1 },
+    "reasons": ["compilation_failed", "lint_errors", "test_failures"]
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "check_id": "rustc",
+      "code": "E0308",
+      "message": "mismatched types: expected `u32`, found `&str`",
+      "location": { "path": "src/main.rs", "line": 42, "col": 15 },
+      "help": "try using a conversion method: `.parse::<u32>()`",
+      "url": "https://doc.rust-lang.org/error-index.html#E0308",
+      "fingerprint": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      "data": { "expected": "u32", "found": "&str", "suggestion": ".parse::<u32>()" }
+    },
+    {
+      "severity": "warn",
+      "check_id": "clippy",
+      "code": "clippy::unwrap_used",
+      "message": "used `unwrap()` on a `Result` value",
+      "location": { "path": "src/lib.rs", "line": 100, "col": 8 },
+      "help": "consider using `expect()` or pattern matching",
+      "url": "https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used"
+    },
+    {
+      "severity": "info",
+      "code": "NOTE",
+      "message": "Build completed with warnings"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "build-log",
+      "path": "artifacts/builddiag/build.log",
+      "mime": "text/plain"
+    },
+    {
+      "id": "coverage-report",
+      "path": "artifacts/builddiag/coverage.html",
+      "mime": "text/html",
+      "schema": "lcov.report.v1"
+    }
+  ],
+  "data": {
+    "build_profile": "release",
+    "target_triple": "x86_64-unknown-linux-gnu",
+    "rustc_version": "1.80.0-nightly",
+    "features": ["serde", "async"],
+    "timings": {
+      "compile_ms": 280000,
+      "link_ms": 62123
+    }
+  }
+}
