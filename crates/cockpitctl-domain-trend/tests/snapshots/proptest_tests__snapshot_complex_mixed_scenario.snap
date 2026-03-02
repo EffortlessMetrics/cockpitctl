@@ -1,0 +1,70 @@
+---
+source: crates/cockpitctl-domain-trend/tests/proptest_tests.rs
+expression: "format!(\"{delta:#?}\")"
+---
+TrendDelta {
+    verdict_change: Some(
+        VerdictChange {
+            before: Fail,
+            after: Warn,
+        },
+    ),
+    count_deltas: CountDeltas {
+        info_delta: -2,
+        warn_delta: 1,
+        error_delta: -2,
+    },
+    new_findings: [
+        TrendFinding {
+            sensor_id: "audit",
+            code: "vuln",
+            message: "CVE-2025-1234",
+            path: Some(
+                "src/main.rs",
+            ),
+            line: Some(
+                1,
+            ),
+            fingerprint: Some(
+                "fp_c",
+            ),
+            severity: Error,
+        },
+    ],
+    fixed_findings: [
+        TrendFinding {
+            sensor_id: "clippy",
+            code: "dead_code",
+            message: "dead fn",
+            path: Some(
+                "src/main.rs",
+            ),
+            line: Some(
+                1,
+            ),
+            fingerprint: Some(
+                "fp_b",
+            ),
+            severity: Error,
+        },
+        TrendFinding {
+            sensor_id: "test",
+            code: "flaky",
+            message: "flaky test",
+            path: Some(
+                "src/main.rs",
+            ),
+            line: Some(
+                1,
+            ),
+            fingerprint: None,
+            severity: Error,
+        },
+    ],
+    sensors_added: [
+        "audit",
+    ],
+    sensors_removed: [
+        "test",
+    ],
+}
