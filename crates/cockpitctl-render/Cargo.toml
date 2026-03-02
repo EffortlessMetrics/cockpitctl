@@ -13,6 +13,7 @@ keywords = ["ci", "markdown", "rendering", "annotations", "deterministic"]
 categories = ["development-tools", "text-processing"]
 
 [dependencies]
+cockpitctl-render-annotations = { path = "../cockpitctl-render-annotations", version = "0.3.0" }
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 serde_json.workspace = true
 
