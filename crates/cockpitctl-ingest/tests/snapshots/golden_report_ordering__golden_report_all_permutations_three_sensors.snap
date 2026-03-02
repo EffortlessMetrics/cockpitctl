@@ -1,0 +1,168 @@
+---
+source: crates/cockpitctl-ingest/tests/golden_report_ordering.rs
+assertion_line: 429
+expression: report
+---
+{
+  "highlights": [
+    {
+      "finding": {
+        "code": "s2/err",
+        "fingerprint": "b13849c10f9a641ed35e8b162f8d2738b595909a50dc4086fe05f77c95dd917c",
+        "location": {
+          "line": 10,
+          "path": "src/b.rs"
+        },
+        "message": "Message for s2/err",
+        "severity": "error"
+      },
+      "sensor_id": "s2"
+    },
+    {
+      "finding": {
+        "code": "s3/warn",
+        "fingerprint": "4428aadb85b09a5281ae5f2c6ee3962fd07e4e8d788a646c7d1c72c3822bd031",
+        "location": {
+          "line": 5,
+          "path": "src/c.rs"
+        },
+        "message": "Message for s3/warn",
+        "severity": "warn"
+      },
+      "sensor_id": "s3"
+    },
+    {
+      "finding": {
+        "check_id": "cockpit.receipt_inconsistent",
+        "code": "cockpit.receipt_inconsistent",
+        "fingerprint": "cockpit.receipt_inconsistent:s1:0:0:0:1:0:0",
+        "help": "Ensure receipt verdict counts match the findings array.",
+        "message": "Receipt counts for sensor `s1` did not match findings: reported info=0, warn=0, error=0, computed info=1, warn=0, error=0.",
+        "severity": "info"
+      },
+      "sensor_id": "s1"
+    },
+    {
+      "finding": {
+        "code": "s1/ok",
+        "fingerprint": "14da1b26e92323482933bfdc8e3e29fa83f1d6ad59e1f517e9b96f439ff90e40",
+        "location": {
+          "line": 1,
+          "path": "src/a.rs"
+        },
+        "message": "Message for s1/ok",
+        "severity": "info"
+      },
+      "sensor_id": "s1"
+    }
+  ],
+  "policy": {
+    "max_annotations": 25,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "section_order": [
+      "A",
+      "B",
+      "C"
+    ],
+    "sensors": [
+      {
+        "blocking": true,
+        "id": "s1",
+        "missing": "fail",
+        "section": "A"
+      },
+      {
+        "blocking": true,
+        "id": "s2",
+        "missing": "fail",
+        "section": "B"
+      },
+      {
+        "blocking": false,
+        "id": "s3",
+        "missing": "warn",
+        "section": "C"
+      }
+    ],
+    "warn_is_fail": false
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "schema": "cockpit.report.v1",
+  "sensors": [
+    {
+      "blocking": true,
+      "errors": [],
+      "id": "s1",
+      "missing": "fail",
+      "policy_outcome": "allowed",
+      "presence": "present",
+      "report_path": "artifacts/s1/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 0,
+          "info": 1,
+          "warn": 0
+        },
+        "reasons": [
+          "receipt_inconsistent"
+        ],
+        "status": "pass"
+      }
+    },
+    {
+      "blocking": true,
+      "errors": [],
+      "id": "s2",
+      "missing": "fail",
+      "policy_outcome": "blocked",
+      "presence": "present",
+      "report_path": "artifacts/s2/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 1,
+          "info": 0,
+          "warn": 0
+        },
+        "reasons": [],
+        "status": "fail"
+      }
+    },
+    {
+      "blocking": false,
+      "errors": [],
+      "id": "s3",
+      "missing": "warn",
+      "policy_outcome": "informational",
+      "presence": "present",
+      "report_path": "artifacts/s3/report.json",
+      "truncated": false,
+      "verdict": {
+        "counts": {
+          "error": 0,
+          "info": 0,
+          "warn": 1
+        },
+        "reasons": [],
+        "status": "warn"
+      }
+    }
+  ],
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "verdict": {
+    "counts": {
+      "error": 1,
+      "info": 1,
+      "warn": 1
+    },
+    "reasons": [],
+    "status": "fail"
+  }
+}

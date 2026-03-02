@@ -1,0 +1,79 @@
+---
+source: crates/cockpitctl-domain/tests/golden_determinism.rs
+assertion_line: 59
+expression: findings
+---
+[
+  {
+    "severity": "error",
+    "code": "A001",
+    "message": "alpha message",
+    "location": {
+      "path": "src/a.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "error",
+    "code": "A001",
+    "message": "first error",
+    "location": {
+      "path": "src/a.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "error",
+    "code": "A001",
+    "message": "second same-code error",
+    "location": {
+      "path": "src/a.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "error",
+    "code": "B002",
+    "message": "error in b",
+    "location": {
+      "path": "src/b.rs",
+      "line": 5
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "M050",
+    "message": "warn in a",
+    "location": {
+      "path": "src/a.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "M050",
+    "message": "mid warning",
+    "location": {
+      "path": "src/m.rs",
+      "line": 50
+    }
+  },
+  {
+    "severity": "info",
+    "code": "A100",
+    "message": "info in a",
+    "location": {
+      "path": "src/a.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "info",
+    "code": "Z100",
+    "message": "last info",
+    "location": {
+      "path": "src/z.rs",
+      "line": 99
+    }
+  }
+]
