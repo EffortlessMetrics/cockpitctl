@@ -504,3 +504,238 @@ fn publishable_crates_have_readme() {
         "publishable crates missing readme field: {missing:?}",
     );
 }
+
+// ─── Release pipeline validation ──────────────────────────────────────────
+
+/// Every workspace member must either inherit `version.workspace = true`
+/// or specify a version that matches the workspace-level version exactly.
+#[test]
+fn all_crate_versions_match_workspace() {
+    let ws = workspace_toml();
+    let ws_version = ws["workspace"]["package"]["version"]
+        .as_str()
+        .expect("workspace version");
+
+    let mut mismatches = Vec::new();
+
+    for m in all_members() {
+        let pkg = &m.manifest["package"];
+        match pkg.get("version") {
+            Some(v) if v.is_table() => {
+                // version.workspace = true — inherits, always ok
+            }
+            Some(v) => {
+                let ver = v.as_str().unwrap_or("<non-string>");
+                if ver != ws_version {
+                    mismatches.push(format!("{}: {ver} (expected {ws_version})", m.name));
+                }
+            }
+            None => {
+                mismatches.push(format!("{}: missing version field", m.name));
+            }
+        }
+    }
+
+    assert!(
+        mismatches.is_empty(),
+        "crate version mismatches vs workspace {ws_version}:\n  {}",
+        mismatches.join("\n  "),
+    );
+}
+
+/// Hardcoded `version = "X.Y.Z"` in path dependencies must match the
+/// workspace version. This catches stale version pins after a bump.
+#[test]
+fn internal_dep_versions_match_workspace() {
+    let ws = workspace_toml();
+    let ws_version = ws["workspace"]["package"]["version"]
+        .as_str()
+        .expect("workspace version");
+
+    let members = all_members();
+    let all_names: HashSet<String> = members.iter().map(|m| m.name.clone()).collect();
+    let mut mismatches = Vec::new();
+
+    for m in &members {
+        for section in ["dependencies", "dev-dependencies", "build-dependencies"] {
+            let table = match m.manifest.get(section).and_then(|v| v.as_table()) {
+                Some(t) => t,
+                None => continue,
+            };
+            for (dep_name, dep_val) in table {
+                if !all_names.contains(dep_name.as_str()) {
+                    continue;
+                }
+                // Only check table-style deps that have both `path` and `version`.
+                if let Some(dep_table) = dep_val.as_table()
+                    && dep_table.contains_key("path")
+                    && let Some(ver) = dep_table.get("version").and_then(|v| v.as_str())
+                    && ver != ws_version
+                {
+                    mismatches.push(format!(
+                        "{} -> {dep_name} ({section}): {ver} (expected {ws_version})",
+                        m.name,
+                    ));
+                }
+            }
+        }
+    }
+
+    assert!(
+        mismatches.is_empty(),
+        "internal dependency version mismatches vs workspace {ws_version}:\n  {}",
+        mismatches.join("\n  "),
+    );
+}
+
+/// Every publishable crate's README.md must actually exist on disk.
+#[test]
+fn publishable_crates_readme_files_exist() {
+    let root = workspace_root();
+    let mut missing = Vec::new();
+
+    for path in declared_members() {
+        let crate_dir = root.join(&path);
+        let manifest = read_toml(&crate_dir.join("Cargo.toml"));
+        let pkg = &manifest["package"];
+
+        // Skip non-publishable crates.
+        if pkg.get("publish").and_then(|v| v.as_bool()) == Some(false) {
+            continue;
+        }
+
+        let readme_file = crate_dir.join("README.md");
+        if !readme_file.is_file() {
+            let name = pkg["name"].as_str().unwrap_or(&path);
+            missing.push(name.to_string());
+        }
+    }
+
+    assert!(
+        missing.is_empty(),
+        "publishable crates without README.md on disk: {missing:?}",
+    );
+}
+
+/// License files must exist at the workspace root and the workspace-level
+/// license field must be set to the dual MIT/Apache-2.0 identifier.
+#[test]
+fn license_files_present_and_referenced() {
+    let root = workspace_root();
+    let ws = workspace_toml();
+    let ws_pkg = &ws["workspace"]["package"];
+
+    // Verify license files exist at workspace root.
+    let required_files = ["LICENSE-MIT", "LICENSE-APACHE"];
+    let mut missing_files = Vec::new();
+    for name in &required_files {
+        if !root.join(name).is_file() {
+            missing_files.push(*name);
+        }
+    }
+    assert!(
+        missing_files.is_empty(),
+        "missing license files at workspace root: {missing_files:?}",
+    );
+
+    // Verify workspace license field is present and non-empty.
+    let license = ws_pkg.get("license").and_then(|v| v.as_str()).unwrap_or("");
+    assert!(
+        !license.is_empty(),
+        "workspace.package.license is missing or empty",
+    );
+    assert!(
+        license.contains("MIT") && license.contains("Apache"),
+        "workspace license should reference both MIT and Apache: got {license:?}",
+    );
+
+    // Every publishable crate must resolve to a valid license field.
+    let mut unlicensed = Vec::new();
+    for m in publishable_members() {
+        let pkg = &m.manifest["package"];
+        if resolve_field(pkg, "license", ws_pkg).is_none() {
+            unlicensed.push(m.name.clone());
+        }
+    }
+    assert!(
+        unlicensed.is_empty(),
+        "publishable crates without license: {unlicensed:?}",
+    );
+}
+
+/// Binary crates (`cockpitctl`, `conformctl`) that ship test fixtures must
+/// have `exclude` patterns so `cargo package` stays clean.
+#[test]
+fn binary_crates_exclude_test_fixtures() {
+    let root = workspace_root();
+    let mut issues = Vec::new();
+
+    for path in declared_members() {
+        let crate_dir = root.join(&path);
+        let manifest = read_toml(&crate_dir.join("Cargo.toml"));
+        let pkg = &manifest["package"];
+
+        // Skip non-publishable.
+        if pkg.get("publish").and_then(|v| v.as_bool()) == Some(false) {
+            continue;
+        }
+
+        let name = pkg["name"].as_str().unwrap_or(&path);
+
+        // Check if this crate has a tests/ directory that could bloat the package.
+        let has_tests_dir = crate_dir.join("tests").is_dir();
+        let has_fixtures_dir = crate_dir.join("fixtures").is_dir();
+        let has_artifacts_dir = crate_dir.join("artifacts").is_dir();
+
+        let exclude = pkg
+            .get("exclude")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
+            .unwrap_or_default();
+
+        let excludes_tests = exclude.iter().any(|e| e.contains("tests"));
+        let excludes_fixtures = exclude.iter().any(|e| e.contains("fixtures"));
+        let excludes_artifacts = exclude.iter().any(|e| e.contains("artifacts"));
+
+        if has_tests_dir && !excludes_tests {
+            // Only flag binary crates — lib-only crates don't include tests/ by default.
+            let has_bin = manifest.get("bin").is_some()
+                || manifest
+                    .get("package")
+                    .and_then(|p| p.get("autobins"))
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false)
+                || crate_dir.join("src/main.rs").is_file();
+            if has_bin {
+                issues.push(format!("{name}: has tests/ dir but no exclude for it"));
+            }
+        }
+        if has_fixtures_dir && !excludes_fixtures {
+            issues.push(format!("{name}: has fixtures/ dir but no exclude for it"));
+        }
+        if has_artifacts_dir && !excludes_artifacts {
+            issues.push(format!("{name}: has artifacts/ dir but no exclude for it"));
+        }
+    }
+
+    assert!(
+        issues.is_empty(),
+        "package hygiene — missing exclude patterns:\n  {}",
+        issues.join("\n  "),
+    );
+}
+
+/// The expected workspace member count must match what is declared.
+/// This guards against accidentally removing a crate from the workspace.
+#[test]
+fn workspace_has_expected_member_count() {
+    let members = declared_members();
+    // 19 crates (including xtask) as of the current workspace layout.
+    // Update this number when adding or removing crates.
+    assert!(
+        members.len() >= 19,
+        "expected at least 19 workspace members, found {}. \
+         Did a crate get accidentally removed?",
+        members.len(),
+    );
+}
