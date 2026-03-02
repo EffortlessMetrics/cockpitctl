@@ -555,4 +555,62 @@ mod tests {
         let result = hex::encode(hmac_sha256(&key, data));
         assert_eq!(result, expected);
     }
+
+    // -- Raw HMAC-SHA256: RFC 4231 test case 3 --
+
+    #[test]
+    fn hmac_sha256_rfc4231_test_case_3() {
+        // Key = 0xaa repeated 20 times, Data = 0xdd repeated 50 times
+        let key = vec![0xAAu8; 20];
+        let data = vec![0xDDu8; 50];
+        let expected = "773ea91e36800e46854db8ebd09181a72959098b3ef8c122d9635514ced565fe";
+        let result = hex::encode(hmac_sha256(&key, &data));
+        assert_eq!(result, expected);
+    }
+
+    // -- HMAC key boundary: 63 bytes (just below block size) --
+
+    #[test]
+    fn hmac_sha256_key_boundary_63_bytes() {
+        let key = vec![0xBBu8; 63];
+        let result = hmac_sha256(&key, b"test data");
+        assert_eq!(result.len(), 32);
+        // Deterministic.
+        assert_eq!(result, hmac_sha256(&key, b"test data"));
+    }
+
+    // -- HMAC key boundary: 65 bytes (just above block size) --
+
+    #[test]
+    fn hmac_sha256_key_boundary_65_bytes() {
+        let key = vec![0xCCu8; 65];
+        let result = hmac_sha256(&key, b"test data");
+        assert_eq!(result.len(), 32);
+        // Differs from 63-byte key.
+        let key_63 = vec![0xCCu8; 63];
+        assert_ne!(result, hmac_sha256(&key_63, b"test data"));
+    }
+
+    // -- HMAC with key containing null bytes --
+
+    #[test]
+    fn hmac_sha256_key_with_null_bytes() {
+        let key = b"\x00\x00\x01\x00\x00";
+        let result = hmac_sha256(key, b"message");
+        assert_eq!(result.len(), 32);
+        // Null bytes in key should still produce a valid distinct MAC.
+        let key_no_null = b"\x01\x01\x01\x01\x01";
+        assert_ne!(result, hmac_sha256(key_no_null, b"message"));
+    }
+
+    // -- HMAC with very large key (1024 bytes) --
+
+    #[test]
+    fn hmac_sha256_very_large_key() {
+        let key = vec![0xEEu8; 1024];
+        let result = hmac_sha256(&key, b"payload");
+        assert_eq!(result.len(), 32);
+        // Deterministic.
+        assert_eq!(result, hmac_sha256(&key, b"payload"));
+    }
 }
