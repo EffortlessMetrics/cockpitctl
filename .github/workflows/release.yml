@@ -89,11 +89,10 @@ jobs:
       - name: Wait for crates.io index update (tier 1)
         run: sleep 30
 
-      # ── Tier 2: depends on types and/or feature-state (6 crates) ──
+      # ── Tier 2: depends on types and/or feature-state (5 crates) ──
       # cockpitctl-conform: conformance checking (schema validation, path hygiene)
       # cockpitctl-domain-{buildfix,signing,trend}: domain sub-modules
       # cockpitctl-feature-grid: feature grid composition
-      # cockpitctl-io-schema: schema IO adapter
       - name: Dry-run publish cockpitctl-conform
         run: cargo publish --dry-run -p cockpitctl-conform
       - name: Publish cockpitctl-conform
@@ -114,16 +113,13 @@ jobs:
         run: cargo publish --dry-run -p cockpitctl-feature-grid
       - name: Publish cockpitctl-feature-grid
         run: cargo publish -p cockpitctl-feature-grid
-      - name: Dry-run publish cockpitctl-io-schema
-        run: cargo publish --dry-run -p cockpitctl-io-schema
-      - name: Publish cockpitctl-io-schema
-        run: cargo publish -p cockpitctl-io-schema
       - name: Wait for crates.io index update (tier 2)
         run: sleep 30
 
-      # ── Tier 3: depends on tier-2 crates (4 crates) ──
+      # ── Tier 3: depends on tier-2 crates (3 crates) ──
       # cockpitctl-domain: policy evaluation, deterministic selection, normalization
-      # cockpitctl-io-{buildfix,hooks,policy-signing}: specialized IO adapters
+      # cockpitctl-io-buildfix: buildfix actuator adapter (depends on types)
+      # cockpitctl-io-policy-signing: policy signing key loader (depends on types)
       - name: Dry-run publish cockpitctl-domain
         run: cargo publish --dry-run -p cockpitctl-domain
       - name: Publish cockpitctl-domain
@@ -132,10 +128,6 @@ jobs:
         run: cargo publish --dry-run -p cockpitctl-io-buildfix
       - name: Publish cockpitctl-io-buildfix
         run: cargo publish -p cockpitctl-io-buildfix
-      - name: Dry-run publish cockpitctl-io-hooks
-        run: cargo publish --dry-run -p cockpitctl-io-hooks
-      - name: Publish cockpitctl-io-hooks
-        run: cargo publish -p cockpitctl-io-hooks
       - name: Dry-run publish cockpitctl-io-policy-signing
         run: cargo publish --dry-run -p cockpitctl-io-policy-signing
       - name: Publish cockpitctl-io-policy-signing
@@ -157,17 +149,27 @@ jobs:
       - name: Wait for crates.io index update (tier 4)
         run: sleep 30
 
-      # ── Tier 5: io (depends on ingest ports, 1 crate) ──
+      # ── Tier 5: IO adapters depending on ingest ports (2 crates) ──
+      # cockpitctl-io-hooks: post-processor hook runner (depends on ingest + types)
+      # cockpitctl-io-schema: schema validation adapter (depends on ingest + types)
+      - name: Dry-run publish cockpitctl-io-hooks
+        run: cargo publish --dry-run -p cockpitctl-io-hooks
+      - name: Publish cockpitctl-io-hooks
+        run: cargo publish -p cockpitctl-io-hooks
+      - name: Dry-run publish cockpitctl-io-schema
+        run: cargo publish --dry-run -p cockpitctl-io-schema
+      - name: Publish cockpitctl-io-schema
+        run: cargo publish -p cockpitctl-io-schema
+      - name: Wait for crates.io index update (tier 5)
+        run: sleep 30
+
+      # ── Tier 6: io + sarif (2 crates) ──
       # cockpitctl-io: filesystem adapters implementing ingest ports
+      # cockpitctl-sarif: SARIF format conversion
       - name: Dry-run publish cockpitctl-io
         run: cargo publish --dry-run -p cockpitctl-io
       - name: Publish cockpitctl-io
         run: cargo publish -p cockpitctl-io
-      - name: Wait for crates.io index update (tier 5)
-        run: sleep 30
-
-      # ── Tier 6: sarif (1 crate) ──
-      # cockpitctl-sarif: SARIF format conversion
       - name: Dry-run publish cockpitctl-sarif
         run: cargo publish --dry-run -p cockpitctl-sarif
       - name: Publish cockpitctl-sarif

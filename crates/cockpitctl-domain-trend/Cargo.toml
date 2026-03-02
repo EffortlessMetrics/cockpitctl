@@ -9,6 +9,8 @@ homepage.workspace = true
 authors.workspace = true
 description = "Trend computation domain boundary extracted from cockpitctl-domain."
 readme = "README.md"
+keywords = ["ci", "trend", "domain", "delta", "baseline"]
+categories = ["development-tools"]
 
 [dependencies]
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
@@ -16,3 +18,4 @@ cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 [dev-dependencies]
 insta = { workspace = true }
 pretty_assertions.workspace = true
+proptest.workspace = true

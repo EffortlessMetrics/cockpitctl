@@ -9,6 +9,8 @@ homepage.workspace = true
 authors.workspace = true
 description = "Buildfix planning and selection domain boundary extracted from cockpitctl-domain."
 readme = "README.md"
+keywords = ["ci", "buildfix", "domain", "planning", "selection"]
+categories = ["development-tools"]
 
 [dependencies]
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }

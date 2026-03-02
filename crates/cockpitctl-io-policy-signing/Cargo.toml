@@ -9,6 +9,8 @@ homepage.workspace = true
 authors.workspace = true
 description = "Policy-signing key loading adapter boundary extracted from cockpitctl-io."
 readme = "README.md"
+keywords = ["ci", "signing", "adapter", "policy", "keys"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true
