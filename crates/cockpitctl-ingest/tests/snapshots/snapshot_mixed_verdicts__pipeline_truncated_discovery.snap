@@ -1,0 +1,94 @@
+---
+source: crates/cockpitctl-ingest/tests/snapshot_mixed_verdicts.rs
+expression: result.report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "alpha",
+      "blocking": false,
+      "missing": "skip",
+      "presence": "present",
+      "report_path": "artifacts/alpha/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    },
+    {
+      "id": "beta",
+      "blocking": false,
+      "missing": "skip",
+      "presence": "present",
+      "report_path": "artifacts/beta/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "_cockpit",
+      "finding": {
+        "severity": "warn",
+        "check_id": "cockpit.sensors_truncated",
+        "code": "cockpit.sensors_truncated",
+        "message": "Sensor discovery was truncated: processed 2 of 150 sensors found. Increase max_receipts limit if needed.",
+        "help": "This is a safety limit to prevent DoS. Consider reviewing why so many sensors exist.",
+        "fingerprint": "cockpit.sensors_truncated:2:150"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": []
+  }
+}

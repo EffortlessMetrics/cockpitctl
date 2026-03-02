@@ -1,0 +1,86 @@
+---
+source: crates/cockpitctl-ingest/tests/snapshot_mixed_verdicts.rs
+expression: result.report
+---
+{
+  "schema": "cockpit.report.v1",
+  "tool": {
+    "name": "test",
+    "version": "1.0.0"
+  },
+  "run": {
+    "started_at": "2026-02-01T00:00:00Z"
+  },
+  "verdict": {
+    "status": "pass",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "sensors": [
+    {
+      "id": "good-sensor",
+      "blocking": false,
+      "missing": "skip",
+      "presence": "present",
+      "report_path": "artifacts/good-sensor/report.json",
+      "verdict": {
+        "status": "pass",
+        "counts": {
+          "info": 0,
+          "warn": 0,
+          "error": 0
+        },
+        "reasons": []
+      },
+      "truncated": false,
+      "errors": [],
+      "policy_outcome": "informational"
+    }
+  ],
+  "highlights": [
+    {
+      "sensor_id": "_cockpit",
+      "finding": {
+        "severity": "error",
+        "check_id": "cockpit.path_traversal",
+        "code": "cockpit.path_traversal",
+        "message": "Rejected unsafe path for sensor `../../root` at `artifacts/../../root/report.json`.",
+        "help": "Ensure sensor IDs and artifact paths do not contain path traversal or escape the artifacts root.",
+        "fingerprint": "cockpit.path_traversal:../../root:artifacts/../../root/report.json"
+      }
+    },
+    {
+      "sensor_id": "_cockpit",
+      "finding": {
+        "severity": "error",
+        "check_id": "cockpit.path_traversal",
+        "code": "cockpit.path_traversal",
+        "message": "Rejected unsafe path for sensor `../escape` at `artifacts/../escape/report.json`.",
+        "help": "Ensure sensor IDs and artifact paths do not contain path traversal or escape the artifacts root.",
+        "fingerprint": "cockpit.path_traversal:../escape:artifacts/../escape/report.json"
+      }
+    }
+  ],
+  "policy": {
+    "warn_is_fail": false,
+    "max_highlights": 7,
+    "max_per_sensor_findings": 20,
+    "max_annotations": 25,
+    "section_order": [
+      "Highlights",
+      "Repo contract",
+      "Dependencies",
+      "Policy",
+      "Tests",
+      "Diagnostics",
+      "Performance",
+      "Environment",
+      "Other"
+    ],
+    "sensors": []
+  }
+}

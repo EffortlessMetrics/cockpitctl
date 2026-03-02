@@ -1,0 +1,34 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_edge_cases.rs
+expression: findings
+---
+[
+  {
+    "severity": "error",
+    "code": "E2",
+    "message": "no path"
+  },
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "has location",
+    "location": {
+      "path": "src/main.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "W1",
+    "message": "no location"
+  },
+  {
+    "severity": "info",
+    "code": "I1",
+    "message": "deep path",
+    "location": {
+      "path": "a/b/c/d/e/f.rs",
+      "line": 999
+    }
+  }
+]

@@ -1,0 +1,9 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_reports.rs
+expression: violations
+---
+[
+    "finding[0]: path traversal (contains ..): ../etc/passwd",
+    "finding[1]: path traversal (contains ..): foo/../../secret",
+    "finding[2]: absolute path (starts with / or \\): /etc/shadow",
+]

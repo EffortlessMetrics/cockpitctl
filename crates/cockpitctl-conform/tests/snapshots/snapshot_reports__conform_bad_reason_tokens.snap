@@ -1,0 +1,10 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_reports.rs
+expression: violations
+---
+[
+    "verdict.reasons[1]: invalid token \"Bad-Token\"",
+    "verdict.reasons[2]: invalid token \"UPPER_CASE\"",
+    "verdict.reasons[3]: invalid token \"has space\"",
+    "verdict.reasons[4]: invalid token \"\"",
+]

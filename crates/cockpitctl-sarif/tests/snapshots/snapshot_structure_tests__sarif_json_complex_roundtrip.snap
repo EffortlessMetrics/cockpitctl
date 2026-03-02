@@ -1,0 +1,112 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_structure_tests.rs
+expression: parsed
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/main.rs"
+                },
+                "region": {
+                  "startColumn": 5,
+                  "startLine": 10
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "type mismatch"
+          },
+          "ruleId": "E0308"
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/lib.rs"
+                },
+                "region": {
+                  "startLine": 20
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "no method named `foo`"
+          },
+          "ruleId": "E0599"
+        },
+        {
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/utils.rs"
+                },
+                "region": {
+                  "startColumn": 1,
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "TODO found"
+          },
+          "ruleId": "clippy::todo"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "outdated dep"
+          },
+          "ruleId": "advisory"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "rules": [
+            {
+              "id": "E0308",
+              "shortDescription": {
+                "text": "[build] E0308"
+              }
+            },
+            {
+              "id": "E0599",
+              "shortDescription": {
+                "text": "[build] E0599"
+              }
+            },
+            {
+              "id": "advisory",
+              "shortDescription": {
+                "text": "[security] advisory"
+              }
+            },
+            {
+              "id": "clippy::todo",
+              "shortDescription": {
+                "text": "[lint] clippy::todo"
+              }
+            }
+          ],
+          "version": "0.3.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

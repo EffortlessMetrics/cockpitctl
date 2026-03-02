@@ -1,0 +1,73 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_structure_tests.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "E-日本語",
+              "shortDescription": {
+                "text": "[lint-日本] E-日本語"
+              }
+            },
+            {
+              "id": "W-café",
+              "shortDescription": {
+                "text": "[lint-émoji] W-café"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "E-日本語",
+          "level": "error",
+          "message": {
+            "text": "日本語のエラーメッセージ"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "ソース/ファイル.rs"
+                },
+                "region": {
+                  "startLine": 42,
+                  "startColumn": 10
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "W-café",
+          "level": "warning",
+          "message": {
+            "text": "c'est un avertissement 🔥"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "café/résumé.rs"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
