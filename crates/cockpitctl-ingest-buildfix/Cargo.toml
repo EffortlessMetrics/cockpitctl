@@ -1,0 +1,17 @@
+[package]
+name = "cockpitctl-ingest-buildfix"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Buildfix aggregation helpers extracted from cockpitctl-ingest."
+readme = "README.md"
+
+[dependencies]
+anyhow.workspace = true
+serde_json.workspace = true
+cockpitctl-domain-buildfix = { path = "../cockpitctl-domain-buildfix", version = "0.3.0" }
+cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }

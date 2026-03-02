@@ -18,12 +18,12 @@
 
 use anyhow::{Context, Result};
 use cockpitctl_domain::{
-    build_cockpit_report, match_buildfix_plan, select_highlights, sort_sensor_summaries,
-    summarize_sensor_report, synthesize_invalid_sensor, synthesize_missing_sensor,
-    synthesize_path_traversal_highlight, synthesize_path_traversal_sensor,
-    synthesize_receipt_oversized_sensor, synthesize_schema_violation_sensor,
-    synthesize_sensors_truncated,
+    build_cockpit_report, select_highlights, sort_sensor_summaries, summarize_sensor_report,
+    synthesize_invalid_sensor, synthesize_missing_sensor, synthesize_path_traversal_highlight,
+    synthesize_path_traversal_sensor, synthesize_receipt_oversized_sensor,
+    synthesize_schema_violation_sensor, synthesize_sensors_truncated,
 };
+use cockpitctl_ingest_buildfix::{aggregate_buildfix_summary, attach_buildfix_data};
 use cockpitctl_types::{
     BuildfixSummary, CockpitConfig, CockpitReport, MissingPolicy, RunInfo, SchemaValidation,
     ToolInfo, is_valid_sensor_id,
@@ -391,27 +391,13 @@ where
         let highlights = select_highlights(highlight_candidates, &cfg, &sensor_blocking);
 
         // Buildfix plan ingestion: read plan.json for each discovered sensor.
-        let mut buildfix_summary: Option<BuildfixSummary> = None;
-        let mut all_fixes = Vec::new();
-        for sensor_id in &discovered {
-            if let PlanRead::Bytes(bytes) = self.receipts.read_plan_bytes(sensor_id)?
-                && let Ok(plan) = serde_json::from_slice::<cockpitctl_types::BuildfixPlan>(&bytes)
-            {
-                let summary = match_buildfix_plan(sensor_id, &plan, &highlights);
-                all_fixes.extend(summary.fixes);
-            }
-        }
-        if !all_fixes.is_empty() {
-            let total_fixes = all_fixes.len();
-            let unmatched_count = all_fixes.iter().filter(|f| f.unmatched).count();
-            let matched_count = total_fixes - unmatched_count;
-            buildfix_summary = Some(BuildfixSummary {
-                fixes: all_fixes,
-                total_fixes,
-                matched_count,
-                unmatched_count,
-            });
-        }
+        let buildfix_summary: Option<BuildfixSummary> =
+            aggregate_buildfix_summary(&discovered, &highlights, |sensor_id| {
+                Ok(match self.receipts.read_plan_bytes(sensor_id)? {
+                    PlanRead::Bytes(bytes) => Some(bytes),
+                    _ => None,
+                })
+            })?;
 
         let mut report = build_cockpit_report(
             &cfg,
@@ -422,17 +408,7 @@ where
         );
 
         // Store buildfix summary in report.data if present.
-        if let Some(ref bf) = buildfix_summary {
-            let bf_value = serde_json::to_value(bf).ok();
-            if let Some(val) = bf_value {
-                let data = report
-                    .data
-                    .get_or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
-                if let Some(obj) = data.as_object_mut() {
-                    obj.insert("_buildfix".to_string(), val);
-                }
-            }
-        }
+        attach_buildfix_data(&mut report, buildfix_summary.as_ref());
 
         // Render comment.
         let comment_md = (self.render)(&report, &cfg);

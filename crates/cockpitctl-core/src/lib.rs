@@ -29,6 +29,7 @@ pub use cockpitctl_domain_signing as domain_signing;
 pub use cockpitctl_feature_grid as feature_grid;
 pub use cockpitctl_feature_state as feature_state;
 pub use cockpitctl_ingest as ingest;
+pub use cockpitctl_ingest_buildfix as ingest_buildfix;
 pub use cockpitctl_io as io;
 pub use cockpitctl_io_buildfix as io_buildfix;
 pub use cockpitctl_io_hooks as io_hooks;
