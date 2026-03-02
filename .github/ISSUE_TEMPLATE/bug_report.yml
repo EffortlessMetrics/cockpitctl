@@ -1,0 +1,70 @@
+name: Bug Report
+description: Report a bug in cockpitctl
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Run `cockpitctl ingest --artifacts ...`
+        2. Observe error ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened. Include any error messages or exit codes.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: cockpitctl version
+      description: Output of `cockpitctl --version`.
+      placeholder: "cockpitctl 0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS and Rust version
+      description: "Operating system and `rustc --version` output."
+      placeholder: "Ubuntu 22.04 / rustc 1.80.0"
+    validations:
+      required: false
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant config
+      description: Paste the relevant `cockpit.toml` snippet, if applicable.
+      render: toml
+    validations:
+      required: false
