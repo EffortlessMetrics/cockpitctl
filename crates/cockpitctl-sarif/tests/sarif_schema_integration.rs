@@ -143,13 +143,34 @@ fn schema_compliance_result_field_types() {
 fn schema_compliance_rules_array() {
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "lint", Severity::Error, "E001", "msg1", None, None, None, None,
+        "lint",
+        Severity::Error,
+        "E001",
+        "msg1",
+        None,
+        None,
+        None,
+        None,
     ));
     report.highlights.push(make_highlight(
-        "lint", Severity::Warn, "E001", "msg2", None, None, None, None,
+        "lint",
+        Severity::Warn,
+        "E001",
+        "msg2",
+        None,
+        None,
+        None,
+        None,
     ));
     report.highlights.push(make_highlight(
-        "sec", Severity::Info, "S100", "msg3", None, None, None, None,
+        "sec",
+        Severity::Info,
+        "S100",
+        "msg3",
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     let rules = &sarif.runs[0].tool.driver.rules;
@@ -180,7 +201,14 @@ fn schema_compliance_json_no_unknown_top_keys() {
 fn mapping_severity_error_to_level() {
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Error, "E1", "err", None, None, None, None,
+        "s",
+        Severity::Error,
+        "E1",
+        "err",
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     assert_eq!(sarif.runs[0].results[0].level, "error");
@@ -190,7 +218,14 @@ fn mapping_severity_error_to_level() {
 fn mapping_severity_warn_to_level() {
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Warn, "W1", "wrn", None, None, None, None,
+        "s",
+        Severity::Warn,
+        "W1",
+        "wrn",
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     assert_eq!(sarif.runs[0].results[0].level, "warning");
@@ -200,7 +235,14 @@ fn mapping_severity_warn_to_level() {
 fn mapping_severity_info_to_level() {
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Info, "I1", "inf", None, None, None, None,
+        "s",
+        Severity::Info,
+        "I1",
+        "inf",
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     assert_eq!(sarif.runs[0].results[0].level, "note");
@@ -210,13 +252,34 @@ fn mapping_severity_info_to_level() {
 fn mapping_severity_json_values() {
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Error, "E", "e", None, None, None, None,
+        "s",
+        Severity::Error,
+        "E",
+        "e",
+        None,
+        None,
+        None,
+        None,
     ));
     report.highlights.push(make_highlight(
-        "s", Severity::Warn, "W", "w", None, None, None, None,
+        "s",
+        Severity::Warn,
+        "W",
+        "w",
+        None,
+        None,
+        None,
+        None,
     ));
     report.highlights.push(make_highlight(
-        "s", Severity::Info, "I", "i", None, None, None, None,
+        "s",
+        Severity::Info,
+        "I",
+        "i",
+        None,
+        None,
+        None,
+        None,
     ));
     let json_str = cockpit_report_to_sarif_json(&report).unwrap();
     let v: serde_json::Value = serde_json::from_str(&json_str).unwrap();
@@ -230,7 +293,14 @@ fn mapping_severity_json_values() {
 fn mapping_path_line_to_physical_location() {
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Warn, "C1", "msg", Some("lib/foo.rs"), Some(42), Some(8), None,
+        "s",
+        Severity::Warn,
+        "C1",
+        "msg",
+        Some("lib/foo.rs"),
+        Some(42),
+        Some(8),
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     let loc = &sarif.runs[0].results[0].locations[0].physical_location;
@@ -243,7 +313,14 @@ fn mapping_path_line_to_physical_location() {
 fn mapping_code_to_rule_id() {
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "sec", Severity::Error, "SEC-XSS-01", "xss found", None, None, None, None,
+        "sec",
+        Severity::Error,
+        "SEC-XSS-01",
+        "xss found",
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     assert_eq!(sarif.runs[0].results[0].rule_id, "SEC-XSS-01");
@@ -255,7 +332,14 @@ fn mapping_message_preserved() {
     let msg = "Buffer overflow detected in parse_input at offset 0xFF";
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Error, "E", msg, None, None, None, None,
+        "s",
+        Severity::Error,
+        "E",
+        msg,
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     assert_eq!(sarif.runs[0].results[0].message.text, msg);
@@ -265,7 +349,14 @@ fn mapping_message_preserved() {
 fn mapping_sensor_id_in_rule_description() {
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "builddiag", Severity::Warn, "BD01", "warning msg", None, None, None, None,
+        "builddiag",
+        Severity::Warn,
+        "BD01",
+        "warning msg",
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     let desc = sarif.runs[0].tool.driver.rules[0]
@@ -294,7 +385,14 @@ fn edge_empty_highlights() {
 fn edge_no_location() {
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Error, "E1", "no loc", None, None, None, None,
+        "s",
+        Severity::Error,
+        "E1",
+        "no loc",
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     assert!(sarif.runs[0].results[0].locations.is_empty());
@@ -305,7 +403,14 @@ fn edge_huge_message() {
     let big = "X".repeat(50_000);
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Info, "BIG", &big, None, None, None, None,
+        "s",
+        Severity::Info,
+        "BIG",
+        &big,
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     assert_eq!(sarif.runs[0].results[0].message.text.len(), 50_000);
@@ -319,7 +424,14 @@ fn edge_special_characters_in_message() {
     let msg = r#"found "x < y" && 'a > b' in file.c"#;
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Warn, "SP", msg, None, None, None, None,
+        "s",
+        Severity::Warn,
+        "SP",
+        msg,
+        None,
+        None,
+        None,
+        None,
     ));
     let json = cockpit_report_to_sarif_json(&report).unwrap();
     let v: serde_json::Value = serde_json::from_str(&json).unwrap();
@@ -331,7 +443,14 @@ fn edge_html_entities_in_message() {
     let msg = "&lt;script&gt;alert(1)&lt;/script&gt;";
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Error, "HTML", msg, None, None, None, None,
+        "s",
+        Severity::Error,
+        "HTML",
+        msg,
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     assert_eq!(sarif.runs[0].results[0].message.text, msg);
@@ -342,7 +461,14 @@ fn edge_newlines_and_tabs_in_message() {
     let msg = "line1\nline2\ttabbed";
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Info, "NL", msg, None, None, None, None,
+        "s",
+        Severity::Info,
+        "NL",
+        msg,
+        None,
+        None,
+        None,
+        None,
     ));
     let json = cockpit_report_to_sarif_json(&report).unwrap();
     let v: serde_json::Value = serde_json::from_str(&json).unwrap();
@@ -353,13 +479,20 @@ fn edge_newlines_and_tabs_in_message() {
 fn edge_unicode_emoji_cjk() {
     let msg = format!(
         "emoji {} CJK {} math {}",
-        "\u{1F680}", // rocket emoji
+        "\u{1F680}",        // rocket emoji
         "\u{4E16}\u{754C}", // CJK characters
-        "\u{221A}" // square root symbol
+        "\u{221A}"          // square root symbol
     );
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Info, "UNI", &msg, None, None, None, None,
+        "s",
+        Severity::Info,
+        "UNI",
+        &msg,
+        None,
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     assert_eq!(sarif.runs[0].results[0].message.text, msg);
@@ -395,7 +528,14 @@ fn edge_max_line_col_u32() {
 fn edge_path_only_no_line_col() {
     let mut report = base_report();
     report.highlights.push(make_highlight(
-        "s", Severity::Warn, "P1", "path only", Some("src/lib.rs"), None, None, None,
+        "s",
+        Severity::Warn,
+        "P1",
+        "path only",
+        Some("src/lib.rs"),
+        None,
+        None,
+        None,
     ));
     let sarif = cockpit_report_to_sarif(&report);
     let loc = &sarif.runs[0].results[0].locations[0].physical_location;
@@ -410,11 +550,56 @@ fn edge_path_only_no_line_col() {
 fn multi_sensor_report() -> CockpitReport {
     let mut report = base_report();
     report.highlights = vec![
-        make_highlight("clippy", Severity::Warn, "W001", "warn1", Some("a.rs"), Some(1), None, None),
-        make_highlight("sec", Severity::Error, "E100", "err1", Some("b.rs"), Some(5), Some(3), Some("fp1")),
-        make_highlight("lint", Severity::Info, "I050", "info1", None, None, None, None),
-        make_highlight("clippy", Severity::Error, "E200", "err2", Some("c.rs"), Some(99), None, Some("fp2")),
-        make_highlight("sec", Severity::Warn, "W001", "warn2", Some("d.rs"), Some(7), None, None),
+        make_highlight(
+            "clippy",
+            Severity::Warn,
+            "W001",
+            "warn1",
+            Some("a.rs"),
+            Some(1),
+            None,
+            None,
+        ),
+        make_highlight(
+            "sec",
+            Severity::Error,
+            "E100",
+            "err1",
+            Some("b.rs"),
+            Some(5),
+            Some(3),
+            Some("fp1"),
+        ),
+        make_highlight(
+            "lint",
+            Severity::Info,
+            "I050",
+            "info1",
+            None,
+            None,
+            None,
+            None,
+        ),
+        make_highlight(
+            "clippy",
+            Severity::Error,
+            "E200",
+            "err2",
+            Some("c.rs"),
+            Some(99),
+            None,
+            Some("fp2"),
+        ),
+        make_highlight(
+            "sec",
+            Severity::Warn,
+            "W001",
+            "warn2",
+            Some("d.rs"),
+            Some(7),
+            None,
+            None,
+        ),
     ];
     report
 }
@@ -481,8 +666,26 @@ fn schema_compliance_full() {
 fn edge_cases_mixed_locations() {
     let mut report = base_report();
     report.highlights = vec![
-        make_highlight("s1", Severity::Error, "E1", "full loc", Some("src/a.rs"), Some(10), Some(5), Some("fp1")),
-        make_highlight("s2", Severity::Warn, "W1", "path only", Some("src/b.rs"), None, None, None),
+        make_highlight(
+            "s1",
+            Severity::Error,
+            "E1",
+            "full loc",
+            Some("src/a.rs"),
+            Some(10),
+            Some(5),
+            Some("fp1"),
+        ),
+        make_highlight(
+            "s2",
+            Severity::Warn,
+            "W1",
+            "path only",
+            Some("src/b.rs"),
+            None,
+            None,
+            None,
+        ),
         make_highlight("s3", Severity::Info, "I1", "no loc", None, None, None, None),
     ];
     let json = cockpit_report_to_sarif_json(&report).unwrap();
