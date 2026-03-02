@@ -1,0 +1,20 @@
+---
+source: crates/cockpitctl-domain-trend/tests/proptest_tests.rs
+expression: "transitions.join(\"\\n\")"
+---
+Pass -> Pass: unchanged
+Pass -> Warn: Pass -> Warn
+Pass -> Fail: Pass -> Fail
+Pass -> Skip: Pass -> Skip
+Warn -> Pass: Warn -> Pass
+Warn -> Warn: unchanged
+Warn -> Fail: Warn -> Fail
+Warn -> Skip: Warn -> Skip
+Fail -> Pass: Fail -> Pass
+Fail -> Warn: Fail -> Warn
+Fail -> Fail: unchanged
+Fail -> Skip: Fail -> Skip
+Skip -> Pass: Skip -> Pass
+Skip -> Warn: Skip -> Warn
+Skip -> Fail: Skip -> Fail
+Skip -> Skip: unchanged
