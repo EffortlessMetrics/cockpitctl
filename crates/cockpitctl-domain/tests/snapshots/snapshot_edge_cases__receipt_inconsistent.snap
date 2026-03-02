@@ -1,0 +1,15 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_edge_cases.rs
+expression: highlight
+---
+{
+  "sensor_id": "buggy-sensor",
+  "finding": {
+    "severity": "info",
+    "check_id": "cockpit.receipt_inconsistent",
+    "code": "cockpit.receipt_inconsistent",
+    "message": "Receipt counts for sensor `buggy-sensor` did not match findings: reported info=5, warn=3, error=1, computed info=2, warn=1, error=0.",
+    "help": "Ensure receipt verdict counts match the findings array.",
+    "fingerprint": "cockpit.receipt_inconsistent:buggy-sensor:5:3:1:2:1:0"
+  }
+}

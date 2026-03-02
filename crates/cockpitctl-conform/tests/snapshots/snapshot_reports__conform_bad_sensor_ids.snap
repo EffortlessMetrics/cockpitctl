@@ -1,0 +1,42 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_reports.rs
+expression: results
+---
+[
+    (
+        "empty",
+        [
+            "sensor_id \"\" does not match [a-zA-Z0-9_-]+",
+        ],
+    ),
+    (
+        "dot_separated",
+        [
+            "sensor_id \"has.dot\" does not match [a-zA-Z0-9_-]+",
+        ],
+    ),
+    (
+        "with_space",
+        [
+            "sensor_id \"has space\" does not match [a-zA-Z0-9_-]+",
+        ],
+    ),
+    (
+        "traversal",
+        [
+            "sensor_id \"../escape\" does not match [a-zA-Z0-9_-]+",
+        ],
+    ),
+    (
+        "unicode",
+        [
+            "sensor_id \"café\" does not match [a-zA-Z0-9_-]+",
+        ],
+    ),
+    (
+        "special_chars",
+        [
+            "sensor_id \"a@b#c\" does not match [a-zA-Z0-9_-]+",
+        ],
+    ),
+]

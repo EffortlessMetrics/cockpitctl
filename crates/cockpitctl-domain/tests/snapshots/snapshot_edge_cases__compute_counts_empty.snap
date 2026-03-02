@@ -1,0 +1,9 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_edge_cases.rs
+expression: counts
+---
+{
+  "info": 0,
+  "warn": 0,
+  "error": 0
+}

@@ -1,0 +1,5 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_edge_cases.rs
+expression: fp
+---
+79141215c84c53756ad3f377bd21b9b6cd38bf7f389eb41c6c88fe360cca30c5

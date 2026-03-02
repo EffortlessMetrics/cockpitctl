@@ -1,0 +1,7 @@
+---
+source: crates/cockpitctl-conform/tests/snapshot_reports.rs
+expression: result
+---
+ConformResult {
+    violations: [],
+}

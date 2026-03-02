@@ -1,0 +1,147 @@
+---
+source: crates/cockpitctl-sarif/tests/snapshot_structure_tests.rs
+expression: sarif
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cockpitctl",
+          "version": "0.3.0",
+          "rules": [
+            {
+              "id": "alpha-001",
+              "shortDescription": {
+                "text": "[alpha] alpha-001"
+              }
+            },
+            {
+              "id": "beta-001",
+              "shortDescription": {
+                "text": "[beta] beta-001"
+              }
+            },
+            {
+              "id": "delta-001",
+              "shortDescription": {
+                "text": "[delta] delta-001"
+              }
+            },
+            {
+              "id": "epsilon-001",
+              "shortDescription": {
+                "text": "[epsilon] epsilon-001"
+              }
+            },
+            {
+              "id": "gamma-001",
+              "shortDescription": {
+                "text": "[gamma] gamma-001"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "alpha-001",
+          "level": "error",
+          "message": {
+            "text": "Finding from alpha"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/alpha.rs"
+                },
+                "region": {
+                  "startLine": 10
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "beta-001",
+          "level": "warning",
+          "message": {
+            "text": "Finding from beta"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/beta.rs"
+                },
+                "region": {
+                  "startLine": 20
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "gamma-001",
+          "level": "note",
+          "message": {
+            "text": "Finding from gamma"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/gamma.rs"
+                },
+                "region": {
+                  "startLine": 30
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "delta-001",
+          "level": "error",
+          "message": {
+            "text": "Finding from delta"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/delta.rs"
+                },
+                "region": {
+                  "startLine": 40
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "epsilon-001",
+          "level": "warning",
+          "message": {
+            "text": "Finding from epsilon"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/epsilon.rs"
+                },
+                "region": {
+                  "startLine": 50
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

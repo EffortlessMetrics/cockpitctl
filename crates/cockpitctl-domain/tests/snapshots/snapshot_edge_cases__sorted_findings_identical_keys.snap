@@ -1,0 +1,33 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_edge_cases.rs
+expression: findings
+---
+[
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "msg",
+    "location": {
+      "path": "src/a.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "msg",
+    "location": {
+      "path": "src/a.rs",
+      "line": 10
+    }
+  },
+  {
+    "severity": "error",
+    "code": "E1",
+    "message": "msg",
+    "location": {
+      "path": "src/a.rs",
+      "line": 10
+    }
+  }
+]

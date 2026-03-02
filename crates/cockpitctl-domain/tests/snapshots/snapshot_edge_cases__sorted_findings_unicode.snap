@@ -1,0 +1,33 @@
+---
+source: crates/cockpitctl-domain/tests/snapshot_edge_cases.rs
+expression: findings
+---
+[
+  {
+    "severity": "error",
+    "code": "émoji🔥",
+    "message": "c'est un problème",
+    "location": {
+      "path": "café/résumé.rs",
+      "line": 42
+    }
+  },
+  {
+    "severity": "warn",
+    "code": "警告",
+    "message": "日本語メッセージ",
+    "location": {
+      "path": "ソース/ファイル.rs",
+      "line": 1
+    }
+  },
+  {
+    "severity": "info",
+    "code": "Ω-check",
+    "message": "Ελληνικά",
+    "location": {
+      "path": "αρχείο.rs",
+      "line": 10
+    }
+  }
+]
