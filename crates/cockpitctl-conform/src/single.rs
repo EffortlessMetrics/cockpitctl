@@ -42,6 +42,29 @@ pub struct ConformResult {
 
 impl ConformResult {
     /// Returns `true` if no violations were found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use cockpitctl_conform::{conform_single, ConformChecks};
+    ///
+    /// let json = r#"{
+    ///   "schema": "sensor.report.v1",
+    ///   "tool": { "name": "test", "version": "1.0.0" },
+    ///   "run": { "started_at": "2026-01-01T00:00:00Z" },
+    ///   "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+    ///   "findings": []
+    /// }"#;
+    ///
+    /// let checks = ConformChecks {
+    ///     path_hygiene: true, ordering: true, reason_lint: true,
+    ///     survivability: true, tool_error_identity: true,
+    ///     sensor_id_format: true, artifact_pointers: true,
+    /// };
+    ///
+    /// let result = conform_single(json, "sensor", &checks).unwrap();
+    /// assert!(result.is_pass());
+    /// ```
     pub fn is_pass(&self) -> bool {
         self.violations.is_empty()
     }
@@ -51,6 +74,29 @@ impl ConformResult {
 ///
 /// `Err` = infrastructure failure (can't parse JSON, can't compile schema).
 /// `Ok(result)` = checks ran; `result.violations` may be non-empty.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_conform::{conform_single, ConformChecks};
+///
+/// let json = r#"{
+///   "schema": "sensor.report.v1",
+///   "tool": { "name": "test", "version": "1.0.0" },
+///   "run": { "started_at": "2026-01-01T00:00:00Z" },
+///   "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 } },
+///   "findings": []
+/// }"#;
+///
+/// let checks = ConformChecks {
+///     path_hygiene: true, ordering: true, reason_lint: true,
+///     survivability: true, tool_error_identity: true,
+///     sensor_id_format: true, artifact_pointers: true,
+/// };
+///
+/// let result = conform_single(json, "test-sensor", &checks).unwrap();
+/// assert!(result.is_pass());
+/// ```
 pub fn conform_single(
     content: &str,
     sensor_id: &str,
@@ -158,6 +204,16 @@ pub fn conform_single(
 
 /// Validate cockpit/report.json against cockpit.report.v1 schema.
 /// Returns schema errors as violations.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_conform::validate_cockpit_schema;
+///
+/// // Invalid JSON triggers a schema violation.
+/// let result = validate_cockpit_schema("{}").unwrap();
+/// assert!(!result.is_empty());
+/// ```
 pub fn validate_cockpit_schema(content: &str) -> Result<Vec<Violation>> {
     let value: serde_json::Value = serde_json::from_str(content).context("parse JSON")?;
 
