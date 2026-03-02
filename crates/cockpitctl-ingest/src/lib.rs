@@ -18,7 +18,7 @@
 
 use anyhow::{Context, Result};
 use cockpitctl_domain::{
-    build_cockpit_report, match_buildfix_plan, select_highlights, sort_sensor_summaries,
+    aggregate_buildfix_plans, build_cockpit_report, select_highlights, sort_sensor_summaries,
     summarize_sensor_report, synthesize_invalid_sensor, synthesize_missing_sensor,
     synthesize_path_traversal_highlight, synthesize_path_traversal_sensor,
     synthesize_receipt_oversized_sensor, synthesize_schema_violation_sensor,
@@ -391,27 +391,20 @@ where
         let highlights = select_highlights(highlight_candidates, &cfg, &sensor_blocking);
 
         // Buildfix plan ingestion: read plan.json for each discovered sensor.
-        let mut buildfix_summary: Option<BuildfixSummary> = None;
-        let mut all_fixes = Vec::new();
+        let mut parsed_plans = Vec::new();
         for sensor_id in &discovered {
             if let PlanRead::Bytes(bytes) = self.receipts.read_plan_bytes(sensor_id)?
                 && let Ok(plan) = serde_json::from_slice::<cockpitctl_types::BuildfixPlan>(&bytes)
             {
-                let summary = match_buildfix_plan(sensor_id, &plan, &highlights);
-                all_fixes.extend(summary.fixes);
+                parsed_plans.push((sensor_id.as_str(), plan));
             }
         }
-        if !all_fixes.is_empty() {
-            let total_fixes = all_fixes.len();
-            let unmatched_count = all_fixes.iter().filter(|f| f.unmatched).count();
-            let matched_count = total_fixes - unmatched_count;
-            buildfix_summary = Some(BuildfixSummary {
-                fixes: all_fixes,
-                total_fixes,
-                matched_count,
-                unmatched_count,
-            });
-        }
+        let buildfix_summary = aggregate_buildfix_plans(
+            parsed_plans
+                .iter()
+                .map(|(sensor_id, plan)| (*sensor_id, plan)),
+            &highlights,
+        );
 
         let mut report = build_cockpit_report(
             &cfg,

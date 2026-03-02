@@ -7,7 +7,9 @@
 
 #![warn(missing_docs)]
 
-pub use cockpitctl_domain_buildfix::{match_buildfix_plan, select_auto_apply_fixes};
+pub use cockpitctl_domain_buildfix::{
+    aggregate_buildfix_plans, match_buildfix_plan, select_auto_apply_fixes,
+};
 pub use cockpitctl_domain_signing::{
     canonical_policy_snapshot_bytes, policy_snapshot_sha256_hex, sign_policy_snapshot,
     sign_policy_snapshot_hmac_sha256,

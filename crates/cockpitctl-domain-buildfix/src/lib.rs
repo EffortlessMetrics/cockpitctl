@@ -10,6 +10,42 @@ use cockpitctl_types::{
     safety_level_rank,
 };
 
+/// Aggregate multiple per-sensor buildfix plans into a single deterministic summary.
+///
+/// This is useful for ingest orchestration: adapters can parse any available
+/// `plan.json` files, then delegate matching and summary counting to domain logic.
+///
+/// Returns `None` when no fixes are present across all plans.
+pub fn aggregate_buildfix_plans<'a, I>(
+    plans: I,
+    highlights: &[Highlight],
+) -> Option<BuildfixSummary>
+where
+    I: IntoIterator<Item = (&'a str, &'a BuildfixPlan)>,
+{
+    let mut all_fixes = Vec::new();
+
+    for (sensor_id, plan) in plans {
+        let summary = match_buildfix_plan(sensor_id, plan, highlights);
+        all_fixes.extend(summary.fixes);
+    }
+
+    if all_fixes.is_empty() {
+        return None;
+    }
+
+    let total_fixes = all_fixes.len();
+    let unmatched_count = all_fixes.iter().filter(|f| f.unmatched).count();
+    let matched_count = total_fixes - unmatched_count;
+
+    Some(BuildfixSummary {
+        fixes: all_fixes,
+        total_fixes,
+        matched_count,
+        unmatched_count,
+    })
+}
+
 /// Match fixes from a buildfix plan to findings in the report.
 ///
 /// A fix matches a finding when:
@@ -769,5 +805,40 @@ mod tests {
         assert_eq!(summary.matched_count, 2);
         assert_eq!(summary.fixes[0].fix_id, "fix-a"); // safe first
         assert_eq!(summary.fixes[1].fix_id, "fix-b"); // guarded second
+    }
+
+    #[test]
+    fn aggregate_buildfix_plans_returns_none_when_empty() {
+        let highlights = vec![highlight("CODE-1", Some("fp-1"))];
+        let aggregated = aggregate_buildfix_plans(Vec::<(&str, &BuildfixPlan)>::new(), &highlights);
+        assert!(aggregated.is_none());
+    }
+
+    #[test]
+    fn aggregate_buildfix_plans_merges_multiple_sensors() {
+        let plan_a = make_plan(vec![make_fix(
+            "fix-a",
+            SafetyLevel::Safe,
+            vec![make_finding_ref("sensor-a", Some("fp-1"), Some("CODE-1"))],
+        )]);
+        let plan_b = make_plan(vec![make_fix(
+            "fix-b",
+            SafetyLevel::Guarded,
+            vec![make_finding_ref("sensor-b", Some("fp-2"), Some("CODE-2"))],
+        )]);
+        let highlights = vec![
+            make_highlight("sensor-a", "CODE-1", Some("fp-1")),
+            make_highlight("sensor-b", "CODE-2", Some("fp-2")),
+        ];
+
+        let aggregated = aggregate_buildfix_plans(
+            vec![("sensor-a", &plan_a), ("sensor-b", &plan_b)],
+            &highlights,
+        )
+        .expect("expected merged summary");
+
+        assert_eq!(aggregated.total_fixes, 2);
+        assert_eq!(aggregated.matched_count, 2);
+        assert_eq!(aggregated.unmatched_count, 0);
     }
 }
