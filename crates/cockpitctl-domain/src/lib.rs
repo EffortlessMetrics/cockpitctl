@@ -248,9 +248,9 @@ pub fn compute_counts(findings: &[Finding]) -> VerdictCounts {
     let mut c = VerdictCounts::default();
     for f in findings {
         match f.severity {
-            Severity::Info => c.info += 1,
-            Severity::Warn => c.warn += 1,
-            Severity::Error => c.error += 1,
+            Severity::Info => c.info = c.info.saturating_add(1),
+            Severity::Warn => c.warn = c.warn.saturating_add(1),
+            Severity::Error => c.error = c.error.saturating_add(1),
         }
     }
     c
@@ -556,9 +556,9 @@ pub fn overall_verdict(sensor_summaries: &[SensorSummary], cfg: &CockpitConfig) 
     let mut reasons: Vec<String> = Vec::new();
 
     for s in sensor_summaries {
-        counts.info += s.verdict.counts.info;
-        counts.warn += s.verdict.counts.warn;
-        counts.error += s.verdict.counts.error;
+        counts.info = counts.info.saturating_add(s.verdict.counts.info);
+        counts.warn = counts.warn.saturating_add(s.verdict.counts.warn);
+        counts.error = counts.error.saturating_add(s.verdict.counts.error);
 
         if !s.blocking {
             continue;
