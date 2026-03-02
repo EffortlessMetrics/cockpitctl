@@ -256,7 +256,10 @@ fn resolve_field<'a>(
 ) -> Option<&'a toml::Value> {
     match pkg.get(field) {
         Some(v) if v.is_table() => {
-            if v.get("workspace").and_then(|w| w.as_bool()).unwrap_or(false) {
+            if v.get("workspace")
+                .and_then(|w| w.as_bool())
+                .unwrap_or(false)
+            {
                 ws_pkg.get(field)
             } else {
                 Some(v)
@@ -323,10 +326,7 @@ fn publishable_crates_have_keywords_and_categories() {
                     issues.push(format!("{}: keywords is empty", m.name));
                 }
                 if arr.len() > 5 {
-                    issues.push(format!(
-                        "{}: keywords exceeds crates.io limit of 5",
-                        m.name,
-                    ));
+                    issues.push(format!("{}: keywords exceeds crates.io limit of 5", m.name,));
                 }
             }
             None => issues.push(format!("{}: missing keywords", m.name)),
@@ -395,9 +395,7 @@ fn release_workflow_tier_ordering_matches_deps() {
     let mut publish_order: Vec<String> = Vec::new();
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("run: cargo publish -p ")
-            && !trimmed.contains("--dry-run")
-        {
+        if trimmed.starts_with("run: cargo publish -p ") && !trimmed.contains("--dry-run") {
             let crate_name = trimmed
                 .strip_prefix("run: cargo publish -p ")
                 .unwrap()
@@ -458,9 +456,7 @@ fn release_workflow_publishes_all_publishable_crates() {
     let mut published_crates: BTreeSet<String> = BTreeSet::new();
     for line in content.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("run: cargo publish -p ")
-            && !trimmed.contains("--dry-run")
-        {
+        if trimmed.starts_with("run: cargo publish -p ") && !trimmed.contains("--dry-run") {
             let name = trimmed
                 .strip_prefix("run: cargo publish -p ")
                 .unwrap()
