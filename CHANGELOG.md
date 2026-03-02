@@ -93,6 +93,8 @@ Fuzz and property-based testing:
   and rendering (PR #30)
 - Fuzz corpus seed expansion for all 6 targets (PR #61)
 - Fuzz target expansion — 3 new targets with 30+ seeds (PR #103)
+- Fuzz corpus expansion — 10 new parse_receipt seeds + 3 new fuzz targets
+  (conform, render, policy evaluate) (PR #127)
 - Property-based testing (proptest) across 5 core crates — types, domain,
   ingest, render, and IO (PR #31)
 - Conform crate property-based test expansion (PR #72)
@@ -139,16 +141,25 @@ Mutation testing:
 - CONTRIBUTING.md with development workflow, architecture guide, testing overview,
   code style, and PR guidelines (PR #91)
 - CHANGELOG waves 19–22 update (PR #92)
+- GitHub issue templates (bug report, feature request) and PR template (PR #112)
+- Comprehensive public API doc comments and `deny(missing_docs)` enforcement
+  across all crates (PR #126)
 
 #### Release infrastructure
 - 9-tier dependency-ordered publish in release workflow
 - CI packaging verification for all 19 crates
+- Missing crate metadata (keywords, categories) added to 7 Cargo.toml files
+  (PR #125)
 
 ### Fixed
 - Feature gating: feature flags now properly propagate from CLI to feature-state crate
 - Feature-grid snapshot: default features alignment fix (PR #93)
 - CI packaging: all 19 crates included in cargo package verification
 - Release workflow: 9-tier dependency-ordered publish with proper index waits
+- Feature-state default features enabled to match workspace behavior; IO snapshot
+  paths normalized for cross-platform CI compatibility (PR #110)
+- Release tier ordering: cockpitctl-io-schema and cockpitctl-io-hooks moved after
+  ingest (Tier 5) to fix crates.io publish dependency ordering (PR #125)
 
 ## [0.3.0] - 2026-02-17
 
