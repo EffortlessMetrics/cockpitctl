@@ -9,7 +9,7 @@ expression: paths
     ),
     (
         "out_dir",
-        "artifacts\\cockpit",
+        "artifacts/cockpit",
     ),
     (
         "config_path",

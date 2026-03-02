@@ -13,6 +13,7 @@
 # Test and tooling artifacts
 /mutants.out
 *.snap.new
+crates/*/artifacts/
 
 # Local configuration
 /cockpit.toml
