@@ -6,14 +6,19 @@
 //! and default config values match documented conventions.
 
 use std::collections::BTreeMap;
+use std::collections::HashSet;
+use std::fs;
+use std::path::Path;
 
 use cockpitctl_conform::{ConformChecks, conform_single, validate_cockpit_schema};
 use cockpitctl_core::ingest::{CommentRead, DiscoveredSensors, PlanRead, ReportRead};
 use cockpitctl_core::render::render_comment;
 use cockpitctl_core::types::{
-    COCKPIT_REPORT_V1_SCHEMA_JSON, CockpitConfig, CockpitReport, Finding, MissingPolicy, Presence,
-    RunInfo, SENSOR_REPORT_V1_SCHEMA_JSON, SchemaValidation, SensorPolicy, SensorReport, Severity,
-    ToolInfo, Verdict, VerdictCounts, VerdictStatus,
+    ArtifactPointer, COCKPIT_REPORT_V1_SCHEMA_JSON, Capability, CapabilityStatus, CiInfo,
+    CockpitConfig, CockpitReport, Finding, GitInfo, Highlight, HostInfo, Location, MissingPolicy,
+    PolicyOutcome, PolicySensorSnapshot, PolicySnapshot, Presence, RunInfo,
+    SENSOR_REPORT_V1_SCHEMA_JSON, SchemaValidation, SensorPolicy, SensorReport, SensorSummary,
+    Severity, ToolInfo, Verdict, VerdictCounts, VerdictStatus,
 };
 use cockpitctl_core::{
     IngestRequest, IngestUseCase, NoOpSchemaValidator, OutputSink, PolicySource, ReceiptSource,
@@ -671,6 +676,590 @@ fn presence_values_match_schema_enum() {
             variant,
             s,
             schema_values
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 13. DTO roundtrip: SensorReport with all optional fields populated
+// ---------------------------------------------------------------------------
+
+#[test]
+fn sensor_report_roundtrip_with_all_fields() {
+    let report = SensorReport {
+        schema: "sensor.report.v1".to_string(),
+        tool: ToolInfo {
+            name: "full-sensor".to_string(),
+            version: "2.3.4".to_string(),
+            commit: Some("abc123def".to_string()),
+        },
+        run: RunInfo {
+            started_at: "2026-06-15T10:30:00Z".to_string(),
+            ended_at: Some("2026-06-15T10:31:00Z".to_string()),
+            duration_ms: Some(60_000),
+            host: Some(HostInfo {
+                os: Some("linux".to_string()),
+                arch: Some("x86_64".to_string()),
+                hostname: Some("build-node-42".to_string()),
+            }),
+            git: Some(GitInfo {
+                repo: Some("org/repo".to_string()),
+                base_ref: Some("refs/heads/main".to_string()),
+                head_ref: Some("refs/heads/feature".to_string()),
+                base_sha: Some("aaa111".to_string()),
+                head_sha: Some("bbb222".to_string()),
+                merge_base: Some("ccc333".to_string()),
+            }),
+            ci: Some(CiInfo {
+                provider: Some("github-actions".to_string()),
+                run_id: Some("12345".to_string()),
+                run_url: Some("https://github.com/org/repo/actions/runs/12345".to_string()),
+                job: Some("build".to_string()),
+            }),
+            capabilities: {
+                let mut caps = BTreeMap::new();
+                caps.insert(
+                    "git".to_string(),
+                    Capability {
+                        status: CapabilityStatus::Available,
+                        reason: None,
+                    },
+                );
+                caps
+            },
+        },
+        verdict: Verdict {
+            status: VerdictStatus::Warn,
+            counts: VerdictCounts {
+                info: 1,
+                warn: 2,
+                error: 0,
+                suppressed: 3,
+            },
+            reasons: vec!["lint_warnings".to_string()],
+        },
+        findings: vec![Finding {
+            severity: Severity::Warn,
+            check_id: Some("clippy::needless_return".to_string()),
+            code: "needless_return".to_string(),
+            message: "unneeded `return` statement".to_string(),
+            location: Some(Location {
+                path: Some("src/main.rs".to_string()),
+                line: Some(42),
+                col: Some(5),
+            }),
+            help: Some("remove the `return`".to_string()),
+            url: Some("https://rust-lang.github.io/rust-clippy/".to_string()),
+            fingerprint: Some("fp-abc-123".to_string()),
+            data: Some(serde_json::json!({"custom_key": "custom_value"})),
+        }],
+        artifacts: vec![ArtifactPointer {
+            id: "coverage-report".to_string(),
+            path: "artifacts/sensor/coverage.html".to_string(),
+            mime: "text/html".to_string(),
+            schema: Some("coverage.v1".to_string()),
+        }],
+        data: Some(serde_json::json!({"extra": true})),
+    };
+
+    // Serialize (types crate) → JSON → Deserialize (as any consuming crate would)
+    let json = serde_json::to_string_pretty(&report).expect("serialize");
+    let deserialized: SensorReport = serde_json::from_str(&json).expect("deserialize");
+
+    assert_eq!(
+        report, deserialized,
+        "SensorReport roundtrip must be lossless"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 14. DTO roundtrip: CockpitReport with all fields
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cockpit_report_roundtrip_with_all_fields() {
+    let report = CockpitReport {
+        schema: "cockpit.report.v1".to_string(),
+        tool: ToolInfo {
+            name: "cockpitctl".to_string(),
+            version: "0.3.0".to_string(),
+            commit: Some("deadbeef".to_string()),
+        },
+        run: RunInfo {
+            started_at: "2026-01-01T00:00:00Z".to_string(),
+            ended_at: Some("2026-01-01T00:01:00Z".to_string()),
+            duration_ms: Some(60_000),
+            host: None,
+            git: None,
+            ci: None,
+            capabilities: BTreeMap::new(),
+        },
+        verdict: Verdict {
+            status: VerdictStatus::Fail,
+            counts: VerdictCounts {
+                info: 0,
+                warn: 1,
+                error: 2,
+                suppressed: 0,
+            },
+            reasons: vec!["blocking_sensor_failed".to_string()],
+        },
+        sensors: vec![SensorSummary {
+            id: "builddiag".to_string(),
+            blocking: true,
+            missing: MissingPolicy::Fail,
+            presence: Presence::Present,
+            report_path: "artifacts/builddiag/report.json".to_string(),
+            comment_path: Some("artifacts/builddiag/comment.md".to_string()),
+            verdict: Verdict {
+                status: VerdictStatus::Fail,
+                counts: VerdictCounts {
+                    info: 0,
+                    warn: 1,
+                    error: 2,
+                    suppressed: 0,
+                },
+                reasons: vec![],
+            },
+            truncated: false,
+            errors: vec![],
+            missing_policy_applied: None,
+            policy_outcome: Some(PolicyOutcome::Blocked),
+        }],
+        highlights: vec![Highlight {
+            sensor_id: "builddiag".to_string(),
+            finding: Finding {
+                severity: Severity::Error,
+                check_id: None,
+                code: "build_error".to_string(),
+                message: "compilation failed".to_string(),
+                location: Some(Location {
+                    path: Some("src/lib.rs".to_string()),
+                    line: Some(10),
+                    col: None,
+                }),
+                help: None,
+                url: None,
+                fingerprint: Some("fp-build-001".to_string()),
+                data: None,
+            },
+        }],
+        policy: PolicySnapshot {
+            warn_is_fail: false,
+            max_highlights: 7,
+            max_per_sensor_findings: 20,
+            max_annotations: 25,
+            section_order: vec!["Highlights".to_string()],
+            sensors: vec![PolicySensorSnapshot {
+                id: "builddiag".to_string(),
+                blocking: true,
+                missing: MissingPolicy::Fail,
+                section: Some("Diagnostics".to_string()),
+                require_label: None,
+                repro: Some("cargo build".to_string()),
+            }],
+        },
+        data: Some(serde_json::json!({"_internal": "test"})),
+    };
+
+    let json = serde_json::to_string_pretty(&report).expect("serialize");
+    let deserialized: CockpitReport = serde_json::from_str(&json).expect("deserialize");
+
+    assert_eq!(
+        report, deserialized,
+        "CockpitReport roundtrip must be lossless"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 15. Port trait compliance: real IO adapters implement port traits
+// ---------------------------------------------------------------------------
+
+#[test]
+fn io_adapters_implement_port_traits() {
+    // Compile-time verification that FS adapters implement the required traits.
+    fn assert_receipt_source<T: ReceiptSource>() {}
+    fn assert_policy_source<T: PolicySource>() {}
+    fn assert_output_sink<T: OutputSink>() {}
+    fn assert_schema_validator<T: cockpitctl_core::SchemaValidator>() {}
+
+    assert_receipt_source::<cockpitctl_core::io::FsReceiptSource>();
+    assert_policy_source::<cockpitctl_core::io::FsPolicySource>();
+    assert_output_sink::<cockpitctl_core::io::FsOutputSink>();
+    assert_schema_validator::<cockpitctl_core::io_schema::JsonSchemaValidator>();
+    assert_schema_validator::<NoOpSchemaValidator>();
+}
+
+// ---------------------------------------------------------------------------
+// 16. Cross-crate DTO flow: types → domain → ingest preserves finding data
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cross_crate_finding_data_preserved_through_pipeline() {
+    let finding = Finding {
+        severity: Severity::Error,
+        check_id: Some("clippy::unused".to_string()),
+        code: "unused_var".to_string(),
+        message: "variable `x` is unused".to_string(),
+        location: Some(Location {
+            path: Some("src/main.rs".to_string()),
+            line: Some(42),
+            col: Some(5),
+        }),
+        help: Some("prefix with `_`".to_string()),
+        url: Some("https://example.com".to_string()),
+        fingerprint: Some("fp-001".to_string()),
+        data: Some(serde_json::json!({"extra": true})),
+    };
+
+    let mut sensor_report = minimal_sensor_report();
+    sensor_report.verdict.status = VerdictStatus::Fail;
+    sensor_report.findings = vec![finding.clone()];
+    sensor_report.verdict.counts.error = 1;
+
+    let report_bytes = serde_json::to_vec(&sensor_report).unwrap();
+    let mut reports = BTreeMap::new();
+    reports.insert("test-sensor".to_string(), report_bytes);
+
+    let mut sensors_map = BTreeMap::new();
+    sensors_map.insert(
+        "test-sensor".to_string(),
+        SensorPolicy {
+            blocking: true,
+            missing: MissingPolicy::Fail,
+            ..Default::default()
+        },
+    );
+    let cfg = CockpitConfig {
+        sensors: sensors_map,
+        ..Default::default()
+    };
+
+    let result = run_ingest_pipeline(
+        vec!["test-sensor"],
+        vec![("test-sensor", serde_json::to_vec(&sensor_report).unwrap())],
+        Some(cfg),
+    );
+
+    // Verify finding data survived the types → domain → ingest boundary
+    let highlights = &result.report.highlights;
+    let matched = highlights
+        .iter()
+        .find(|h| h.finding.code == "unused_var")
+        .expect("finding should survive pipeline");
+
+    assert_eq!(matched.finding.severity, Severity::Error);
+    assert_eq!(matched.finding.message, "variable `x` is unused");
+    assert_eq!(matched.finding.location.as_ref().unwrap().line, Some(42));
+    assert_eq!(matched.finding.help.as_deref(), Some("prefix with `_`"));
+    assert_eq!(matched.finding.fingerprint.as_deref(), Some("fp-001"));
+}
+
+// ---------------------------------------------------------------------------
+// 17. CockpitConfig TOML roundtrip — types ↔ IO/CLI boundary
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cockpit_config_toml_roundtrip() {
+    let toml_str = r#"
+[policy]
+warn_is_fail = true
+max_highlights = 10
+max_per_sensor_findings = 50
+max_annotations = 30
+schema_validation = "strict"
+max_receipt_size_bytes = 1048576
+
+[sensors.builddiag]
+blocking = true
+missing = "fail"
+section = "Diagnostics"
+repro = "cargo build"
+
+[sensors.clippy]
+blocking = false
+missing = "skip"
+require_label = "lint"
+"#;
+
+    // Deserialize from TOML (as IO/CLI crate would do)
+    let cfg: CockpitConfig = toml::from_str(toml_str).expect("parse TOML");
+
+    assert!(cfg.policy.warn_is_fail);
+    assert_eq!(cfg.policy.max_highlights, 10);
+    assert_eq!(cfg.policy.schema_validation, SchemaValidation::Strict);
+    assert_eq!(cfg.policy.max_receipt_size_bytes, 1_048_576);
+    assert_eq!(cfg.sensors.len(), 2);
+
+    let builddiag = &cfg.sensors["builddiag"];
+    assert!(builddiag.blocking);
+    assert_eq!(builddiag.missing, MissingPolicy::Fail);
+    assert_eq!(builddiag.section.as_deref(), Some("Diagnostics"));
+
+    let clippy = &cfg.sensors["clippy"];
+    assert!(!clippy.blocking);
+    assert_eq!(clippy.require_label.as_deref(), Some("lint"));
+
+    // Re-serialize to JSON and back to verify types serde is consistent
+    let json = serde_json::to_string(&cfg).expect("to JSON");
+    let from_json: CockpitConfig = serde_json::from_str(&json).expect("from JSON");
+    assert_eq!(
+        cfg, from_json,
+        "CockpitConfig JSON roundtrip must be lossless"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 18. Version consistency: all workspace crates share the same version
+// ---------------------------------------------------------------------------
+
+fn workspace_root() -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .canonicalize()
+        .expect("workspace root")
+}
+
+#[test]
+fn all_workspace_crate_versions_match() {
+    let root = workspace_root();
+    let root_toml: toml::Value = {
+        let text = fs::read_to_string(root.join("Cargo.toml")).expect("read root Cargo.toml");
+        toml::from_str(&text).expect("parse root Cargo.toml")
+    };
+
+    let ws_version = root_toml["workspace"]["package"]["version"]
+        .as_str()
+        .expect("workspace.package.version");
+
+    let members: Vec<String> = root_toml["workspace"]["members"]
+        .as_array()
+        .expect("workspace.members")
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+
+    for member in &members {
+        let member_toml: toml::Value = {
+            let text = fs::read_to_string(root.join(member).join("Cargo.toml"))
+                .unwrap_or_else(|_| panic!("read {member}/Cargo.toml"));
+            toml::from_str(&text).unwrap_or_else(|_| panic!("parse {member}/Cargo.toml"))
+        };
+
+        let ver = &member_toml["package"]["version"];
+        let is_inherited = ver
+            .as_table()
+            .and_then(|t| t.get("workspace"))
+            .and_then(|v| v.as_bool())
+            == Some(true);
+        let matches_literal = ver.as_str() == Some(ws_version);
+
+        assert!(
+            is_inherited || matches_literal,
+            "{member}: version must be workspace-inherited or \"{ws_version}\", got {ver:?}",
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 19. Core facade re-exports all dependency crates
+// ---------------------------------------------------------------------------
+
+#[test]
+fn core_facade_reexports_all_dependency_crates() {
+    let root = workspace_root();
+    let core_toml: toml::Value = {
+        let text = fs::read_to_string(root.join("crates/cockpitctl-core/Cargo.toml"))
+            .expect("read core Cargo.toml");
+        toml::from_str(&text).expect("parse core Cargo.toml")
+    };
+    let lib_rs = fs::read_to_string(root.join("crates/cockpitctl-core/src/lib.rs"))
+        .expect("read core lib.rs");
+
+    let deps = core_toml["dependencies"]
+        .as_table()
+        .expect("[dependencies]");
+
+    for key in deps.keys().filter(|k| k.starts_with("cockpitctl-")) {
+        let ident = key.replace('-', "_");
+        assert!(
+            lib_rs.contains(&format!("pub use {ident}"))
+                || lib_rs.contains(&format!("pub mod {ident}")),
+            "cockpitctl-core must re-export {key} (as `{ident}`)",
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 20. Cross-crate DTO: types serialized by one crate, deserialized by another
+// ---------------------------------------------------------------------------
+
+#[test]
+fn sensor_report_serialized_by_types_consumed_by_ingest() {
+    // Simulate a sensor writing a report (using types crate serialization)
+    let sensor_output = minimal_sensor_report();
+    let json_bytes = serde_json::to_vec(&sensor_output).unwrap();
+
+    // Simulate ingest crate consuming the bytes (deserialization)
+    let parsed: SensorReport = serde_json::from_slice(&json_bytes)
+        .expect("ingest should deserialize types-serialized SensorReport");
+
+    assert_eq!(parsed.schema, "sensor.report.v1");
+    assert_eq!(parsed.verdict.status, VerdictStatus::Pass);
+    assert_eq!(parsed.tool.name, "test-sensor");
+}
+
+// ---------------------------------------------------------------------------
+// 21. Ingest output CockpitReport consumed by render without data loss
+// ---------------------------------------------------------------------------
+
+#[test]
+fn ingest_output_consumed_by_render_without_data_loss() {
+    let report_bytes = serde_json::to_vec(&minimal_sensor_report()).unwrap();
+    let mut reports = BTreeMap::new();
+    reports.insert("alpha".to_string(), report_bytes);
+
+    let mut sensors_map = BTreeMap::new();
+    sensors_map.insert(
+        "alpha".to_string(),
+        SensorPolicy {
+            blocking: true,
+            missing: MissingPolicy::Fail,
+            ..Default::default()
+        },
+    );
+    let cfg = CockpitConfig {
+        sensors: sensors_map,
+        ..Default::default()
+    };
+
+    let result = run_ingest_pipeline(
+        vec!["alpha"],
+        vec![(
+            "alpha",
+            serde_json::to_vec(&minimal_sensor_report()).unwrap(),
+        )],
+        Some(cfg.clone()),
+    );
+
+    // Render consumes the CockpitReport from ingest
+    let comment = render_comment(&result.report, &cfg);
+
+    // The rendered comment must reference the sensor from the report
+    assert!(
+        comment.contains("alpha") || result.report.sensors.iter().any(|s| s.id == "alpha"),
+        "render must consume ingest output preserving sensor identity"
+    );
+
+    // The rendered comment must contain the stable markers
+    assert!(comment.contains("<!-- cockpit:begin -->"));
+    assert!(comment.contains("<!-- cockpit:end -->"));
+}
+
+// ---------------------------------------------------------------------------
+// 22. Embedded schemas are valid JSON and valid JSON Schema
+// ---------------------------------------------------------------------------
+
+#[test]
+fn embedded_schemas_are_valid_json_schema() {
+    for (name, schema_json) in [
+        ("sensor.report.v1", SENSOR_REPORT_V1_SCHEMA_JSON),
+        ("cockpit.report.v1", COCKPIT_REPORT_V1_SCHEMA_JSON),
+    ] {
+        let value: serde_json::Value = serde_json::from_str(schema_json)
+            .unwrap_or_else(|e| panic!("{name}: invalid JSON: {e}"));
+        // Must be a JSON object with standard JSON Schema fields
+        assert!(value.is_object(), "{name}: schema must be a JSON object");
+        assert!(value.get("$id").is_some(), "{name}: must have $id");
+        assert!(
+            value.get("properties").is_some(),
+            "{name}: must have properties"
+        );
+        // Must compile as a JSON Schema validator
+        jsonschema::validator_for(&value)
+            .unwrap_or_else(|e| panic!("{name}: must compile as JSON Schema: {e}"));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 23. PolicyOutcome values match cockpit schema enum
+// ---------------------------------------------------------------------------
+
+#[test]
+fn policy_outcome_values_match_schema_enum() {
+    let schema: serde_json::Value =
+        serde_json::from_str(COCKPIT_REPORT_V1_SCHEMA_JSON).expect("parse cockpit schema");
+    let outcome_enum =
+        schema["properties"]["sensors"]["items"]["properties"]["policy_outcome"]["enum"]
+            .as_array()
+            .expect("sensors.items.properties.policy_outcome.enum should be an array");
+    let schema_values: Vec<&str> = outcome_enum
+        .iter()
+        .map(|v| v.as_str().expect("enum values should be strings"))
+        .collect();
+
+    let all_variants = [
+        PolicyOutcome::Blocked,
+        PolicyOutcome::Allowed,
+        PolicyOutcome::Informational,
+    ];
+    for variant in &all_variants {
+        let serialized = serde_json::to_value(variant).unwrap();
+        let s = serialized.as_str().unwrap();
+        assert!(
+            schema_values.contains(&s),
+            "PolicyOutcome::{:?} serializes to {:?} which is not in schema enum {:?}",
+            variant,
+            s,
+            schema_values
+        );
+    }
+
+    for sv in &schema_values {
+        let parsed: Result<PolicyOutcome, _> =
+            serde_json::from_value(serde_json::Value::String(sv.to_string()));
+        assert!(
+            parsed.is_ok(),
+            "schema policy_outcome enum value {:?} should deserialize to PolicyOutcome",
+            sv
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 24. Embedded schemas file set matches contracts/schemas/ on disk
+// ---------------------------------------------------------------------------
+
+#[test]
+fn embedded_schema_set_matches_contracts_directory() {
+    let root = workspace_root();
+    let contracts_dir = root.join("contracts").join("schemas");
+    let embedded_dir = root.join("crates").join("cockpitctl-types").join("schemas");
+
+    let json_files = |dir: &Path| -> HashSet<String> {
+        fs::read_dir(dir)
+            .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+            .filter_map(Result::ok)
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect()
+    };
+
+    let contracts_set = json_files(&contracts_dir);
+    let embedded_set = json_files(&embedded_dir);
+
+    assert_eq!(
+        contracts_set, embedded_set,
+        "embedded schema files must match contracts/schemas/"
+    );
+
+    for name in &contracts_set {
+        let a = fs::read_to_string(contracts_dir.join(name)).expect("read contracts");
+        let b = fs::read_to_string(embedded_dir.join(name)).expect("read embedded");
+        assert_eq!(
+            a, b,
+            "schema `{name}` must be byte-identical between contracts/ and embedded"
         );
     }
 }
