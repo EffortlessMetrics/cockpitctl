@@ -47,7 +47,7 @@ impl ReceiptSource for EmptyReceipts {
     }
 }
 
-struct StaticPolicy{
+struct StaticPolicy {
     cfg: Option<CockpitConfig>,
 }
 
