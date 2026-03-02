@@ -9,23 +9,15 @@
 
 #![warn(missing_docs)]
 
+pub use cockpitctl_render_annotations::{
+    AnnotationRenderResult, GitHubAnnotationResult, render_annotations, render_github_annotations,
+};
+
 use cockpitctl_types::{
     BuildfixApplyStatus, BuildfixApplySummary, BuildfixSummary, CockpitConfig, CockpitReport,
     Highlight, PolicySignatureAlgorithm, PolicySignatureEvidence, SafetyLevel, Severity,
-    TrendDelta, VerdictStatus, severity_rank,
+    TrendDelta, VerdictStatus,
 };
-
-/// Result of annotation rendering, tracking whether truncation occurred.
-pub struct AnnotationRenderResult {
-    /// The rendered markdown content for annotations.
-    pub content: String,
-    /// Whether the annotations were truncated due to max_annotations cap.
-    pub truncated: bool,
-    /// Total number of annotations before truncation.
-    pub total_count: usize,
-    /// Number of annotations actually rendered.
-    pub rendered_count: usize,
-}
 
 fn status_badge(s: &VerdictStatus) -> &'static str {
     match s {
@@ -285,104 +277,6 @@ pub fn append_comment_sections(comment_md: &str, sections: &[(String, String)]) 
     out
 }
 
-/// Render annotations (file-level or inline findings) with capping.
-///
-/// Annotations are rendered as a markdown list of findings with file locations.
-/// The total number of annotations is capped by `max_annotations` from policy.
-/// Deterministic ordering is maintained: severity desc -> blocking-first -> sensor_id -> path -> line -> code.
-///
-/// # Examples
-///
-/// ```
-/// use cockpitctl_render::render_annotations;
-/// use cockpitctl_types::{CockpitConfig, Finding, Highlight, Severity};
-/// use std::collections::BTreeMap;
-///
-/// let highlights = vec![Highlight {
-///     sensor_id: "builddiag".into(),
-///     finding: Finding {
-///         severity: Severity::Error,
-///         check_id: None,
-///         code: "E001".into(),
-///         message: "build failed".into(),
-///         location: None,
-///         help: None, url: None, fingerprint: None, data: None,
-///     },
-/// }];
-///
-/// let cfg = CockpitConfig::default();
-/// let blocking = BTreeMap::from([("builddiag".to_string(), true)]);
-/// let result = render_annotations(&highlights, &cfg, &blocking);
-/// assert_eq!(result.total_count, 1);
-/// assert!(!result.truncated);
-/// assert!(result.content.contains("E001"));
-/// ```
-pub fn render_annotations(
-    highlights: &[Highlight],
-    cfg: &CockpitConfig,
-    sensor_blocking: &std::collections::BTreeMap<String, bool>,
-) -> AnnotationRenderResult {
-    let max = cfg.policy.max_annotations;
-    let total_count = highlights.len();
-
-    // Sort deterministically: severity desc, blocking sensors first, then sensor_id/path/line/code/message.
-    let mut sorted: Vec<&Highlight> = highlights.iter().collect();
-    sorted.sort_by(|a, b| {
-        annotation_sort_key(a, sensor_blocking).cmp(&annotation_sort_key(b, sensor_blocking))
-    });
-
-    let truncated = total_count > max;
-    let rendered_count = total_count.min(max);
-
-    let mut out = String::new();
-
-    if sorted.is_empty() {
-        out.push_str("_No annotations._\n");
-    } else {
-        for (i, h) in sorted.iter().take(max).enumerate() {
-            let f = &h.finding;
-            let loc = match &f.location {
-                Some(l) => {
-                    let mut s = String::new();
-                    if let Some(p) = &l.path {
-                        s.push_str(p);
-                    }
-                    if let Some(line) = l.line {
-                        s.push_str(&format!(":{}", line));
-                    }
-                    if s.is_empty() { None } else { Some(s) }
-                }
-                None => None,
-            };
-
-            let loc_str = loc.map(|x| format!(" at `{}`", x)).unwrap_or_default();
-            out.push_str(&format!(
-                "{}. {} **{}**: `{}`{} — {}\n",
-                i + 1,
-                severity_badge(&f.severity),
-                h.sensor_id,
-                f.code,
-                loc_str,
-                f.message.replace('\n', " ")
-            ));
-        }
-
-        if truncated {
-            out.push_str(&format!(
-                "\n_Showing {} of {} annotations (capped by `max_annotations`)._\n",
-                rendered_count, total_count
-            ));
-        }
-    }
-
-    AnnotationRenderResult {
-        content: out,
-        truncated,
-        total_count,
-        rendered_count,
-    }
-}
-
 /// Render annotations section for the PR comment.
 ///
 /// This is a convenience function that wraps `render_annotations` with a section header.
@@ -639,144 +533,6 @@ pub fn render_policy_signature_section(signature: &PolicySignatureEvidence) -> S
     out.push_str(&format!("- policy_sha256: `{}`\n", signature.policy_sha256));
     out.push_str(&format!("- signature: `{}`\n\n", signature.signature));
     out
-}
-
-// ============================================================================
-// GitHub Actions workflow command annotations
-// ============================================================================
-
-/// Result of GitHub annotation rendering.
-pub struct GitHubAnnotationResult {
-    /// Rendered `::error`/`::warning`/`::notice` lines.
-    pub lines: Vec<String>,
-    /// Whether annotations were truncated due to cap.
-    pub truncated: bool,
-    /// Total number of annotations before capping.
-    pub total_count: usize,
-    /// Number of annotations actually rendered.
-    pub rendered_count: usize,
-}
-
-/// Escape a string for GitHub Actions workflow command parameters.
-fn gh_escape(s: &str) -> String {
-    s.replace('%', "%25")
-        .replace('\n', "%0A")
-        .replace('\r', "%0D")
-}
-
-/// Map severity to GitHub Actions annotation level.
-fn gh_level(s: &Severity) -> &'static str {
-    match s {
-        Severity::Error => "error",
-        Severity::Warn => "warning",
-        Severity::Info => "notice",
-    }
-}
-
-/// Render GitHub Actions workflow command annotations from highlights.
-///
-/// Produces lines like:
-/// `::error file={path},line={line},col={col},title=[{sensor_id}] {code}::{message}`
-///
-/// Capped by `max_annotations` from policy. Same deterministic sort as markdown annotations.
-///
-/// # Examples
-///
-/// ```
-/// use cockpitctl_render::render_github_annotations;
-/// use cockpitctl_types::{CockpitConfig, Finding, Highlight, Location, Severity};
-/// use std::collections::BTreeMap;
-///
-/// let highlights = vec![Highlight {
-///     sensor_id: "clippy".into(),
-///     finding: Finding {
-///         severity: Severity::Warn,
-///         check_id: None,
-///         code: "unused_var".into(),
-///         message: "unused variable `x`".into(),
-///         location: Some(Location { path: Some("src/lib.rs".into()), line: Some(10), col: None }),
-///         help: None, url: None, fingerprint: None, data: None,
-///     },
-/// }];
-///
-/// let cfg = CockpitConfig::default();
-/// let blocking = BTreeMap::new();
-/// let result = render_github_annotations(&highlights, &cfg, &blocking);
-/// assert_eq!(result.lines.len(), 1);
-/// assert!(result.lines[0].starts_with("::warning"));
-/// assert!(result.lines[0].contains("file=src/lib.rs"));
-/// ```
-pub fn render_github_annotations(
-    highlights: &[Highlight],
-    cfg: &CockpitConfig,
-    sensor_blocking: &std::collections::BTreeMap<String, bool>,
-) -> GitHubAnnotationResult {
-    let max = cfg.policy.max_annotations;
-    let total_count = highlights.len();
-
-    let mut sorted: Vec<&Highlight> = highlights.iter().collect();
-    sorted.sort_by(|a, b| {
-        annotation_sort_key(a, sensor_blocking).cmp(&annotation_sort_key(b, sensor_blocking))
-    });
-
-    let truncated = total_count > max;
-    let rendered_count = total_count.min(max);
-
-    let mut lines = Vec::with_capacity(rendered_count);
-    for h in sorted.iter().take(max) {
-        let f = &h.finding;
-        let level = gh_level(&f.severity);
-        let title = gh_escape(&format!("[{}] {}", h.sensor_id, f.code));
-
-        let mut params = Vec::new();
-        if let Some(loc) = &f.location {
-            if let Some(path) = &loc.path {
-                params.push(format!("file={}", path));
-            }
-            if let Some(line) = loc.line {
-                params.push(format!("line={}", line));
-            }
-            if let Some(col) = loc.col {
-                params.push(format!("col={}", col));
-            }
-        }
-        params.push(format!("title={}", title));
-
-        let message = gh_escape(&f.message);
-        lines.push(format!("::{} {}::{}", level, params.join(","), message));
-    }
-
-    GitHubAnnotationResult {
-        lines,
-        truncated,
-        total_count,
-        rendered_count,
-    }
-}
-
-/// Shared sort key for annotation ordering (severity desc, blocking first, then sensor_id/path/line/code/message).
-fn annotation_sort_key<'a>(
-    h: &'a Highlight,
-    sensor_blocking: &std::collections::BTreeMap<String, bool>,
-) -> (
-    u8,
-    u8,
-    &'a str,
-    Option<&'a str>,
-    Option<u32>,
-    &'a str,
-    &'a str,
-) {
-    let blocking = sensor_blocking.get(&h.sensor_id).cloned().unwrap_or(false);
-    (
-        severity_rank(&h.finding.severity),
-        if blocking { 0u8 } else { 1u8 },
-        &h.sensor_id,
-        h.finding.location.as_ref().and_then(|l| l.path.as_deref()),
-        h.finding.location.as_ref().and_then(|l| l.line),
-        &h.finding.code,
-        &h.finding.message,
-    )
 }
 
 #[cfg(test)]
