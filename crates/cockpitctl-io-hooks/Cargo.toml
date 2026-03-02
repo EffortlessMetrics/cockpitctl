@@ -9,6 +9,8 @@ homepage.workspace = true
 authors.workspace = true
 description = "Post-processor hook I/O boundary extracted from cockpitctl-io."
 readme = "README.md"
+keywords = ["ci", "hooks", "adapter", "post-processor", "receipts"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true

@@ -9,6 +9,8 @@ homepage.workspace = true
 authors.workspace = true
 description = "Schema validation adapter boundary extracted from cockpitctl-io."
 readme = "README.md"
+keywords = ["ci", "schema", "adapter", "validation", "json-schema"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true

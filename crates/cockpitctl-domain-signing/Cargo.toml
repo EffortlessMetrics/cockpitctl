@@ -9,6 +9,8 @@ homepage.workspace = true
 authors.workspace = true
 description = "Policy signing domain boundary extracted from cockpitctl-domain."
 readme = "README.md"
+keywords = ["ci", "signing", "policy", "hmac", "integrity"]
+categories = ["development-tools"]
 
 [dependencies]
 anyhow.workspace = true
