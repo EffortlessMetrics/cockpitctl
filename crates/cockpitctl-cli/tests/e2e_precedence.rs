@@ -1908,11 +1908,7 @@ fn artifact_path_default_used_when_not_overridden() {
     let artifacts_dir = cwd.join("artifacts");
     let sensor_dir = artifacts_dir.join("alpha");
     fs::create_dir_all(&sensor_dir).expect("create sensor dir");
-    fs::write(
-        sensor_dir.join("report.json"),
-        valid_sensor_report("alpha"),
-    )
-    .expect("write report");
+    fs::write(sensor_dir.join("report.json"), valid_sensor_report("alpha")).expect("write report");
 
     let config = cwd.join("cockpit.toml");
     fs::write(
@@ -1947,11 +1943,7 @@ fn artifact_path_cli_override() {
     let custom_artifacts = temp_dir.path().join("custom_output");
     let sensor_dir = custom_artifacts.join("alpha");
     fs::create_dir_all(&sensor_dir).expect("create sensor dir");
-    fs::write(
-        sensor_dir.join("report.json"),
-        valid_sensor_report("alpha"),
-    )
-    .expect("write report");
+    fs::write(sensor_dir.join("report.json"), valid_sensor_report("alpha")).expect("write report");
 
     let config = temp_dir.path().join("cockpit.toml");
     fs::write(
@@ -1996,11 +1988,8 @@ fn artifact_path_cli_override_independent() {
     for (dir, sensor) in [(&artifacts_a, "alpha"), (&artifacts_b, "beta")] {
         let sensor_dir = dir.join(sensor);
         fs::create_dir_all(&sensor_dir).expect("create dir");
-        fs::write(
-            sensor_dir.join("report.json"),
-            valid_sensor_report(sensor),
-        )
-        .expect("write report");
+        fs::write(sensor_dir.join("report.json"), valid_sensor_report(sensor))
+            .expect("write report");
     }
 
     let config = temp_dir.path().join("cockpit.toml");
@@ -2053,7 +2042,10 @@ fn artifact_path_cli_override_independent() {
         .iter()
         .filter_map(|s| s["id"].as_str())
         .collect();
-    assert!(sensors_a.contains(&"alpha"), "artifacts_a should have alpha");
+    assert!(
+        sensors_a.contains(&"alpha"),
+        "artifacts_a should have alpha"
+    );
     assert!(sensors_b.contains(&"beta"), "artifacts_b should have beta");
 }
 
@@ -2332,11 +2324,7 @@ missing = "fail"
     let artifacts = cwd.join("artifacts");
     let sensor_dir = artifacts.join("linter");
     fs::create_dir_all(&sensor_dir).unwrap();
-    fs::write(
-        sensor_dir.join("report.json"),
-        warn_sensor_report("linter"),
-    )
-    .unwrap();
+    fs::write(sensor_dir.join("report.json"), warn_sensor_report("linter")).unwrap();
 
     // Run with default config → pass (warn_is_fail = false)
     cmd()
