@@ -1,0 +1,33 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "conform-test", "version": "2.0.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": {
+    "status": "fail",
+    "counts": { "info": 0, "warn": 1, "error": 2 },
+    "reasons": ["traversal_attempt", "INVALID TOKEN", "ok_token"]
+  },
+  "findings": [
+    {
+      "severity": "error",
+      "code": "PATH001",
+      "message": "path traversal attempt",
+      "location": { "path": "../../etc/passwd", "line": 1 }
+    },
+    {
+      "severity": "error",
+      "code": "PATH002",
+      "message": "absolute path",
+      "location": { "path": "/usr/bin/bash", "line": 1 }
+    },
+    {
+      "severity": "warn",
+      "code": "ORDER",
+      "message": "this finding should come after the next one alphabetically",
+      "location": { "path": "src/z.rs", "line": 1 }
+    }
+  ],
+  "artifacts": [
+    { "id": "log", "path": "../outside/log.txt", "mime": "text/plain" }
+  ]
+}

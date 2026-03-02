@@ -1,0 +1,16 @@
+[policy]
+warn_is_fail = false
+max_highlights = 0
+max_per_sensor_findings = 0
+max_annotations = 0
+section_order = []
+schema_validation = "strict"
+max_receipt_size_bytes = 1
+
+[sensors.a]
+blocking = false
+missing = "skip"
+
+[sensors.b]
+blocking = true
+missing = "fail"

@@ -1,0 +1,25 @@
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "multiverdict", "version": "1.0.0" },
+  "run": { "started_at": "2026-01-01T00:00:00Z" },
+  "verdict": {
+    "status": "warn",
+    "counts": { "info": 5, "warn": 3, "error": 0, "suppressed": 2 },
+    "reasons": ["coverage_below_threshold", "new_warnings_introduced"]
+  },
+  "findings": [
+    { "severity": "warn", "code": "COV001", "message": "Line coverage dropped from 90% to 85%", "data": { "old": 90.0, "new": 85.0 } },
+    { "severity": "warn", "code": "COV002", "message": "Branch coverage below 80%", "data": { "value": 78.5, "threshold": 80.0 } },
+    { "severity": "warn", "code": "NEW_WARN", "message": "New warning introduced in this PR" },
+    { "severity": "info", "code": "COV_OK", "message": "Function coverage is 95%" },
+    { "severity": "info", "code": "STATS", "message": "Analyzed 1234 files, 56789 lines" },
+    { "severity": "info", "code": "TIME", "message": "Analysis completed in 42.5s" },
+    { "severity": "info", "code": "CACHE", "message": "Cache hit rate: 87%" },
+    { "severity": "info", "code": "DELTA", "message": "+15 lines, -3 lines changed" }
+  ],
+  "artifacts": [
+    { "id": "lcov", "path": "artifacts/coverage/lcov.info", "mime": "text/plain" },
+    { "id": "html", "path": "artifacts/coverage/index.html", "mime": "text/html" },
+    { "id": "json", "path": "artifacts/coverage/coverage.json", "mime": "application/json", "schema": "coverage.report.v1" }
+  ]
+}
