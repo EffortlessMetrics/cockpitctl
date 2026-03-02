@@ -35,6 +35,7 @@ pub use cockpitctl_io_hooks as io_hooks;
 pub use cockpitctl_io_policy_signing as io_policy_signing;
 pub use cockpitctl_io_schema as io_schema;
 pub use cockpitctl_render as render;
+pub use cockpitctl_render_annotations as render_annotations;
 pub use cockpitctl_sarif as sarif;
 pub use cockpitctl_types as types;
 
