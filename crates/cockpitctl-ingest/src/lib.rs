@@ -30,6 +30,21 @@ use cockpitctl_types::{
 };
 
 /// Result of sensor discovery, including any truncation info.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_ingest::DiscoveredSensors;
+///
+/// let discovery = DiscoveredSensors {
+///     sensors: vec!["builddiag".into(), "clippy".into()],
+///     truncated: false,
+///     total_found: 2,
+///     invalid_sensor_ids: vec![],
+/// };
+/// assert_eq!(discovery.sensors.len(), 2);
+/// assert!(!discovery.truncated);
+/// ```
 pub struct DiscoveredSensors {
     /// Discovered sensor IDs (sorted lexically).
     pub sensors: Vec<String>,
@@ -42,6 +57,18 @@ pub struct DiscoveredSensors {
 }
 
 /// Result of reading a sensor report.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_ingest::ReportRead;
+///
+/// let read = ReportRead::Bytes(b"{}".to_vec());
+/// assert!(matches!(read, ReportRead::Bytes(_)));
+///
+/// let missing = ReportRead::Missing;
+/// assert!(matches!(missing, ReportRead::Missing));
+/// ```
 pub enum ReportRead {
     /// No report file found for this sensor.
     Missing,
@@ -124,6 +151,18 @@ pub trait OutputSink {
 }
 
 /// Result of JSON Schema validation.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_ingest::SchemaValidationResult;
+///
+/// let valid = SchemaValidationResult::Valid;
+/// assert!(matches!(valid, SchemaValidationResult::Valid));
+///
+/// let invalid = SchemaValidationResult::Invalid(vec!["missing field".into()]);
+/// assert!(matches!(invalid, SchemaValidationResult::Invalid(_)));
+/// ```
 pub enum SchemaValidationResult {
     /// Receipt conforms to the schema.
     Valid,

@@ -390,6 +390,29 @@ pub fn render_annotations(
 ///
 /// Wraps [`render_annotations`] with a `### Annotations` header. Returns a
 /// self-contained markdown fragment ready to be appended to the comment body.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_render::render_annotations_section;
+/// use cockpitctl_types::{CockpitConfig, Finding, Highlight, Severity};
+/// use std::collections::BTreeMap;
+///
+/// let highlights = vec![Highlight {
+///     sensor_id: "clippy".into(),
+///     finding: Finding {
+///         severity: Severity::Warn, check_id: None,
+///         code: "W001".into(), message: "unused import".into(),
+///         location: None, help: None, url: None, fingerprint: None, data: None,
+///     },
+/// }];
+///
+/// let cfg = CockpitConfig::default();
+/// let blocking = BTreeMap::new();
+/// let section = render_annotations_section(&highlights, &cfg, &blocking);
+/// assert!(section.contains("### Annotations"));
+/// assert!(section.contains("W001"));
+/// ```
 pub fn render_annotations_section(
     highlights: &[Highlight],
     cfg: &CockpitConfig,
@@ -411,6 +434,26 @@ pub fn render_annotations_section(
 ///
 /// Produces a `### Trend` section showing per-sensor count changes and the
 /// overall delta between baseline and current runs.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_render::render_trend_section;
+/// use cockpitctl_types::{CountDeltas, TrendDelta};
+///
+/// let trend = TrendDelta {
+///     verdict_change: None,
+///     count_deltas: CountDeltas { info_delta: 0, warn_delta: 0, error_delta: 2 },
+///     new_findings: vec![],
+///     fixed_findings: vec![],
+///     sensors_added: vec![],
+///     sensors_removed: vec![],
+/// };
+///
+/// let section = render_trend_section(&trend);
+/// assert!(section.contains("### Trend"));
+/// assert!(section.contains("+2"));
+/// ```
 pub fn render_trend_section(trend: &TrendDelta) -> String {
     let mut out = String::new();
     out.push_str("### Trend\n\n");
@@ -536,6 +579,31 @@ fn safety_badge(s: &SafetyLevel) -> &'static str {
 /// Produces a `### Buildfix` section with a table of available fixes, their
 /// safety level, match status, and description. Returns a short notice when
 /// no fixes are available.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_render::render_buildfix_section;
+/// use cockpitctl_types::{BuildfixSummary, FixSummary, SafetyLevel};
+///
+/// let summary = BuildfixSummary {
+///     fixes: vec![FixSummary {
+///         fix_id: "fix-1".into(),
+///         sensor_id: "builddiag".into(),
+///         safety: SafetyLevel::Safe,
+///         description: "Auto-fix warning".into(),
+///         matched_findings: vec![],
+///         unmatched: false,
+///     }],
+///     total_fixes: 1,
+///     matched_count: 1,
+///     unmatched_count: 0,
+/// };
+///
+/// let section = render_buildfix_section(&summary);
+/// assert!(section.contains("### Buildfix"));
+/// assert!(section.contains("fix-1"));
+/// ```
 pub fn render_buildfix_section(summary: &BuildfixSummary) -> String {
     let mut out = String::new();
     out.push_str("### Buildfix\n\n");

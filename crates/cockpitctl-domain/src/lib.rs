@@ -380,6 +380,37 @@ pub fn sort_findings(sensor_id: &str, findings: &mut [Finding]) {
 /// Sensors whose section appears in [`CockpitConfig::policy::section_order`] are ranked
 /// by position; unknown sections sort after all known ones. Within the same section,
 /// sensors are ordered lexically by ID to guarantee deterministic output.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::sort_sensor_summaries;
+/// use cockpitctl_types::*;
+///
+/// let mut summaries = vec![
+///     SensorSummary {
+///         id: "z-sensor".into(), blocking: false, missing: MissingPolicy::Skip,
+///         presence: Presence::Present, report_path: "artifacts/z-sensor/report.json".into(),
+///         comment_path: None, verdict: Verdict { status: VerdictStatus::Pass,
+///         counts: VerdictCounts::default(), reasons: vec![] },
+///         truncated: false, errors: vec![], missing_policy_applied: None,
+///         policy_outcome: Some(PolicyOutcome::Informational),
+///     },
+///     SensorSummary {
+///         id: "a-sensor".into(), blocking: false, missing: MissingPolicy::Skip,
+///         presence: Presence::Present, report_path: "artifacts/a-sensor/report.json".into(),
+///         comment_path: None, verdict: Verdict { status: VerdictStatus::Pass,
+///         counts: VerdictCounts::default(), reasons: vec![] },
+///         truncated: false, errors: vec![], missing_policy_applied: None,
+///         policy_outcome: Some(PolicyOutcome::Informational),
+///     },
+/// ];
+///
+/// let cfg = CockpitConfig::default();
+/// sort_sensor_summaries(&mut summaries, &cfg);
+/// assert_eq!(summaries[0].id, "a-sensor");
+/// assert_eq!(summaries[1].id, "z-sensor");
+/// ```
 pub fn sort_sensor_summaries(summaries: &mut [SensorSummary], cfg: &CockpitConfig) {
     // Order by section order, then by id.
     let mut section_rank = std::collections::BTreeMap::<String, usize>::new();
@@ -412,6 +443,40 @@ pub fn sort_sensor_summaries(summaries: &mut [SensorSummary], cfg: &CockpitConfi
 /// deterministically: severity descending (error first), blocking sensors first,
 /// then by sensor_id / path / line / code. The result is capped at
 /// [`CockpitConfig::policy::max_highlights`].
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::select_highlights;
+/// use cockpitctl_types::*;
+/// use std::collections::BTreeMap;
+///
+/// let candidates = vec![
+///     Highlight {
+///         sensor_id: "s1".into(),
+///         finding: Finding {
+///             severity: Severity::Info, check_id: None,
+///             code: "I1".into(), message: "info".into(),
+///             location: None, help: None, url: None, fingerprint: None, data: None,
+///         },
+///     },
+///     Highlight {
+///         sensor_id: "s1".into(),
+///         finding: Finding {
+///             severity: Severity::Error, check_id: None,
+///             code: "E1".into(), message: "error".into(),
+///             location: None, help: None, url: None, fingerprint: None, data: None,
+///         },
+///     },
+/// ];
+///
+/// let cfg = CockpitConfig::default();
+/// let blocking = BTreeMap::from([("s1".to_string(), true)]);
+/// let selected = select_highlights(candidates, &cfg, &blocking);
+/// // Errors sort before info.
+/// assert_eq!(selected[0].finding.severity, Severity::Error);
+/// assert_eq!(selected[1].finding.severity, Severity::Info);
+/// ```
 pub fn select_highlights(
     mut candidates: Vec<Highlight>,
     cfg: &CockpitConfig,
@@ -590,6 +655,26 @@ pub fn overall_verdict(sensor_summaries: &[SensorSummary], cfg: &CockpitConfig) 
 /// The sensor's [`MissingPolicy`] controls the resulting verdict: `Skip` produces
 /// no highlight, `Warn` emits a warning-level finding, and `Fail` emits an error.
 /// The returned highlight (if any) carries code `cockpit.missing_receipt`.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::synthesize_missing_sensor;
+/// use cockpitctl_types::*;
+///
+/// let policy = SensorPolicy { blocking: true, missing: MissingPolicy::Fail, ..Default::default() };
+/// let (summary, highlight) = synthesize_missing_sensor(
+///     "builddiag", &policy, "artifacts/builddiag/report.json", None,
+/// );
+/// assert_eq!(summary.presence, Presence::Missing);
+/// assert_eq!(summary.verdict.status, VerdictStatus::Fail);
+/// assert!(highlight.is_some());
+///
+/// // Skip produces no highlight.
+/// let skip_policy = SensorPolicy { missing: MissingPolicy::Skip, ..Default::default() };
+/// let (_, highlight) = synthesize_missing_sensor("s", &skip_policy, "path", None);
+/// assert!(highlight.is_none());
+/// ```
 pub fn synthesize_missing_sensor(
     sensor_id: &str,
     policy: &SensorPolicy,
@@ -664,6 +749,22 @@ pub fn synthesize_missing_sensor(
 ///
 /// Always produces a `Fail` verdict with code `cockpit.invalid_receipt`. The raw
 /// parse error is preserved in both the finding message and `SensorSummary::errors`.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::synthesize_invalid_sensor;
+/// use cockpitctl_types::*;
+///
+/// let policy = SensorPolicy::default();
+/// let (summary, highlight) = synthesize_invalid_sensor(
+///     "bad", &policy, "artifacts/bad/report.json", None, "unexpected EOF".into(),
+/// );
+/// assert_eq!(summary.presence, Presence::Invalid);
+/// assert_eq!(summary.verdict.status, VerdictStatus::Fail);
+/// assert!(highlight.is_some());
+/// assert!(summary.errors[0].contains("unexpected EOF"));
+/// ```
 pub fn synthesize_invalid_sensor(
     sensor_id: &str,
     policy: &SensorPolicy,
@@ -792,6 +893,18 @@ pub fn synthesize_schema_violation_sensor(
 /// Emits an error-severity finding with code `cockpit.path_traversal`, attributed
 /// to the `_cockpit` pseudo-sensor. The fingerprint is deterministic:
 /// `cockpit.path_traversal:<sensor_id>:<path>`.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::synthesize_path_traversal_highlight;
+/// use cockpitctl_types::Severity;
+///
+/// let h = synthesize_path_traversal_highlight("../evil", "artifacts/../evil/report.json", None);
+/// assert_eq!(h.sensor_id, "_cockpit");
+/// assert_eq!(h.finding.severity, Severity::Error);
+/// assert!(h.finding.code.contains("path_traversal"));
+/// ```
 pub fn synthesize_path_traversal_highlight(
     sensor_id: &str,
     path: &str,
@@ -921,6 +1034,19 @@ pub fn synthesize_receipt_oversized_sensor(
 /// This is an `Info`-severity finding (not blocking) that alerts when a sensor's
 /// self-reported verdict counts don't match the actual findings array. The
 /// fingerprint encodes all six count values for deterministic deduplication.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::synthesize_receipt_inconsistent;
+/// use cockpitctl_types::{Severity, VerdictCounts};
+///
+/// let reported = VerdictCounts { info: 5, warn: 0, error: 0, suppressed: 0 };
+/// let computed = VerdictCounts { info: 3, warn: 0, error: 0, suppressed: 0 };
+/// let h = synthesize_receipt_inconsistent("sensor-a", &reported, &computed);
+/// assert_eq!(h.finding.severity, Severity::Info);
+/// assert!(h.finding.message.contains("sensor-a"));
+/// ```
 pub fn synthesize_receipt_inconsistent(
     sensor_id: &str,
     reported: &VerdictCounts,
@@ -1008,6 +1134,19 @@ pub fn build_cockpit_report(
 ///
 /// Attributed to the `_cockpit` pseudo-sensor. Serves as a safety-limit notice so
 /// operators know that not all discovered sensors were processed.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_domain::synthesize_sensors_truncated;
+/// use cockpitctl_types::Severity;
+///
+/// let h = synthesize_sensors_truncated(50, 120);
+/// assert_eq!(h.sensor_id, "_cockpit");
+/// assert_eq!(h.finding.severity, Severity::Warn);
+/// assert!(h.finding.message.contains("50"));
+/// assert!(h.finding.message.contains("120"));
+/// ```
 pub fn synthesize_sensors_truncated(processed: usize, total_found: usize) -> Highlight {
     let finding = Finding {
         severity: Severity::Warn,

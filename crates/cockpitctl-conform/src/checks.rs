@@ -168,6 +168,35 @@ pub fn check_ordering(report: &SensorReport, sensor_id: &str) -> Vec<String> {
 }
 
 /// Check that reason tokens in a sensor report match `^[a-z0-9_]+$`.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_conform::check_reason_tokens;
+/// use cockpitctl_types::*;
+/// use std::collections::BTreeMap;
+///
+/// let mut report = SensorReport {
+///     schema: "sensor.report.v1".into(),
+///     tool: ToolInfo { name: "t".into(), version: "1.0.0".into(), commit: None },
+///     run: RunInfo {
+///         started_at: "2026-01-01T00:00:00Z".into(),
+///         ended_at: None, duration_ms: None, host: None,
+///         git: None, ci: None, capabilities: BTreeMap::new(),
+///     },
+///     verdict: Verdict {
+///         status: VerdictStatus::Fail,
+///         counts: VerdictCounts::default(),
+///         reasons: vec!["valid_token".into(), "Bad-Token".into()],
+///     },
+///     findings: vec![],
+///     artifacts: vec![],
+///     data: None,
+/// };
+///
+/// let violations = check_reason_tokens(&report);
+/// assert_eq!(violations.len(), 1); // "Bad-Token" is invalid
+/// ```
 pub fn check_reason_tokens(report: &SensorReport) -> Vec<String> {
     let mut violations = Vec::new();
 
@@ -195,6 +224,36 @@ pub fn check_reason_tokens(report: &SensorReport) -> Vec<String> {
 }
 
 /// Check tool_error identity: require canonical check_id/code when verdict has tool_error reason.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_conform::check_tool_error_identity;
+/// use cockpitctl_types::*;
+/// use std::collections::BTreeMap;
+///
+/// let report = SensorReport {
+///     schema: "sensor.report.v1".into(),
+///     tool: ToolInfo { name: "t".into(), version: "1.0.0".into(), commit: None },
+///     run: RunInfo {
+///         started_at: "2026-01-01T00:00:00Z".into(),
+///         ended_at: None, duration_ms: None, host: None,
+///         git: None, ci: None, capabilities: BTreeMap::new(),
+///     },
+///     verdict: Verdict {
+///         status: VerdictStatus::Fail,
+///         counts: VerdictCounts::default(),
+///         reasons: vec!["tool_error".into()],
+///     },
+///     findings: vec![],
+///     artifacts: vec![],
+///     data: None,
+/// };
+///
+/// // Missing canonical finding triggers a violation.
+/// let violations = check_tool_error_identity(&report);
+/// assert!(!violations.is_empty());
+/// ```
 pub fn check_tool_error_identity(report: &SensorReport) -> Vec<String> {
     let mut violations = Vec::new();
 
@@ -245,6 +304,40 @@ pub fn check_sensor_id_format(sensor_id: &str) -> Vec<String> {
 }
 
 /// Validate artifact pointer fields and path safety.
+///
+/// # Examples
+///
+/// ```
+/// use cockpitctl_conform::check_artifact_pointers;
+/// use cockpitctl_types::*;
+/// use std::collections::BTreeMap;
+///
+/// let report = SensorReport {
+///     schema: "sensor.report.v1".into(),
+///     tool: ToolInfo { name: "t".into(), version: "1.0.0".into(), commit: None },
+///     run: RunInfo {
+///         started_at: "2026-01-01T00:00:00Z".into(),
+///         ended_at: None, duration_ms: None, host: None,
+///         git: None, ci: None, capabilities: BTreeMap::new(),
+///     },
+///     verdict: Verdict {
+///         status: VerdictStatus::Pass,
+///         counts: VerdictCounts::default(),
+///         reasons: vec![],
+///     },
+///     findings: vec![],
+///     artifacts: vec![ArtifactPointer {
+///         id: "cov".into(),
+///         path: "../escape/coverage.xml".into(),
+///         mime: "application/xml".into(),
+///         schema: None,
+///     }],
+///     data: None,
+/// };
+///
+/// let violations = check_artifact_pointers(&report);
+/// assert!(!violations.is_empty()); // path traversal detected
+/// ```
 pub fn check_artifact_pointers(report: &SensorReport) -> Vec<String> {
     let mut violations = Vec::new();
     for (i, artifact) in report.artifacts.iter().enumerate() {
