@@ -31,7 +31,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Packaging hygiene check scripts for CI (`check_state.js`, `check_state.ps1`)
   (PR #50)
 
-#### Testing expansion (2400+ tests across 19 crates)
+#### Testing expansion (2600+ tests across 19 crates)
 
 Unit and integration tests:
 - Comprehensive unit tests across all 19 microcrates (PR #9)
@@ -58,6 +58,10 @@ Unit and integration tests:
 - Cross-crate contract tests — 13 tests (PR #106)
 - Domain trend expansion — 12 tests (PR #107)
 - IO sub-crate tests — 23 tests (PR #108)
+- Trend and feature test expansion — 49 tests (PR #128)
+- Conformance hardening tests — 47 tests (PR #132)
+- Render and SARIF edge case tests — 46 tests (PR #133)
+- IO safety hardening tests — 16 tests (PR #134)
 
 Golden and snapshot tests:
 - Golden/snapshot test expansion: 29 test functions, 34 snapshot files covering
@@ -66,6 +70,7 @@ Golden and snapshot tests:
 - Render golden/snapshot test coverage expansion (PR #66)
 - Snapshot regression tests across 5 crates (domain-signing, domain-buildfix,
   feature-state, feature-grid, IO) — 27 tests (PR #85)
+- Determinism golden expansion — 19 tests (PR #137)
 
 BDD scenarios:
 - Multi-sensor BDD scenarios and CI workflow improvements (PR #53)
@@ -73,6 +78,7 @@ BDD scenarios:
   modes (PR #38)
 - BDD expansion for error handling, safety, and precedence (PR #70)
 - BDD feature-gated scenarios — 8 scenarios, 144 total (PR #95)
+- BDD scenario expansion — 26 new scenarios, 170 total (PR #131)
 
 E2E tests:
 - E2E test expansion: 47 new end-to-end tests covering CLI invocations, config
@@ -87,6 +93,7 @@ E2E tests:
 - CLI help/error E2E tests — 19 tests (PR #94)
 - SARIF advanced output tests — 25 tests (PR #96)
 - Config precedence E2E tests — 13 tests (PR #104)
+- CLI precedence E2E expansion — 56 total, 22 new tests (PR #136)
 
 Fuzz and property-based testing:
 - Fuzz testing expansion: 6 targets covering receipt parsing, policy evaluation,
@@ -101,6 +108,7 @@ Fuzz and property-based testing:
 - Render proptest budget invariants — 10 tests (PR #98)
 - Domain proptest invariants — 17 tests (PR #99)
 - Ingest proptest roundtrips — 12 tests (PR #100)
+- Proptest workspace expansion — 24 tests (PR #138)
 
 Stress and platform tests:
 - Stress and load tests for caps and budgets (PR #67)
@@ -150,6 +158,7 @@ Mutation testing:
 - CI packaging verification for all 19 crates
 - Missing crate metadata (keywords, categories) added to 7 Cargo.toml files
   (PR #125)
+- Release pipeline validation and crate metadata hardening (PR #135)
 
 ### Fixed
 - Feature gating: feature flags now properly propagate from CLI to feature-state crate
@@ -160,6 +169,8 @@ Mutation testing:
   paths normalized for cross-platform CI compatibility (PR #110)
 - Release tier ordering: cockpitctl-io-schema and cockpitctl-io-hooks moved after
   ingest (Tier 5) to fix crates.io publish dependency ordering (PR #125)
+- Domain-signing microcrate tests — 18 tests (PR #111)
+- CHANGELOG wave 29 updates (PR #130)
 
 ## [0.3.0] - 2026-02-17
 
