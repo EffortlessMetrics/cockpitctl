@@ -1,0 +1,3 @@
+sensor/\x00/null
+sensor\tnewsensor
+sensor\nnewline

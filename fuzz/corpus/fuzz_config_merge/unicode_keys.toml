@@ -1,0 +1,11 @@
+[policy]
+warn_is_fail = false
+
+[sensors."a\u0300\u0301"]
+blocking = false
+missing = "skip"
+
+[sensors."sensor-\u200b-zwsp"]
+blocking = true
+missing = "fail"
+section = "Policy"
