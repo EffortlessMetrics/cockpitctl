@@ -21,3 +21,6 @@ cockpitctl-domain = { path = "../cockpitctl-domain", version = "0.3.0" }
 [dev-dependencies]
 proptest = { workspace = true }
 insta = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,23 @@
+schema_version = "1.0"
+
+# Non-Rust programming/config surfaces are policy exceptions to Rust-first
+# implementation. Entries must identify ownership, why Rust/xtask is not the
+# right surface, and what CI command covers the file family.
+
+[[allow]]
+glob = ".github/workflows/*.yml"
+kind = "ci_declarative"
+owner = "release/ci"
+reason = "GitHub Actions workflow definitions are platform-required YAML."
+surface = "ci"
+classification = "config"
+covered_by = ["cargo run -p xtask -- check-lint-policy"]
+
+[[allow]]
+glob = "docs/**"
+kind = "documentation"
+owner = "docs"
+reason = "Project documentation is authored as Markdown."
+surface = "docs"
+classification = "documentation"
+covered_by = ["cargo test --workspace --all-targets"]

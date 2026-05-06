@@ -1,0 +1,5 @@
+# Repo-local Clippy configuration for cockpitctl.
+#
+# Keep test carveouts out of this file. Workspace policy is panic-free for
+# production and test code; temporary exceptions belong in policy/clippy-debt.toml
+# or narrow #[expect(..., reason = "...")] suppressions.
