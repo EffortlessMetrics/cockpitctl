@@ -1,0 +1,22 @@
+schema_version = "0.3"
+
+# Panic-family exceptions use semantic identity:
+# path + family + selector. last_seen is advisory and may drift during refactors.
+#
+# [[allow]]
+# path = "crates/example/tests/parser.rs"
+# family = "unwrap"
+# classification = "test_only"
+# owner = "parser"
+# explanation = "Fixture migration debt; replace with Result-returning helper."
+# expires = "2026-07-01"
+#
+# [allow.selector]
+# kind = "method_call"
+# container = "parses_fixture"
+# callee = "unwrap"
+# receiver_fingerprint = "std::fs::read_to_string(path)"
+#
+# [allow.last_seen]
+# line = 42
+# column = 17

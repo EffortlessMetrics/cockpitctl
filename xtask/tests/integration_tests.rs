@@ -147,6 +147,20 @@ fn fixtures_help_prints_instructions() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// check-lint-policy
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn check_lint_policy_succeeds() {
+    cmd()
+        .current_dir(workspace_root())
+        .arg("check-lint-policy")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("check-lint-policy: PASS"));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // schema-check
 // ─────────────────────────────────────────────────────────────────────────────
 
