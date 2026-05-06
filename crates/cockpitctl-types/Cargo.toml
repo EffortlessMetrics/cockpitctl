@@ -29,3 +29,6 @@ rand.workspace = true
 [[bench]]
 name = "types_benches"
 harness = false
+
+[lints]
+workspace = true

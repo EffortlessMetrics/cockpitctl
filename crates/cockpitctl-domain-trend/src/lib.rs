@@ -45,6 +45,12 @@ fn highlight_to_trend_finding(h: &Highlight) -> TrendFinding {
     }
 }
 
+fn saturating_u64_delta(current: u64, baseline: u64) -> i64 {
+    let current = i64::try_from(current).unwrap_or(i64::MAX);
+    let baseline = i64::try_from(baseline).unwrap_or(i64::MAX);
+    current.saturating_sub(baseline)
+}
+
 /// Compute the trend delta between a baseline and current cockpit report.
 ///
 /// # Examples
@@ -148,9 +154,12 @@ pub fn compute_trend(baseline: &CockpitReport, current: &CockpitReport) -> Trend
 
     // Count deltas.
     let count_deltas = CountDeltas {
-        info_delta: current.verdict.counts.info as i64 - baseline.verdict.counts.info as i64,
-        warn_delta: current.verdict.counts.warn as i64 - baseline.verdict.counts.warn as i64,
-        error_delta: current.verdict.counts.error as i64 - baseline.verdict.counts.error as i64,
+        info_delta: saturating_u64_delta(current.verdict.counts.info, baseline.verdict.counts.info),
+        warn_delta: saturating_u64_delta(current.verdict.counts.warn, baseline.verdict.counts.warn),
+        error_delta: saturating_u64_delta(
+            current.verdict.counts.error,
+            baseline.verdict.counts.error,
+        ),
     };
 
     // Sensors added/removed.

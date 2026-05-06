@@ -140,17 +140,17 @@ fn all_crates_have_edition_2024() {
 }
 
 #[test]
-fn all_crates_have_rust_version_1_92() {
+fn all_crates_have_rust_version_1_93() {
     let root = root_manifest();
     let ws_msrv = root["workspace"]["package"]["rust-version"]
         .as_str()
         .expect("workspace.package.rust-version");
-    assert_eq!(ws_msrv, "1.92");
+    assert_eq!(ws_msrv, "1.93");
 
     for m in all_members() {
         let ok = m.manifest["package"]
             .get("rust-version")
-            .is_some_and(|v| is_workspace_inherited(v) || v.as_str() == Some("1.92"));
+            .is_some_and(|v| is_workspace_inherited(v) || v.as_str() == Some("1.93"));
         assert!(
             ok,
             "{}: rust-version must be workspace-inherited or \"1.92\"",

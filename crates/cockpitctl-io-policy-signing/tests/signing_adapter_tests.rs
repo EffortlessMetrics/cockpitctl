@@ -125,12 +125,20 @@ fn unconfigured_returns_none() {
 #[test]
 fn env_fallback_works_when_path_unset() {
     let _guard = ENV_LOCK.lock().unwrap();
+    #[expect(
+        unsafe_code,
+        reason = "Environment variable access is serialized or isolated at this boundary."
+    )]
     unsafe {
         std::env::set_var("COCKPITCTL_SIGNING_INTEG_TEST", "env-secret\r\n");
     }
     let key = load_policy_signing_key(&cfg_with_env("COCKPITCTL_SIGNING_INTEG_TEST"))
         .unwrap()
         .expect("key present");
+    #[expect(
+        unsafe_code,
+        reason = "Environment variable access is serialized or isolated at this boundary."
+    )]
     unsafe {
         std::env::remove_var("COCKPITCTL_SIGNING_INTEG_TEST");
     }
@@ -166,6 +174,10 @@ fn path_takes_precedence_over_env() {
     let key_path = tmp.path().join("policy.key");
     fs::write(&key_path, b"from-file").unwrap();
 
+    #[expect(
+        unsafe_code,
+        reason = "Environment variable access is serialized or isolated at this boundary."
+    )]
     unsafe {
         std::env::set_var("COCKPITCTL_SIGNING_PREC_TEST", "from-env");
     }
@@ -177,6 +189,10 @@ fn path_takes_precedence_over_env() {
         key_id: None,
     };
     let key = load_policy_signing_key(&cfg).unwrap().expect("key present");
+    #[expect(
+        unsafe_code,
+        reason = "Environment variable access is serialized or isolated at this boundary."
+    )]
     unsafe {
         std::env::remove_var("COCKPITCTL_SIGNING_PREC_TEST");
     }

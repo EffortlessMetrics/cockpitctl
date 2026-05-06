@@ -36,7 +36,10 @@ fn receipt_with_findings(findings: &[serde_json::Value]) -> String {
 }
 
 /// Build a minimal valid receipt JSON.
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "Security fixture helper is retained for targeted receipt cases."
+)]
 fn minimal_receipt() -> String {
     receipt_with_findings(&[])
 }

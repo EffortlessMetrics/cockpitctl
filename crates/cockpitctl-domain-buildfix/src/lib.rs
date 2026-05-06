@@ -122,7 +122,7 @@ pub fn match_buildfix_plan(
 
     let total_fixes = fixes.len();
     let unmatched_count = fixes.iter().filter(|f| f.unmatched).count();
-    let matched_count = total_fixes - unmatched_count;
+    let matched_count = total_fixes.saturating_sub(unmatched_count);
 
     BuildfixSummary {
         fixes,
@@ -245,8 +245,8 @@ mod tests {
     ) -> FindingRef {
         FindingRef {
             sensor_id: sensor_id.to_string(),
-            fingerprint: fingerprint.map(|s| s.to_string()),
-            code: code.map(|s| s.to_string()),
+            fingerprint: fingerprint.map(std::string::ToString::to_string),
+            code: code.map(std::string::ToString::to_string),
             tool: None,
             check_id: None,
         }

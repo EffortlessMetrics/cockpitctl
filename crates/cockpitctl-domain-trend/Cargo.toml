@@ -19,3 +19,6 @@ cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 insta = { workspace = true }
 pretty_assertions.workspace = true
 proptest.workspace = true
+
+[lints]
+workspace = true

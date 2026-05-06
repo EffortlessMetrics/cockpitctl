@@ -394,7 +394,7 @@ fn cmd_ingest(opts: IngestOptions) -> Result<i32> {
     let tool = ToolInfo {
         name: "cockpitctl".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
-        commit: option_env!("GIT_SHA").map(|s| s.to_string()),
+        commit: option_env!("GIT_SHA").map(std::string::ToString::to_string),
     };
 
     let run = RunInfo {
@@ -1144,11 +1144,19 @@ mod tests {
     #[test]
     fn now_rfc3339_prefers_env_var() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
             std::env::remove_var("SOURCE_DATE_EPOCH");
         }
         let got = now_rfc3339();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
         }
@@ -1158,11 +1166,19 @@ mod tests {
     #[test]
     fn now_rfc3339_uses_source_date_epoch() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
             std::env::set_var("SOURCE_DATE_EPOCH", "0");
         }
         let got = now_rfc3339();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("SOURCE_DATE_EPOCH");
         }
@@ -1172,11 +1188,19 @@ mod tests {
     #[test]
     fn now_rfc3339_falls_back_on_invalid_epoch() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
             std::env::set_var("SOURCE_DATE_EPOCH", "not-a-number");
         }
         let got = now_rfc3339();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("SOURCE_DATE_EPOCH");
         }
@@ -1271,6 +1295,10 @@ mod tests {
     #[test]
     fn run_dispatches_init_validate_and_ingest() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
         }
@@ -1323,6 +1351,10 @@ mod tests {
         .expect("run ingest");
         assert_eq!(code, 0);
 
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
         }
@@ -1331,6 +1363,10 @@ mod tests {
     #[test]
     fn cmd_ingest_lax_writes_outputs() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
         }
@@ -1345,6 +1381,10 @@ mod tests {
         assert!(out_dir.join("report.json").exists());
         assert!(out_dir.join("comment.md").exists());
 
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
         }
@@ -1354,6 +1394,10 @@ mod tests {
     #[cfg(feature = "feature-hooks")]
     fn cmd_ingest_appends_hook_sections_to_comment() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
         }
@@ -1381,6 +1425,10 @@ mod tests {
         let end_idx = comment.find("<!-- cockpit:end -->").expect("end marker");
         assert!(hook_idx < end_idx);
 
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
         }
@@ -1390,6 +1438,10 @@ mod tests {
     #[cfg(feature = "feature-buildfix")]
     fn cmd_ingest_buildfix_auto_apply_writes_apply_evidence() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
         }
@@ -1429,6 +1481,10 @@ mod tests {
         assert_eq!(apply["auto_apply_enabled"], true);
         assert_eq!(apply["selected_fix_ids"][0], "fix_safe");
 
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
         }
@@ -1438,6 +1494,10 @@ mod tests {
     #[cfg(feature = "feature-policy-signing")]
     fn cmd_ingest_policy_signing_writes_signature_evidence() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
         }
@@ -1487,6 +1547,10 @@ mod tests {
             .expect("read rendered comment");
         assert!(comment.contains("### Policy Signature"));
 
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
         }
@@ -1496,6 +1560,10 @@ mod tests {
     #[cfg(feature = "feature-policy-signing")]
     fn cmd_ingest_policy_signing_enabled_without_key_errors() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
         }
@@ -1509,6 +1577,10 @@ mod tests {
             .expect_err("expected signing key error");
         assert!(format!("{:#}", err).contains("policy signing enabled but no key configured"));
 
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
         }
@@ -1517,6 +1589,10 @@ mod tests {
     #[test]
     fn cmd_ingest_lax_propagates_ingest_error() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
         }
@@ -1530,6 +1606,10 @@ mod tests {
             .expect_err("expected ingest error");
         assert!(format!("{:#}", err).contains("ingest"));
 
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
         }
@@ -1538,6 +1618,10 @@ mod tests {
     #[test]
     fn cmd_ingest_strict_propagates_ingest_error() {
         let _guard = ENV_LOCK.lock().unwrap();
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_STARTED_AT", "2026-02-01T00:00:00Z");
         }
@@ -1552,6 +1636,10 @@ mod tests {
         let err = cmd_ingest(opts).expect_err("expected ingest error");
         assert!(format!("{:#}", err).contains("ingest"));
 
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_STARTED_AT");
         }

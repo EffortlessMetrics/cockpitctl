@@ -31,3 +31,6 @@ serde_json.workspace = true
 [[bench]]
 name = "domain_benches"
 harness = false
+
+[lints]
+workspace = true

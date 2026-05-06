@@ -140,7 +140,10 @@ impl SchemaValidator for ExplodingValidator {
 
 enum FixedValidation {
     Valid,
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "Edge-case validator keeps invalid branch for table-driven tests."
+    )]
     Invalid(Vec<String>),
 }
 

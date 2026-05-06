@@ -14,7 +14,10 @@ use cockpitctl_feature_state::{Feature, RuntimeFeatureState};
 /// Render a human-readable grid showing compile-time availability and
 /// runtime presence for a given set of CLI args.
 fn render_grid(cli_args: &[&str]) -> String {
-    let args_owned: Vec<String> = cli_args.iter().map(|s| s.to_string()).collect();
+    let args_owned: Vec<String> = cli_args
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
     let mut lines = Vec::new();
 
     lines.push(format!("cli_args: {cli_args:?}"));
