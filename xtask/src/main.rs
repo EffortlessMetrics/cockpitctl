@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use cockpitctl_conform::ConformChecks;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 #[command(name = "xtask")]
@@ -45,6 +45,12 @@ enum Commands {
 
     /// Copy cockpit.toml.example → crates/cockpitctl-cli/cockpit.toml.example.
     ExampleSyncFix,
+
+    /// Check workspace Clippy policy manifests, ledgers, and debt metadata.
+    CheckLintPolicy,
+
+    /// Print a concise policy summary for lint governance.
+    PolicyReport,
 
     /// Conformance harness: validate sensor receipts against the protocol.
     Conform {
@@ -178,6 +184,10 @@ fn run(cli: Cli) -> Result<()> {
         Commands::SchemaSyncFix => schema_sync_fix(),
         Commands::ExampleSyncCheck => example_sync_check(),
         Commands::ExampleSyncFix => example_sync_fix(),
+        Commands::CheckLintPolicy => check_lint_policy().map(|report| {
+            eprintln!("{}", report.summary());
+        }),
+        Commands::PolicyReport => policy_report(),
         Commands::Conform {
             report,
             golden,
@@ -232,6 +242,327 @@ fn run(cli: Cli) -> Result<()> {
             presence_semantics || all,
         ),
     }
+}
+
+#[derive(Debug)]
+struct LintPolicyReport {
+    active_lints: usize,
+    planned_lints: usize,
+    debt_entries: usize,
+}
+
+impl LintPolicyReport {
+    fn summary(&self) -> String {
+        format!(
+            "check-lint-policy: PASS ({} active lints, {} planned lints, {} debt entries)",
+            self.active_lints, self.planned_lints, self.debt_entries
+        )
+    }
+}
+
+fn policy_report() -> Result<()> {
+    let report = check_lint_policy()?;
+    println!("lint policy: pass");
+    println!("active lints: {}", report.active_lints);
+    println!("planned lints: {}", report.planned_lints);
+    println!("debt entries: {}", report.debt_entries);
+    Ok(())
+}
+
+fn check_lint_policy() -> Result<LintPolicyReport> {
+    let root_manifest = read_toml(Path::new("Cargo.toml"))?;
+    let policy = read_toml(Path::new("policy/clippy-lints.toml"))?;
+    let debt = read_toml(Path::new("policy/clippy-debt.toml"))?;
+
+    let workspace = table(&root_manifest, "workspace")?;
+    let workspace_package = nested_table(workspace, "package")?;
+    let workspace_msrv = required_str(workspace_package, "rust-version", "workspace.package")?;
+    let policy_msrv = required_str(root_table(&policy)?, "msrv", "policy/clippy-lints.toml")?;
+    if workspace_msrv != policy_msrv {
+        anyhow::bail!(
+            "workspace.package.rust-version ({workspace_msrv}) must match policy/clippy-lints.toml msrv ({policy_msrv})"
+        );
+    }
+
+    let policy_table = table(&policy, "policy")?;
+    require_bool(policy_table, "panic_free_tests", true)?;
+    require_bool(policy_table, "allow_test_carveouts", false)?;
+    require_str_value(policy_table, "suppression_style", "expect-with-reason")?;
+    require_bool(policy_table, "blanket_categories", false)?;
+
+    check_clippy_toml()?;
+    let root_lints = collect_workspace_lints(&root_manifest)?;
+    let (active_lints, planned_lints) = check_lint_ledger(&policy, &root_lints, workspace_msrv)?;
+    check_workspace_members_inherit_lints(workspace)?;
+    let debt_entries = check_debt(&debt)?;
+
+    Ok(LintPolicyReport {
+        active_lints,
+        planned_lints,
+        debt_entries,
+    })
+}
+
+fn read_toml(path: &Path) -> Result<toml::Value> {
+    let content = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    toml::from_str(&content).with_context(|| format!("parse TOML {}", path.display()))
+}
+
+fn root_table(value: &toml::Value) -> Result<&toml::map::Map<String, toml::Value>> {
+    value
+        .as_table()
+        .ok_or_else(|| anyhow::anyhow!("TOML root must be a table"))
+}
+
+fn table<'a>(
+    value: &'a toml::Value,
+    name: &str,
+) -> Result<&'a toml::map::Map<String, toml::Value>> {
+    root_table(value)?
+        .get(name)
+        .and_then(toml::Value::as_table)
+        .ok_or_else(|| anyhow::anyhow!("missing [{name}] table"))
+}
+
+fn nested_table<'a>(
+    table: &'a toml::map::Map<String, toml::Value>,
+    name: &str,
+) -> Result<&'a toml::map::Map<String, toml::Value>> {
+    table
+        .get(name)
+        .and_then(toml::Value::as_table)
+        .ok_or_else(|| anyhow::anyhow!("missing nested [{name}] table"))
+}
+
+fn required_str<'a>(
+    table: &'a toml::map::Map<String, toml::Value>,
+    key: &str,
+    context: &str,
+) -> Result<&'a str> {
+    table
+        .get(key)
+        .and_then(toml::Value::as_str)
+        .ok_or_else(|| anyhow::anyhow!("missing string `{key}` in {context}"))
+}
+
+fn require_str_value(
+    table: &toml::map::Map<String, toml::Value>,
+    key: &str,
+    expected: &str,
+) -> Result<()> {
+    let actual = required_str(table, key, "[policy]")?;
+    if actual != expected {
+        anyhow::bail!("[policy].{key} must be {expected:?}, got {actual:?}");
+    }
+    Ok(())
+}
+
+fn require_bool(
+    table: &toml::map::Map<String, toml::Value>,
+    key: &str,
+    expected: bool,
+) -> Result<()> {
+    let actual = table
+        .get(key)
+        .and_then(toml::Value::as_bool)
+        .ok_or_else(|| anyhow::anyhow!("missing boolean [policy].{key}"))?;
+    if actual != expected {
+        anyhow::bail!("[policy].{key} must be {expected}, got {actual}");
+    }
+    Ok(())
+}
+
+fn collect_workspace_lints(
+    root_manifest: &toml::Value,
+) -> Result<std::collections::BTreeMap<String, String>> {
+    let mut lints = std::collections::BTreeMap::new();
+    let workspace_lints = table(root_manifest, "workspace")?
+        .get("lints")
+        .and_then(toml::Value::as_table)
+        .ok_or_else(|| anyhow::anyhow!("missing [workspace.lints] table"))?;
+
+    if let Some(rust) = workspace_lints.get("rust").and_then(toml::Value::as_table) {
+        for (name, value) in rust {
+            lints.insert(name.clone(), lint_level(value, name)?);
+        }
+    }
+
+    if let Some(clippy) = workspace_lints
+        .get("clippy")
+        .and_then(toml::Value::as_table)
+    {
+        for (name, value) in clippy {
+            lints.insert(format!("clippy::{name}"), lint_level(value, name)?);
+        }
+    }
+
+    Ok(lints)
+}
+
+fn lint_level(value: &toml::Value, name: &str) -> Result<String> {
+    if let Some(level) = value.as_str() {
+        return Ok(level.to_owned());
+    }
+    value
+        .as_table()
+        .and_then(|table| table.get("level"))
+        .and_then(toml::Value::as_str)
+        .map(ToOwned::to_owned)
+        .ok_or_else(|| anyhow::anyhow!("workspace lint `{name}` must be a string or contain level"))
+}
+
+fn check_lint_ledger(
+    policy: &toml::Value,
+    root_lints: &std::collections::BTreeMap<String, String>,
+    workspace_msrv: &str,
+) -> Result<(usize, usize)> {
+    let lint_entries = root_table(policy)?
+        .get("lint")
+        .and_then(toml::Value::as_array)
+        .ok_or_else(|| anyhow::anyhow!("policy/clippy-lints.toml must contain [[lint]] entries"))?;
+    let mut active = 0;
+    let mut planned = 0;
+
+    for entry in lint_entries {
+        let entry = entry
+            .as_table()
+            .ok_or_else(|| anyhow::anyhow!("each [[lint]] entry must be a table"))?;
+        let name = required_str(entry, "name", "[[lint]]")?;
+        let level = required_str(entry, "level", "[[lint]]")?;
+        let status = required_str(entry, "status", "[[lint]]")?;
+        let reason = required_str(entry, "reason", "[[lint]]")?;
+        if reason.trim().is_empty() {
+            anyhow::bail!("lint {name} must include a non-empty reason");
+        }
+
+        match status {
+            "active" => {
+                active += 1;
+                let root_level = root_lints.get(name).ok_or_else(|| {
+                    anyhow::anyhow!("active lint {name} is missing from root Cargo.toml")
+                })?;
+                if root_level != level {
+                    anyhow::bail!(
+                        "active lint {name} has level {level} in policy but {root_level} in root Cargo.toml"
+                    );
+                }
+            }
+            "planned" => {
+                planned += 1;
+                let activate_when = required_str(entry, "activate_when_msrv", "planned [[lint]]")?;
+                if workspace_msrv < activate_when && root_lints.contains_key(name) {
+                    anyhow::bail!(
+                        "planned lint {name} must not be active before MSRV {activate_when} (current {workspace_msrv})"
+                    );
+                }
+            }
+            other => anyhow::bail!("lint {name} has unsupported status {other:?}"),
+        }
+    }
+
+    if active == 0 {
+        anyhow::bail!("policy/clippy-lints.toml must contain active lints");
+    }
+    if planned == 0 {
+        anyhow::bail!("policy/clippy-lints.toml must contain planned upgrade lints");
+    }
+
+    Ok((active, planned))
+}
+
+fn check_workspace_members_inherit_lints(
+    workspace: &toml::map::Map<String, toml::Value>,
+) -> Result<()> {
+    let members = workspace
+        .get("members")
+        .and_then(toml::Value::as_array)
+        .ok_or_else(|| anyhow::anyhow!("workspace.members must be an array"))?;
+
+    let mut missing = Vec::new();
+    for member in members {
+        let member = member
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("workspace member entries must be strings"))?;
+        let manifest_path = Path::new(member).join("Cargo.toml");
+        let manifest = read_toml(&manifest_path)?;
+        let inherits = table(&manifest, "lints")?
+            .get("workspace")
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false);
+        if !inherits {
+            missing.push(manifest_path.display().to_string());
+        }
+    }
+
+    if !missing.is_empty() {
+        anyhow::bail!(
+            "workspace members must inherit [lints] workspace = true: {}",
+            missing.join(", ")
+        );
+    }
+    Ok(())
+}
+
+fn check_clippy_toml() -> Result<()> {
+    let path = Path::new("clippy.toml");
+    if !path.exists() {
+        anyhow::bail!("missing clippy.toml");
+    }
+    let content = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    let banned = [
+        "allow-unwrap-in-tests",
+        "allow-expect-in-tests",
+        "allow-panic-in-tests",
+        "allow-indexing-slicing-in-tests",
+        "allow-dbg-in-tests",
+    ];
+    for key in banned {
+        if content
+            .lines()
+            .any(|line| line.trim_start().starts_with(key))
+        {
+            anyhow::bail!("clippy.toml must not set test carveout `{key}`");
+        }
+    }
+    Ok(())
+}
+
+fn check_debt(debt: &toml::Value) -> Result<usize> {
+    let schema = root_table(debt)?
+        .get("schema")
+        .and_then(toml::Value::as_integer)
+        .ok_or_else(|| anyhow::anyhow!("policy/clippy-debt.toml must declare integer schema"))?;
+    if schema != 1 {
+        anyhow::bail!("policy/clippy-debt.toml schema must be 1, got {schema}");
+    }
+
+    let entries = match root_table(debt)?.get("debt") {
+        Some(value) => value
+            .as_array()
+            .ok_or_else(|| anyhow::anyhow!("[[debt]] entries must be tables"))?,
+        None => return Ok(0),
+    };
+
+    for entry in entries {
+        let entry = entry
+            .as_table()
+            .ok_or_else(|| anyhow::anyhow!("each [[debt]] entry must be a table"))?;
+        for key in ["lint", "path", "owner", "reason", "expires"] {
+            let value = required_str(entry, key, "[[debt]]")?;
+            if value.trim().is_empty() {
+                anyhow::bail!("debt entry field `{key}` must not be empty");
+            }
+        }
+        let expires = required_str(entry, "expires", "[[debt]]")?;
+        if expires <= "2026-05-06" {
+            anyhow::bail!(
+                "debt entry for {} expired on {expires}",
+                required_str(entry, "lint", "[[debt]]")?
+            );
+        }
+    }
+
+    Ok(entries.len())
 }
 
 fn schema_sync_check() -> Result<()> {

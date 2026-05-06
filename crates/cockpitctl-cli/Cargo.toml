@@ -75,3 +75,6 @@ toml.workspace = true
 [[test]]
 name = "bdd"
 harness = false
+
+[lints]
+workspace = true

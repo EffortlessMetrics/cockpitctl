@@ -21,3 +21,6 @@ default = ["feature-hooks", "feature-buildfix", "feature-policy-signing"]
 feature-hooks = []
 feature-buildfix = []
 feature-policy-signing = []
+
+[lints]
+workspace = true

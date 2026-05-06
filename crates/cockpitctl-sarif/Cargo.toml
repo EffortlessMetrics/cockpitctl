@@ -27,3 +27,6 @@ rand.workspace = true
 [[bench]]
 name = "sarif_benches"
 harness = false
+
+[lints]
+workspace = true

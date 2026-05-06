@@ -29,5 +29,5 @@ insta.workspace = true
 name = "conform_benches"
 harness = false
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }
+[lints]
+workspace = true
