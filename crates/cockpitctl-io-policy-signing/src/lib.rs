@@ -78,6 +78,10 @@ mod tests {
     #[test]
     fn load_policy_signing_key_reads_env_when_path_unset() {
         let _guard = ENV_LOCK.lock().expect("env lock");
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_POLICY_KEY_TEST", "env-secret\r\n");
         }
@@ -91,6 +95,10 @@ mod tests {
         let key = load_policy_signing_key(&cfg)
             .expect("load key")
             .expect("key present");
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_POLICY_KEY_TEST");
         }
@@ -129,6 +137,10 @@ mod tests {
         let key_path = temp.path().join("policy.key");
         fs::write(&key_path, b"from-file").expect("write key");
 
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_POLICY_KEY_PREC_TEST", "from-env");
         }
@@ -142,6 +154,10 @@ mod tests {
         let key = load_policy_signing_key(&cfg)
             .expect("load key")
             .expect("key present");
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_POLICY_KEY_PREC_TEST");
         }
@@ -302,6 +318,10 @@ mod tests {
     #[test]
     fn load_key_from_env_only_newlines_is_empty() {
         let _guard = ENV_LOCK.lock().expect("env lock");
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::set_var("COCKPITCTL_POLICY_KEY_EMPTY_TEST", "\n\n");
         }
@@ -313,6 +333,10 @@ mod tests {
             key_id: None,
         };
         let err = load_policy_signing_key(&cfg).expect_err("expected empty key error");
+        #[expect(
+            unsafe_code,
+            reason = "Environment variable access is serialized or isolated at this boundary."
+        )]
         unsafe {
             std::env::remove_var("COCKPITCTL_POLICY_KEY_EMPTY_TEST");
         }

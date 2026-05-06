@@ -25,7 +25,6 @@ pub struct IngestWorld {
     /// Workspace root path.
     workspace: PathBuf,
     /// Temporary directory for this scenario.
-    #[allow(dead_code)]
     temp_dir: Option<TempDir>,
     /// Path to the copied fixture.
     fixture_path: Option<PathBuf>,

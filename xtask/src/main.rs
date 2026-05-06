@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use cockpitctl_conform::ConformChecks;
+use std::collections::BTreeSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 #[command(name = "xtask")]
@@ -45,6 +46,9 @@ enum Commands {
 
     /// Copy cockpit.toml.example → crates/cockpitctl-cli/cockpit.toml.example.
     ExampleSyncFix,
+
+    /// Verify workspace lint policy, inheritance, debt, and suppression shape.
+    CheckLintPolicy,
 
     /// Conformance harness: validate sensor receipts against the protocol.
     Conform {
@@ -162,8 +166,11 @@ fn main_entry(cli: Cli) -> i32 {
 }
 
 #[cfg(not(coverage))]
-fn main() {
-    std::process::exit(main_entry(Cli::parse()));
+fn main() -> std::process::ExitCode {
+    match main_entry(Cli::parse()) {
+        0 => std::process::ExitCode::SUCCESS,
+        _ => std::process::ExitCode::FAILURE,
+    }
 }
 
 #[cfg(coverage)]
@@ -178,6 +185,7 @@ fn run(cli: Cli) -> Result<()> {
         Commands::SchemaSyncFix => schema_sync_fix(),
         Commands::ExampleSyncCheck => example_sync_check(),
         Commands::ExampleSyncFix => example_sync_fix(),
+        Commands::CheckLintPolicy => check_lint_policy(),
         Commands::Conform {
             report,
             golden,
@@ -231,6 +239,342 @@ fn run(cli: Cli) -> Result<()> {
             allow_missing_report,
             presence_semantics || all,
         ),
+    }
+}
+
+fn check_lint_policy() -> Result<()> {
+    let cargo_toml = read_toml(Path::new("Cargo.toml"))?;
+    let policy_toml = read_toml(Path::new("policy/clippy-lints.toml"))?;
+
+    let cargo_msrv = required_str(
+        &cargo_toml,
+        &["workspace", "package", "rust-version"],
+        "workspace.package.rust-version",
+    )?;
+    let policy_msrv = required_str(&policy_toml, &["msrv"], "policy msrv")?;
+    ensure_equal(
+        cargo_msrv,
+        policy_msrv,
+        "workspace MSRV must match policy/clippy-lints.toml msrv",
+    )?;
+
+    let active_lints = active_policy_lints(&policy_toml)?;
+    let manifest_lints = manifest_workspace_lints(&cargo_toml)?;
+    ensure_equal_sets(
+        &manifest_lints,
+        &active_lints,
+        "active lints in policy/clippy-lints.toml must match root Cargo.toml workspace lints",
+    )?;
+
+    ensure_workspace_members_inherit_lints(&cargo_toml)?;
+    ensure_no_test_carveouts(Path::new("clippy.toml"))?;
+    ensure_planned_lints_not_active_early(&policy_toml, &manifest_lints, cargo_msrv)?;
+    ensure_debt_entries(Path::new("policy/clippy-debt.toml"))?;
+    ensure_source_suppressions()?;
+
+    eprintln!("check-lint-policy: PASS");
+    Ok(())
+}
+
+fn read_toml(path: &Path) -> Result<toml::Value> {
+    let text = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    toml::from_str::<toml::Value>(&text).with_context(|| format!("parse TOML {}", path.display()))
+}
+
+fn required_str<'a>(value: &'a toml::Value, path: &[&str], label: &str) -> Result<&'a str> {
+    let mut current = value;
+    for segment in path {
+        current = current
+            .get(*segment)
+            .with_context(|| format!("missing {label}"))?;
+    }
+    current
+        .as_str()
+        .with_context(|| format!("{label} must be a string"))
+}
+
+fn ensure_equal(left: &str, right: &str, message: &str) -> Result<()> {
+    if left == right {
+        Ok(())
+    } else {
+        anyhow::bail!("{message}: `{left}` != `{right}`")
+    }
+}
+
+fn lint_level(value: &toml::Value) -> Result<&str> {
+    if let Some(level) = value.as_str() {
+        Ok(level)
+    } else {
+        value
+            .get("level")
+            .and_then(toml::Value::as_str)
+            .context("lint level must be a string or { level = ... }")
+    }
+}
+
+fn manifest_workspace_lints(cargo_toml: &toml::Value) -> Result<BTreeSet<String>> {
+    let mut lints = BTreeSet::new();
+    let workspace_lints = cargo_toml
+        .get("workspace")
+        .and_then(|v| v.get("lints"))
+        .and_then(toml::Value::as_table)
+        .context("missing [workspace.lints]")?;
+
+    for (tool, values) in workspace_lints {
+        let table = values
+            .as_table()
+            .with_context(|| format!("[workspace.lints.{tool}] must be a table"))?;
+        for (name, level_value) in table {
+            let level = lint_level(level_value)?;
+            lints.insert(format!("{tool}::{name}={level}"));
+        }
+    }
+
+    Ok(lints)
+}
+
+fn active_policy_lints(policy_toml: &toml::Value) -> Result<BTreeSet<String>> {
+    let mut lints = BTreeSet::new();
+    let entries = policy_toml
+        .get("lint")
+        .and_then(toml::Value::as_array)
+        .context("policy/clippy-lints.toml must contain [[lint]] entries")?;
+
+    for entry in entries {
+        let status = required_str(entry, &["status"], "lint status")?;
+        if status != "active" {
+            continue;
+        }
+        let name = required_str(entry, &["name"], "lint name")?;
+        let level = required_str(entry, &["level"], "lint level")?;
+        for required in ["class", "reason"] {
+            let field = required_str(entry, &[required], required)?;
+            if field.trim().is_empty() {
+                anyhow::bail!("active lint {name} has empty {required}");
+            }
+        }
+        lints.insert(format!("{name}={level}"));
+    }
+
+    Ok(lints)
+}
+
+fn ensure_equal_sets(
+    left: &BTreeSet<String>,
+    right: &BTreeSet<String>,
+    message: &str,
+) -> Result<()> {
+    let missing: Vec<_> = left.difference(right).cloned().collect();
+    let extra: Vec<_> = right.difference(left).cloned().collect();
+    if missing.is_empty() && extra.is_empty() {
+        return Ok(());
+    }
+
+    if !missing.is_empty() {
+        eprintln!("  in Cargo.toml but not active policy ledger:");
+        for item in &missing {
+            eprintln!("    - {item}");
+        }
+    }
+    if !extra.is_empty() {
+        eprintln!("  in active policy ledger but not Cargo.toml:");
+        for item in &extra {
+            eprintln!("    - {item}");
+        }
+    }
+    anyhow::bail!("{message}")
+}
+
+fn ensure_workspace_members_inherit_lints(cargo_toml: &toml::Value) -> Result<()> {
+    let members = cargo_toml
+        .get("workspace")
+        .and_then(|v| v.get("members"))
+        .and_then(toml::Value::as_array)
+        .context("workspace.members must be an array")?;
+
+    for member in members {
+        let member = member
+            .as_str()
+            .context("workspace member entries must be strings")?;
+        let manifest_path = Path::new(member).join("Cargo.toml");
+        let manifest = read_toml(&manifest_path)?;
+        let inherits = manifest
+            .get("lints")
+            .and_then(|v| v.get("workspace"))
+            .and_then(toml::Value::as_bool)
+            .unwrap_or(false);
+        if !inherits {
+            anyhow::bail!(
+                "{} must contain [lints] workspace = true",
+                manifest_path.display()
+            );
+        }
+    }
+
+    Ok(())
+}
+
+fn ensure_no_test_carveouts(path: &Path) -> Result<()> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let text = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    let banned = [
+        "allow-unwrap-in-tests",
+        "allow-expect-in-tests",
+        "allow-panic-in-tests",
+        "allow-indexing-slicing-in-tests",
+        "allow-dbg-in-tests",
+    ];
+    for carveout in banned {
+        if text.contains(carveout) {
+            anyhow::bail!(
+                "{} contains forbidden test carveout `{carveout}`",
+                path.display()
+            );
+        }
+    }
+    Ok(())
+}
+
+fn ensure_planned_lints_not_active_early(
+    policy_toml: &toml::Value,
+    manifest_lints: &BTreeSet<String>,
+    cargo_msrv: &str,
+) -> Result<()> {
+    let Some(planned) = policy_toml.get("planned").and_then(toml::Value::as_array) else {
+        anyhow::bail!("policy/clippy-lints.toml must contain [[planned]] upgrade entries");
+    };
+
+    for entry in planned {
+        let name = required_str(entry, &["name"], "planned lint name")?;
+        let level = required_str(entry, &["level"], "planned lint level")?;
+        let activate_when_msrv = required_str(
+            entry,
+            &["activate_when_msrv"],
+            "planned lint activate_when_msrv",
+        )?;
+        let reason = required_str(entry, &["reason"], "planned lint reason")?;
+        if reason.trim().is_empty() {
+            anyhow::bail!("planned lint {name} must have a reason");
+        }
+        if compare_versions(cargo_msrv, activate_when_msrv) < 0
+            && manifest_lints.contains(&format!("{name}={level}"))
+        {
+            anyhow::bail!(
+                "planned lint {name} is active before MSRV {activate_when_msrv}; current MSRV is {cargo_msrv}"
+            );
+        }
+    }
+
+    Ok(())
+}
+
+fn compare_versions(left: &str, right: &str) -> i8 {
+    let parse = |version: &str| -> Vec<u64> {
+        version
+            .split('.')
+            .map(|part| part.parse::<u64>().unwrap_or_default())
+            .collect()
+    };
+    let left_parts = parse(left);
+    let right_parts = parse(right);
+    for index in 0..left_parts.len().max(right_parts.len()) {
+        let left_part = left_parts.get(index).copied().unwrap_or_default();
+        let right_part = right_parts.get(index).copied().unwrap_or_default();
+        if left_part < right_part {
+            return -1;
+        }
+        if left_part > right_part {
+            return 1;
+        }
+    }
+    0
+}
+
+fn ensure_debt_entries(path: &Path) -> Result<()> {
+    if !path.exists() {
+        anyhow::bail!("missing {}", path.display());
+    }
+    let debt_toml = read_toml(path)?;
+    let Some(entries) = debt_toml.get("debt").and_then(toml::Value::as_array) else {
+        return Ok(());
+    };
+    for entry in entries {
+        for required in ["lint", "path", "owner", "reason", "expires"] {
+            let field = required_str(entry, &[required], required)?;
+            if field.trim().is_empty() {
+                anyhow::bail!("debt entry has empty {required}");
+            }
+        }
+        let expires = required_str(entry, &["expires"], "debt expires")?;
+        if expires <= "2026-05-06" {
+            anyhow::bail!(
+                "debt entry for {} expired on {expires}",
+                required_str(entry, &["lint"], "debt lint")?
+            );
+        }
+    }
+    Ok(())
+}
+
+fn ensure_source_suppressions() -> Result<()> {
+    let mut violations = Vec::new();
+    for entry in walkdir::WalkDir::new(".")
+        .into_iter()
+        .filter_map(Result::ok)
+    {
+        let path = entry.path();
+        if !entry.file_type().is_file() || path.extension().and_then(|e| e.to_str()) != Some("rs") {
+            continue;
+        }
+        if path.components().any(|c| c.as_os_str() == "target") {
+            continue;
+        }
+        let text = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+        let allow_marker = ["#[", "al", "low"].concat();
+        let expect_marker = ["#[", "ex", "pect"].concat();
+        let lines: Vec<_> = text.lines().collect();
+        let mut index = 0;
+        while index < lines.len() {
+            let line = lines[index];
+            if line.contains(&allow_marker) {
+                violations.push(format!(
+                    "{}:{} uses {allow_marker}; use {expect_marker}(..., reason = ...)] or policy debt",
+                    path.display(),
+                    index + 1
+                ));
+            }
+            if line.contains(&expect_marker) {
+                let mut attribute = String::from(line);
+                let mut lookahead = index;
+                while !attribute.contains(']') && lookahead + 1 < lines.len() {
+                    lookahead += 1;
+                    attribute.push_str(lines[lookahead]);
+                }
+                if !attribute.contains("reason") {
+                    violations.push(format!(
+                        "{}:{} uses {expect_marker} without a reason",
+                        path.display(),
+                        index + 1
+                    ));
+                }
+                index = lookahead;
+            }
+            index += 1;
+        }
+    }
+
+    if violations.is_empty() {
+        Ok(())
+    } else {
+        for violation in &violations {
+            eprintln!("  FAIL: {violation}");
+        }
+        anyhow::bail!(
+            "source suppression policy failed with {} violation(s)",
+            violations.len()
+        )
     }
 }
 
@@ -408,7 +752,10 @@ fn print_conform_result(result: &cockpitctl_conform::ConformResult, checks: &Con
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "CLI and test helpers mirror stable input surfaces."
+)]
 fn conform(
     report: PathBuf,
     golden: Option<PathBuf>,

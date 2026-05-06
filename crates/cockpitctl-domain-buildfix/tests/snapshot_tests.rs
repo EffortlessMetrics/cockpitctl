@@ -34,8 +34,8 @@ fn make_fix(id: &str, safety: SafetyLevel, refs: Vec<FindingRef>) -> Fix {
 fn make_finding_ref(sensor_id: &str, fingerprint: Option<&str>, code: Option<&str>) -> FindingRef {
     FindingRef {
         sensor_id: sensor_id.to_string(),
-        fingerprint: fingerprint.map(|s| s.to_string()),
-        code: code.map(|s| s.to_string()),
+        fingerprint: fingerprint.map(std::string::ToString::to_string),
+        code: code.map(std::string::ToString::to_string),
         tool: None,
         check_id: None,
     }

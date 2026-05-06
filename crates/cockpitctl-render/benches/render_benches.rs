@@ -169,7 +169,10 @@ fn generate_report(
         "Diagnostics",
         "Other",
     ];
-    let section_order: Vec<String> = sections.iter().map(|s| s.to_string()).collect();
+    let section_order: Vec<String> = sections
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
 
     // Generate config
     let mut sensors_map = BTreeMap::new();

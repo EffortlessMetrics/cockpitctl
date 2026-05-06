@@ -189,7 +189,10 @@ fn run(cli: Cli) -> Result<()> {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "CLI and test helpers mirror stable input surfaces."
+)]
 fn check(
     report: PathBuf,
     golden: Option<PathBuf>,

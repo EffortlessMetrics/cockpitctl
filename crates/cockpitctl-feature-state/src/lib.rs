@@ -501,7 +501,10 @@ mod tests {
     #[test]
     fn feature_clone_and_eq() {
         let a = Feature::Hooks;
-        #[allow(clippy::clone_on_copy)]
+        #[expect(
+            clippy::clone_on_copy,
+            reason = "This test documents clone behavior for a Copy type."
+        )]
         let b = a.clone();
         assert_eq!(a, b);
         assert_ne!(Feature::Hooks, Feature::Buildfix);
@@ -516,7 +519,10 @@ mod tests {
     #[test]
     fn runtime_state_clone_and_eq() {
         let a = RuntimeFeatureState::new(true, false, true);
-        #[allow(clippy::clone_on_copy)]
+        #[expect(
+            clippy::clone_on_copy,
+            reason = "This test documents clone behavior for a Copy type."
+        )]
         let b = a.clone();
         assert_eq!(a, b);
 

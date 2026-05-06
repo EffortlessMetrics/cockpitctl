@@ -53,7 +53,10 @@ fn base_report() -> CockpitReport {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "CLI and test helpers mirror stable input surfaces."
+)]
 fn make_highlight(
     sensor_id: &str,
     severity: Severity,

@@ -1,0 +1,5 @@
+schema_version = "1.0"
+
+# Non-Rust programming/config exceptions are intentionally empty for this PR.
+# Entries must use path or glob plus kind, owner, reason, surface,
+# classification, covered_by, and optional expires.

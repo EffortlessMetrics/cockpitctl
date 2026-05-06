@@ -157,10 +157,18 @@ fn binary_key_content_preserved_exactly() {
 #[test]
 fn env_key_with_only_whitespace_newlines_is_empty_error() {
     let _guard = ENV_LOCK.lock().unwrap();
+    #[expect(
+        unsafe_code,
+        reason = "Environment variable access is serialized or isolated at this boundary."
+    )]
     unsafe {
         std::env::set_var("COCKPITCTL_INTEG_EMPTY_KEY", "\r\n\n\r");
     }
     let err = load_policy_signing_key(&cfg_with_env("COCKPITCTL_INTEG_EMPTY_KEY")).unwrap_err();
+    #[expect(
+        unsafe_code,
+        reason = "Environment variable access is serialized or isolated at this boundary."
+    )]
     unsafe {
         std::env::remove_var("COCKPITCTL_INTEG_EMPTY_KEY");
     }
@@ -188,6 +196,10 @@ fn file_path_takes_precedence_over_env_var() {
     let key_path = tmp.path().join("file.key");
     fs::write(&key_path, b"file-key").unwrap();
 
+    #[expect(
+        unsafe_code,
+        reason = "Environment variable access is serialized or isolated at this boundary."
+    )]
     unsafe {
         std::env::set_var("COCKPITCTL_INTEG_PREC_KEY", "env-key");
     }
@@ -199,6 +211,10 @@ fn file_path_takes_precedence_over_env_var() {
         key_id: None,
     };
     let key = load_policy_signing_key(&cfg).unwrap().expect("key present");
+    #[expect(
+        unsafe_code,
+        reason = "Environment variable access is serialized or isolated at this boundary."
+    )]
     unsafe {
         std::env::remove_var("COCKPITCTL_INTEG_PREC_KEY");
     }

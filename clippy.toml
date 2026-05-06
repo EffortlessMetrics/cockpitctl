@@ -1,0 +1,3 @@
+# Repo-local Clippy policy hooks live here (for example disallowed-methods,
+# disallowed-types, or disallowed-macros). Test carveouts are intentionally not
+# configured: cockpitctl is panic-free across production and tests.

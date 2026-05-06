@@ -1,0 +1,4 @@
+schema = 1
+
+# Temporary lint exceptions belong here once a rollout needs local debt.
+# Each entry must include lint, path, owner, reason, and expires.

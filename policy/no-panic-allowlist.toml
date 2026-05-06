@@ -1,0 +1,5 @@
+schema_version = "0.3"
+
+# Panic-family exceptions are intentionally empty. If an exception is ever
+# required, identify it by path + family + selector and include owner,
+# classification, explanation, optional expires, and advisory last_seen.

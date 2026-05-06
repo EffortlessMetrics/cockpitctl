@@ -101,11 +101,7 @@ fn grid_covers_all_features_exactly_twice() {
             .iter()
             .filter(|c| c.feature == *f)
             .count();
-        assert_eq!(
-            count, 2,
-            "feature {:?} appears {} times, expected 2",
-            f, count
-        );
+        assert_eq!(count, 2, "feature {f:?} appears {count} times, expected 2");
     }
 }
 
@@ -141,8 +137,8 @@ fn grid_absent_rows_carry_correct_disable_flag() {
                 case.feature
             );
             assert_eq!(
-                case.args[0],
-                case.feature.disable_flag(),
+                case.args.first(),
+                Some(&case.feature.disable_flag()),
                 "Absent case arg should be the feature's disable flag"
             );
         }
@@ -162,8 +158,7 @@ fn runtime_present_all_disabled() {
     for f in Feature::all() {
         assert!(
             !feature_runtime_present(*f, &all_flags),
-            "{:?} should be disabled when all flags passed",
-            f
+            "{f:?} should be disabled when all flags passed"
         );
     }
 }
@@ -175,7 +170,11 @@ fn runtime_present_all_disabled() {
 #[test]
 fn matches_row_aliases_expected_present() {
     for case in FEATURE_TOGGLE_GRID {
-        let args: Vec<String> = case.args.iter().map(|s| s.to_string()).collect();
+        let args: Vec<String> = case
+            .args
+            .iter()
+            .map(std::string::ToString::to_string)
+            .collect();
         assert_eq!(
             case.expected_present(&args),
             case.matches_row(&args),
@@ -207,7 +206,11 @@ fn case_new_round_trips_all_fields() {
 fn grid_absent_rows_self_consistent() {
     for case in FEATURE_TOGGLE_GRID {
         if case.expected == FeatureGridState::Absent {
-            let args: Vec<String> = case.args.iter().map(|s| s.to_string()).collect();
+            let args: Vec<String> = case
+                .args
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect();
             assert!(
                 case.expected_present(&args),
                 "Absent case for {:?} should be self-consistent",
