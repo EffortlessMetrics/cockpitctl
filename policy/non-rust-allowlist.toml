@@ -1,0 +1,57 @@
+schema_version = "1.0"
+
+[[allow]]
+glob = ".github/workflows/*.yml"
+kind = "ci_declarative"
+owner = "release/ci"
+reason = "GitHub Actions workflow definitions are platform-required YAML."
+surface = "ci"
+classification = "config"
+covered_by = [
+  "cargo run -p xtask -- check-file-policy",
+]
+
+[[allow]]
+glob = ".github/*.md"
+kind = "github_template"
+owner = "release/ci"
+reason = "GitHub repository metadata and review templates are Markdown by platform convention."
+surface = "repo_metadata"
+classification = "config"
+covered_by = [
+  "cargo run -p xtask -- check-file-policy",
+]
+
+[[allow]]
+glob = "docs/**/*.md"
+kind = "documentation"
+owner = "docs"
+reason = "Human documentation is intentionally authored as Markdown."
+surface = "docs"
+classification = "documentation"
+covered_by = [
+  "cargo run -p xtask -- check-file-policy",
+]
+
+[[allow]]
+glob = "fixtures/**"
+kind = "fixture_input"
+owner = "conformance"
+reason = "Fixture workspaces intentionally contain analyzed receipt and config files."
+surface = "fixtures"
+classification = "test"
+covered_by = [
+  "cargo run -p xtask -- conform-dir --dir fixtures/happy_path/artifacts --all --validate-cockpit",
+  "cargo run -p xtask -- conform-dir --dir fixtures/reference_sensor/artifacts --all --validate-cockpit",
+]
+
+[[allow]]
+path = "codecov.yml"
+kind = "ci_coverage_policy"
+owner = "release/ci"
+reason = "Codecov status and reporting configuration."
+surface = "ci"
+classification = "config"
+covered_by = [
+  "cargo run -p xtask -- check-file-policy",
+]

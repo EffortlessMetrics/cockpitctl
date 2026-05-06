@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use cockpitctl_conform::ConformChecks;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 #[command(name = "xtask")]
@@ -143,6 +143,18 @@ enum Commands {
         #[arg(long)]
         allow_missing_report: bool,
     },
+
+    /// Verify the governed Clippy lint ledger and Cargo lint block.
+    CheckLintPolicy,
+
+    /// Verify structured non-Rust file policy allowlist metadata.
+    CheckFilePolicy,
+
+    /// Verify structured panic-family allowlist metadata.
+    CheckNoPanicFamily,
+
+    /// Print a combined policy summary for lint and allowlist ledgers.
+    PolicyReport,
 }
 
 const SCHEMA_FILES: &[&str] = &[
@@ -231,7 +243,302 @@ fn run(cli: Cli) -> Result<()> {
             allow_missing_report,
             presence_semantics || all,
         ),
+        Commands::CheckLintPolicy => check_lint_policy(),
+        Commands::CheckFilePolicy => check_file_policy(),
+        Commands::CheckNoPanicFamily => check_no_panic_family(),
+        Commands::PolicyReport => policy_report(),
     }
+}
+
+const POLICY_TODAY: &str = "2026-05-06";
+const TEST_CARVEOUTS: &[&str] = &[
+    "allow-unwrap-in-tests",
+    "allow-expect-in-tests",
+    "allow-panic-in-tests",
+    "allow-indexing-slicing-in-tests",
+    "allow-dbg-in-tests",
+];
+
+fn read_toml_value(path: &Path) -> Result<toml::Value> {
+    let text = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    toml::from_str::<toml::Value>(&text).with_context(|| format!("parse TOML {}", path.display()))
+}
+
+fn table_at<'a>(
+    value: &'a toml::Value,
+    key: &str,
+    path: &Path,
+) -> Result<&'a toml::map::Map<String, toml::Value>> {
+    value
+        .get(key)
+        .and_then(toml::Value::as_table)
+        .with_context(|| format!("{} missing [{key}] table", path.display()))
+}
+
+fn string_field<'a>(
+    table: &'a toml::map::Map<String, toml::Value>,
+    key: &str,
+    context: &str,
+) -> Result<&'a str> {
+    table
+        .get(key)
+        .and_then(toml::Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .with_context(|| format!("{context} missing non-empty `{key}`"))
+}
+
+fn array_field<'a>(
+    table: &'a toml::map::Map<String, toml::Value>,
+    key: &str,
+    context: &str,
+) -> Result<&'a Vec<toml::Value>> {
+    table
+        .get(key)
+        .and_then(toml::Value::as_array)
+        .with_context(|| format!("{context} missing `{key}` array"))
+}
+
+fn date_not_expired(date: &str, context: &str) -> Result<()> {
+    if date <= POLICY_TODAY {
+        anyhow::bail!("{context} expired on {date}");
+    }
+    Ok(())
+}
+
+fn normalize_lint_name(name: &str) -> (&str, &str) {
+    name.split_once("::").unwrap_or(("clippy", name))
+}
+
+fn cargo_lint_level(root: &toml::Value, lint_name: &str) -> Option<String> {
+    let (tool, name) = normalize_lint_name(lint_name);
+    let table = root.get("workspace")?.get("lints")?.get(tool)?.as_table()?;
+    let value = table.get(name)?;
+    value.as_str().map(str::to_string).or_else(|| {
+        value
+            .as_table()
+            .and_then(|t| t.get("level"))
+            .and_then(toml::Value::as_str)
+            .map(str::to_string)
+    })
+}
+
+fn check_lint_policy() -> Result<()> {
+    let cargo_path = Path::new("Cargo.toml");
+    let policy_path = Path::new("policy/clippy-lints.toml");
+    let debt_path = Path::new("policy/clippy-debt.toml");
+    let clippy_path = Path::new("clippy.toml");
+
+    let cargo = read_toml_value(cargo_path)?;
+    let policy = read_toml_value(policy_path)?;
+
+    let workspace_package = cargo
+        .get("workspace")
+        .and_then(|v| v.get("package"))
+        .and_then(toml::Value::as_table)
+        .context("Cargo.toml missing [workspace.package]")?;
+    let cargo_msrv = string_field(workspace_package, "rust-version", "[workspace.package]")?;
+    let policy_msrv = policy
+        .get("msrv")
+        .and_then(toml::Value::as_str)
+        .context("policy/clippy-lints.toml missing `msrv`")?;
+    if cargo_msrv != policy_msrv {
+        anyhow::bail!(
+            "workspace rust-version {cargo_msrv} does not match policy msrv {policy_msrv}"
+        );
+    }
+
+    let policy_table = table_at(&policy, "policy", policy_path)?;
+    if policy_table
+        .get("panic_free_tests")
+        .and_then(toml::Value::as_bool)
+        != Some(true)
+    {
+        anyhow::bail!("policy.panic_free_tests must be true");
+    }
+    if policy_table
+        .get("allow_test_carveouts")
+        .and_then(toml::Value::as_bool)
+        != Some(false)
+    {
+        anyhow::bail!("policy.allow_test_carveouts must be false");
+    }
+    if string_field(policy_table, "suppression_style", "[policy]")? != "expect-with-reason" {
+        anyhow::bail!("policy.suppression_style must be expect-with-reason");
+    }
+
+    let active = policy
+        .get("lint")
+        .and_then(toml::Value::as_array)
+        .context("policy/clippy-lints.toml must contain [[lint]] entries")?;
+    let mut active_count = 0usize;
+    for (idx, lint) in active.iter().enumerate() {
+        let table = lint
+            .as_table()
+            .with_context(|| format!("[[lint]] #{idx} is not a table"))?;
+        let context = format!("[[lint]] #{idx}");
+        let name = string_field(table, "name", &context)?;
+        let level = string_field(table, "level", &context)?;
+        if string_field(table, "status", &context)? != "active" {
+            anyhow::bail!("{context} must have status = \"active\"");
+        }
+        string_field(table, "class", &context)?;
+        string_field(table, "reason", &context)?;
+        match cargo_lint_level(&cargo, name) {
+            Some(cargo_level) if cargo_level == level => active_count += 1,
+            Some(cargo_level) => {
+                anyhow::bail!("{name} level mismatch: policy={level}, Cargo.toml={cargo_level}")
+            }
+            None => anyhow::bail!("{name} is active in policy but missing from Cargo.toml"),
+        }
+    }
+
+    let planned = policy
+        .get("planned")
+        .and_then(toml::Value::as_array)
+        .context("policy/clippy-lints.toml must contain [[planned]] entries")?;
+    for (idx, lint) in planned.iter().enumerate() {
+        let table = lint
+            .as_table()
+            .with_context(|| format!("[[planned]] #{idx} is not a table"))?;
+        let context = format!("[[planned]] #{idx}");
+        let name = string_field(table, "name", &context)?;
+        string_field(table, "level", &context)?;
+        let activate = string_field(table, "activate_when_msrv", &context)?;
+        string_field(table, "reason", &context)?;
+        if cargo_msrv < activate && cargo_lint_level(&cargo, name).is_some() {
+            anyhow::bail!(
+                "{name} is planned for MSRV {activate} but is already active at {cargo_msrv}"
+            );
+        }
+    }
+
+    if clippy_path.exists() {
+        let clippy = read_toml_value(clippy_path)?;
+        if let Some(table) = clippy.as_table() {
+            for carveout in TEST_CARVEOUTS {
+                if table.contains_key(*carveout) {
+                    anyhow::bail!("clippy.toml contains forbidden test carveout `{carveout}`");
+                }
+            }
+        }
+    }
+
+    let debt = read_toml_value(debt_path)?;
+    let debt_entries = debt
+        .get("debt")
+        .and_then(toml::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    for (idx, entry) in debt_entries.iter().enumerate() {
+        let table = entry
+            .as_table()
+            .with_context(|| format!("[[debt]] #{idx} is not a table"))?;
+        let context = format!("[[debt]] #{idx}");
+        string_field(table, "lint", &context)?;
+        string_field(table, "path", &context)?;
+        string_field(table, "owner", &context)?;
+        string_field(table, "reason", &context)?;
+        let expires = string_field(table, "expires", &context)?;
+        date_not_expired(expires, &context)?;
+    }
+
+    eprintln!(
+        "check-lint-policy: PASS ({active_count} active lints, {} planned flips, {} debt entries)",
+        planned.len(),
+        debt_entries.len()
+    );
+    Ok(())
+}
+
+fn check_file_policy() -> Result<()> {
+    let path = Path::new("policy/non-rust-allowlist.toml");
+    let policy = read_toml_value(path)?;
+    string_field(
+        policy
+            .as_table()
+            .context("policy/non-rust-allowlist.toml root is not a table")?,
+        "schema_version",
+        "policy/non-rust-allowlist.toml",
+    )?;
+    let entries = policy
+        .get("allow")
+        .and_then(toml::Value::as_array)
+        .context("policy/non-rust-allowlist.toml must contain [[allow]] entries")?;
+
+    for (idx, entry) in entries.iter().enumerate() {
+        let table = entry
+            .as_table()
+            .with_context(|| format!("[[allow]] #{idx} is not a table"))?;
+        let context = format!("policy/non-rust-allowlist.toml [[allow]] #{idx}");
+        let has_path = table.get("path").and_then(toml::Value::as_str).is_some();
+        let has_glob = table.get("glob").and_then(toml::Value::as_str).is_some();
+        if has_path == has_glob {
+            anyhow::bail!("{context} must set exactly one of `path` or `glob`");
+        }
+        for field in ["kind", "owner", "reason", "surface", "classification"] {
+            string_field(table, field, &context)?;
+        }
+        let covered_by = array_field(table, "covered_by", &context)?;
+        if covered_by.is_empty() || !covered_by.iter().all(|v| v.as_str().is_some()) {
+            anyhow::bail!("{context} covered_by must contain at least one command string");
+        }
+        if let Some(expires) = table.get("expires").and_then(toml::Value::as_str) {
+            date_not_expired(expires, &context)?;
+        }
+    }
+
+    eprintln!(
+        "check-file-policy: PASS ({} allowlist entries)",
+        entries.len()
+    );
+    Ok(())
+}
+
+fn check_no_panic_family() -> Result<()> {
+    let path = Path::new("policy/no-panic-allowlist.toml");
+    let policy = read_toml_value(path)?;
+    string_field(
+        policy
+            .as_table()
+            .context("policy/no-panic-allowlist.toml root is not a table")?,
+        "schema_version",
+        "policy/no-panic-allowlist.toml",
+    )?;
+    let entries = policy
+        .get("allow")
+        .and_then(toml::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    for (idx, entry) in entries.iter().enumerate() {
+        let table = entry
+            .as_table()
+            .with_context(|| format!("[[allow]] #{idx} is not a table"))?;
+        let context = format!("policy/no-panic-allowlist.toml [[allow]] #{idx}");
+        for field in ["path", "family", "classification", "owner", "explanation"] {
+            string_field(table, field, &context)?;
+        }
+        table
+            .get("selector")
+            .and_then(toml::Value::as_table)
+            .with_context(|| format!("{context} missing [allow.selector]"))?;
+        if let Some(expires) = table.get("expires").and_then(toml::Value::as_str) {
+            date_not_expired(expires, &context)?;
+        }
+    }
+
+    eprintln!(
+        "check-no-panic-family: PASS ({} allowlist entries)",
+        entries.len()
+    );
+    Ok(())
+}
+
+fn policy_report() -> Result<()> {
+    check_lint_policy()?;
+    check_file_policy()?;
+    check_no_panic_family()?;
+    eprintln!("policy-report: PASS");
+    Ok(())
 }
 
 fn schema_sync_check() -> Result<()> {
