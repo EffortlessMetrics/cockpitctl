@@ -22,13 +22,14 @@ cockpitctl-conform = { path = "../crates/cockpitctl-conform" }
 cockpitctl-types = { path = "../crates/cockpitctl-types" }
 jsonschema.workspace = true
 serde_json.workspace = true
+time.workspace = true
+toml.workspace = true
 walkdir.workspace = true
 
 [dev-dependencies]
 assert_cmd.workspace = true
 predicates.workspace = true
 tempfile.workspace = true
-toml.workspace = true
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }

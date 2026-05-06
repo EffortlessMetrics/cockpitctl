@@ -7,6 +7,7 @@ Internal workspace task runner for cockpitctl maintenance workflows.
 - Conformance harness utilities.
 - Fixture generation and refresh workflows.
 - Example file synchronization.
+- Lint policy ledger and debt hygiene checks.
 
 ## Commands
 
@@ -21,6 +22,7 @@ Internal workspace task runner for cockpitctl maintenance workflows.
 | `conform` | Conformance harness: validate sensor receipts against the protocol |
 | `conform-dir` | Validate every sensor receipt in an `artifacts/` directory at once |
 | `fixtures-help` | Print instructions for regenerating golden fixtures |
+| `check-lint-policy` | Validate Clippy policy ledgers, workspace lint metadata, and debt hygiene |
 
 ## Usage
 
@@ -30,6 +32,7 @@ cargo run -p xtask -- validate-schemas
 cargo run -p xtask -- conform --report report.json --all --sensor-id builddiag
 cargo run -p xtask -- conform-dir --dir artifacts --all --validate-cockpit
 cargo run -p xtask -- fixtures-help
+cargo run -p xtask -- check-lint-policy
 ```
 
 This crate is `publish = false` and is intended for repository maintenance only.

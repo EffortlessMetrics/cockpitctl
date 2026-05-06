@@ -1,0 +1,8 @@
+# Repo-local Clippy policy overlay.
+#
+# Keep shared lint levels in Cargo.toml and policy/clippy-lints.toml. This file is
+# reserved for repo-specific disallowed methods/types/macros once cockpitctl has a
+# concrete boundary that should be enforced by Clippy.
+#
+# Do not add test carveouts such as allow-unwrap-in-tests, allow-expect-in-tests,
+# allow-panic-in-tests, allow-indexing-slicing-in-tests, or allow-dbg-in-tests.

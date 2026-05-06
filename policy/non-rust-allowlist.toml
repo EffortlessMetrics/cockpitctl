@@ -1,0 +1,35 @@
+schema_version = "1.0"
+
+[[allow]]
+glob = ".github/workflows/*.yml"
+kind = "ci_declarative"
+owner = "release/ci"
+reason = "GitHub Actions workflow definitions are platform-required YAML."
+surface = "ci"
+classification = "config"
+covered_by = [
+  "cargo run -p xtask -- check-lint-policy",
+]
+
+[[allow]]
+glob = "contracts/schemas/*.json"
+kind = "schema_contract"
+owner = "schema/contracts"
+reason = "Published receipt schemas are JSON Schema contract artifacts."
+surface = "contracts"
+classification = "production"
+covered_by = [
+  "cargo run -p xtask -- validate-schemas",
+  "cargo run -p xtask -- schema-sync-check",
+]
+
+[[allow]]
+glob = "fixtures/**"
+kind = "fixture_input"
+owner = "fixture-contracts"
+reason = "Fixture workspaces intentionally contain receipt inputs and golden outputs."
+surface = "fixtures"
+classification = "test"
+covered_by = [
+  "cargo test -p cockpitctl --test ingest_golden",
+]
