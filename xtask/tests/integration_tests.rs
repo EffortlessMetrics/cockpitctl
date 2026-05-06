@@ -438,3 +438,47 @@ fn conform_dir_missing_required_dir_arg_fails() {
         .failure()
         .stderr(predicate::str::contains("--dir"));
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// policy checks
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn check_lint_policy_succeeds() {
+    cmd()
+        .current_dir(workspace_root())
+        .arg("check-lint-policy")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("check-lint-policy: PASS"));
+}
+
+#[test]
+fn check_file_policy_succeeds() {
+    cmd()
+        .current_dir(workspace_root())
+        .arg("check-file-policy")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("check-file-policy: PASS"));
+}
+
+#[test]
+fn check_no_panic_family_succeeds() {
+    cmd()
+        .current_dir(workspace_root())
+        .arg("check-no-panic-family")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("check-no-panic-family: PASS"));
+}
+
+#[test]
+fn policy_report_succeeds() {
+    cmd()
+        .current_dir(workspace_root())
+        .arg("policy-report")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("policy-report: PASS"));
+}

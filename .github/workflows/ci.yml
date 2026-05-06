@@ -47,6 +47,15 @@ jobs:
       - name: Example sync check
         run: cargo run -p xtask -- example-sync-check
 
+      - name: Lint policy check
+        run: cargo run -p xtask -- check-lint-policy
+
+      - name: File policy check
+        run: cargo run -p xtask -- check-file-policy
+
+      - name: No-panic allowlist policy check
+        run: cargo run -p xtask -- check-no-panic-family
+
       - name: Package list (all publishable crates)
         run: |
           cargo package --list \

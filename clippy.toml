@@ -1,0 +1,5 @@
+# Repository-specific Clippy policy hooks.
+#
+# Keep this file for disallowed methods/types/macros and similar repo-local
+# additions. Do not add test carveouts; cockpitctl's policy is workspace
+# panic-free, including tests.
