@@ -8,23 +8,22 @@ The smoke test validates three key components:
 
 1. **conformctl binary** - Downloads and runs against a sample receipt
 2. **cockpitctl binary** - Downloads and runs `ingest` on test artifacts
-3. **Composite action** - Validates the GitHub Action works with pinned tag inputs
+3. **Composite action** - Prints a pinned-tag workflow snippet for manual validation
 
 ## Prerequisites
 
 - `curl` or `wget` for downloading binaries
-- `jq` for JSON validation (optional but recommended)
-- `gh` CLI for composite action testing (optional)
+- GitHub access for optional manual composite action testing
 
 ## Automated Smoke Test Script
 
-The easiest way to validate a release is using the provided smoke test script:
+The easiest way to validate a release is using the Rust xtask smoke test:
 
 ```bash
 # Test a specific tag
-./scripts/smoke-test-release.sh v0.3.0
+cargo run -p xtask -- smoke-test-release v0.3.0
 
-# The script will:
+# The xtask command will:
 # 1. Detect your platform
 # 2. Download conformctl and cockpitctl binaries
 # 3. Run functional tests on both binaries
