@@ -12,19 +12,20 @@ The smoke test validates three key components:
 
 ## Prerequisites
 
-- `curl` or `wget` for downloading binaries
-- `jq` for JSON validation (optional but recommended)
+- Rust/Cargo to run the repository `xtask` binary
+- `curl` for downloading binaries
+- `jq` for the optional manual JSON validation steps
 - `gh` CLI for composite action testing (optional)
 
-## Automated Smoke Test Script
+## Automated Smoke Test Task
 
-The easiest way to validate a release is using the provided smoke test script:
+The easiest way to validate a release is using the Rust xtask smoke test:
 
 ```bash
 # Test a specific tag
-./scripts/smoke-test-release.sh v0.3.0
+cargo run -p xtask -- smoke-test-release v0.3.0
 
-# The script will:
+# The task will:
 # 1. Detect your platform
 # 2. Download conformctl and cockpitctl binaries
 # 3. Run functional tests on both binaries
