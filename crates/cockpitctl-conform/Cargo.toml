@@ -11,6 +11,7 @@ description = "Conformance checks for sensor.report.v1 and cockpit.report.v1 rec
 readme = "README.md"
 keywords = ["ci", "conformance", "schema", "receipts", "validation"]
 categories = ["development-tools"]
+exclude = ["tests/"]
 
 [dependencies]
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }

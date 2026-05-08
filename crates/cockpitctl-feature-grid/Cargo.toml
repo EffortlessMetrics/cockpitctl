@@ -11,6 +11,7 @@ description = "Shared BDD feature-toggle grid and runtime state helpers."
 readme = "README.md"
 keywords = ["ci", "feature-flags", "bdd", "interop", "ingest"]
 categories = ["development-tools"]
+exclude = ["tests/"]
 
 [dependencies]
 cockpitctl-feature-state = { path = "../cockpitctl-feature-state", version = "0.3.0", default-features = false }

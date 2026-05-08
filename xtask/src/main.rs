@@ -2,7 +2,11 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use cockpitctl_conform::ConformChecks;
 use std::fs;
-use std::path::PathBuf;
+use std::io::Write;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Parser, Debug)]
 #[command(name = "xtask")]
@@ -45,6 +49,25 @@ enum Commands {
 
     /// Copy cockpit.toml.example → crates/cockpitctl-cli/cockpit.toml.example.
     ExampleSyncFix,
+
+    /// Verify publishable crates ship no junk files and have required metadata.
+    CheckPackaging,
+
+    /// Simulate a full crates.io publish in dependency order.
+    ReleaseDryRun,
+
+    /// Validate a published GitHub release by downloading and exercising binaries.
+    SmokeTestRelease {
+        /// Release tag to test (with or without a leading v).
+        tag: String,
+    },
+
+    /// Verify cockpitctl builds across supported feature combinations.
+    FeatureMatrixCheck {
+        /// Only check no-features, each isolated feature, and defaults.
+        #[arg(long)]
+        quick: bool,
+    },
 
     /// Conformance harness: validate sensor receipts against the protocol.
     Conform {
@@ -178,6 +201,10 @@ fn run(cli: Cli) -> Result<()> {
         Commands::SchemaSyncFix => schema_sync_fix(),
         Commands::ExampleSyncCheck => example_sync_check(),
         Commands::ExampleSyncFix => example_sync_fix(),
+        Commands::CheckPackaging => check_packaging(),
+        Commands::ReleaseDryRun => release_dry_run(),
+        Commands::SmokeTestRelease { tag } => smoke_test_release(tag),
+        Commands::FeatureMatrixCheck { quick } => feature_matrix_check(quick),
         Commands::Conform {
             report,
             golden,
@@ -233,6 +260,610 @@ fn run(cli: Cli) -> Result<()> {
         ),
     }
 }
+
+const PUBLISHABLE_CRATES: &[&str] = &[
+    "cockpitctl",
+    "cockpitctl-types",
+    "cockpitctl-domain",
+    "cockpitctl-domain-buildfix",
+    "cockpitctl-domain-signing",
+    "cockpitctl-domain-trend",
+    "cockpitctl-feature-grid",
+    "cockpitctl-feature-state",
+    "cockpitctl-ingest",
+    "cockpitctl-io",
+    "cockpitctl-io-buildfix",
+    "cockpitctl-io-hooks",
+    "cockpitctl-io-policy-signing",
+    "cockpitctl-io-schema",
+    "cockpitctl-render",
+    "cockpitctl-sarif",
+    "cockpitctl-conform",
+    "cockpitctl-core",
+    "conformctl",
+];
+
+const RELEASE_CRATES: &[&str] = &[
+    "cockpitctl-types",
+    "cockpitctl-feature-state",
+    "cockpitctl-conform",
+    "cockpitctl-domain-buildfix",
+    "cockpitctl-domain-signing",
+    "cockpitctl-domain-trend",
+    "cockpitctl-feature-grid",
+    "cockpitctl-io-schema",
+    "cockpitctl-domain",
+    "cockpitctl-io-buildfix",
+    "cockpitctl-io-hooks",
+    "cockpitctl-io-policy-signing",
+    "cockpitctl-render",
+    "cockpitctl-ingest",
+    "cockpitctl-io",
+    "cockpitctl-sarif",
+    "cockpitctl-core",
+    "cockpitctl",
+    "conformctl",
+];
+
+const JUNK_PATTERNS: &[&str] = &["fixtures/", "docs/", ".snap", ".snap.new"];
+const RELEASE_JUNK_PATTERNS: &[&str] = &[
+    "fixtures/",
+    "docs/",
+    ".snap",
+    ".snap.new",
+    "target/",
+    ".github/",
+];
+const MAX_CRATE_SIZE_BYTES: u64 = 10 * 1024 * 1024;
+
+fn command_output(program: &str, args: &[&str]) -> Result<std::process::Output> {
+    Command::new(program)
+        .args(args)
+        .output()
+        .with_context(|| format!("run `{}`", shellish_command(program, args)))
+}
+
+fn run_status(program: &str, args: &[&str]) -> Result<bool> {
+    let status = Command::new(program)
+        .args(args)
+        .status()
+        .with_context(|| format!("run `{}`", shellish_command(program, args)))?;
+    Ok(status.success())
+}
+
+fn shellish_command(program: &str, args: &[&str]) -> String {
+    std::iter::once(program)
+        .chain(args.iter().copied())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn combined_output(output: &std::process::Output) -> String {
+    let mut text = String::new();
+    text.push_str(&String::from_utf8_lossy(&output.stdout));
+    text.push_str(&String::from_utf8_lossy(&output.stderr));
+    text
+}
+
+fn path_is_junk(path: &str, patterns: &[&str]) -> bool {
+    patterns.iter().any(|pattern| {
+        if *pattern == ".snap" || *pattern == ".snap.new" {
+            path.trim_end().ends_with(pattern)
+        } else {
+            path.contains(pattern)
+        }
+    })
+}
+
+fn cargo_package_list(crate_name: &str, allow_dirty: bool) -> Result<String> {
+    let mut args = vec!["package", "--list", "-p", crate_name];
+    if allow_dirty {
+        args.push("--allow-dirty");
+    }
+    let output = command_output("cargo", &args)?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "`{}` failed:\n{}",
+            shellish_command("cargo", &args),
+            combined_output(&output)
+        );
+    }
+    Ok(combined_output(&output))
+}
+
+fn check_packaging() -> Result<()> {
+    let mut failed = false;
+
+    eprintln!("=== Checking cargo package --list for junk files ===");
+    for crate_name in PUBLISHABLE_CRATES {
+        match cargo_package_list(crate_name, true) {
+            Ok(output) => {
+                let junk: Vec<_> = output
+                    .lines()
+                    .filter(|line| path_is_junk(line, JUNK_PATTERNS))
+                    .collect();
+                if junk.is_empty() {
+                    eprintln!("  OK: {crate_name}");
+                } else {
+                    eprintln!("FAIL: {crate_name} ships junk files:");
+                    for line in junk {
+                        eprintln!("  {line}");
+                    }
+                    failed = true;
+                }
+            }
+            Err(err) => {
+                eprintln!("FAIL: cargo package --list -p {crate_name} failed: {err:#}");
+                failed = true;
+            }
+        }
+    }
+
+    eprintln!();
+    eprintln!("=== Checking crate metadata ===");
+    let metadata = command_output("cargo", &["metadata", "--format-version", "1", "--no-deps"])?;
+    if !metadata.status.success() {
+        anyhow::bail!("cargo metadata failed:\n{}", combined_output(&metadata));
+    }
+    let metadata_json: serde_json::Value =
+        serde_json::from_slice(&metadata.stdout).context("parse cargo metadata JSON")?;
+    let packages = metadata_json["packages"]
+        .as_array()
+        .context("cargo metadata packages is not an array")?;
+
+    for crate_name in PUBLISHABLE_CRATES {
+        let package = packages
+            .iter()
+            .find(|package| package["name"].as_str() == Some(crate_name));
+        let Some(package) = package else {
+            eprintln!("FAIL: {crate_name} not found in workspace");
+            failed = true;
+            continue;
+        };
+
+        let missing: Vec<_> = ["name", "version", "description", "license", "repository"]
+            .into_iter()
+            .filter(|field| package[*field].as_str().is_none_or(str::is_empty))
+            .collect();
+        if missing.is_empty() {
+            eprintln!("  OK: {crate_name} metadata");
+        } else {
+            eprintln!(
+                "FAIL: {crate_name} metadata missing: {}",
+                missing.join(", ")
+            );
+            failed = true;
+        }
+    }
+
+    if failed {
+        anyhow::bail!("packaging hygiene checks found issues");
+    }
+
+    eprintln!();
+    eprintln!("All crates clean");
+    Ok(())
+}
+
+fn release_dry_run() -> Result<()> {
+    let mut failed = false;
+
+    eprintln!("================================================================");
+    eprintln!(
+        "              Release Dry-Run ({} crates)",
+        RELEASE_CRATES.len()
+    );
+    eprintln!("================================================================");
+    eprintln!();
+
+    eprintln!("=== Step 1: Packaging all crates (publish order) ===");
+    for crate_name in RELEASE_CRATES {
+        eprint!("  Packaging {crate_name} ... ");
+        let ok = run_status(
+            "cargo",
+            &["package", "-p", crate_name, "--allow-dirty", "--no-verify"],
+        )?;
+        if ok {
+            eprintln!("OK");
+        } else {
+            eprintln!("FAIL");
+            failed = true;
+        }
+    }
+    eprintln!();
+
+    eprintln!("=== Step 2: Checking package sizes ===");
+    eprintln!("  {:<40} {:>10}", "Crate", "Size");
+    eprintln!(
+        "  {:<40} {:>10}",
+        "────────────────────────────────────────", "──────────"
+    );
+    for crate_name in RELEASE_CRATES {
+        match find_packaged_crate(crate_name)? {
+            Some(path) => {
+                let size = fs::metadata(&path)
+                    .with_context(|| format!("stat {}", path.display()))?
+                    .len();
+                eprintln!("  {:<40} {:>10}", crate_name, human_size(size));
+                if size > MAX_CRATE_SIZE_BYTES {
+                    eprintln!("    FAIL: exceeds {MAX_CRATE_SIZE_BYTES} byte limit!");
+                    failed = true;
+                }
+            }
+            None => {
+                eprintln!("  {:<40} {:>10}", crate_name, "NOT FOUND");
+                failed = true;
+            }
+        }
+    }
+    eprintln!();
+
+    eprintln!("=== Step 3: Verifying embedded schemas in cockpitctl-types ===");
+    let files = cargo_package_list("cockpitctl-types", true)?;
+    for schema in SCHEMA_FILES {
+        if files.contains(schema) {
+            eprintln!("  OK: {schema} included");
+        } else {
+            eprintln!("  FAIL: {schema} missing from package");
+            failed = true;
+        }
+    }
+    eprintln!();
+
+    eprintln!("=== Step 4: Content hygiene (no junk files) ===");
+    for crate_name in RELEASE_CRATES {
+        let output = cargo_package_list(crate_name, true)?;
+        let junk: Vec<_> = output
+            .lines()
+            .filter(|line| path_is_junk(line, RELEASE_JUNK_PATTERNS))
+            .collect();
+        if junk.is_empty() {
+            eprintln!("  OK: {crate_name}");
+        } else {
+            eprintln!("  FAIL: {crate_name} ships junk:");
+            for line in junk {
+                eprintln!("    {line}");
+            }
+            failed = true;
+        }
+    }
+    eprintln!();
+
+    if failed {
+        anyhow::bail!("release dry-run found issues — fix before tagging");
+    }
+
+    eprintln!("================================================================");
+    eprintln!(
+        "PASSED: all {} crates ready for release",
+        RELEASE_CRATES.len()
+    );
+    eprintln!("================================================================");
+    Ok(())
+}
+
+fn find_packaged_crate(crate_name: &str) -> Result<Option<PathBuf>> {
+    let package_dir = Path::new("target/package");
+    if !package_dir.is_dir() {
+        return Ok(None);
+    }
+    let prefix = format!("{crate_name}-");
+    for entry in fs::read_dir(package_dir).context("read target/package")? {
+        let entry = entry?;
+        let path = entry.path();
+        let Some(file_name) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if file_name.starts_with(&prefix) && file_name.ends_with(".crate") {
+            return Ok(Some(path));
+        }
+    }
+    Ok(None)
+}
+
+fn human_size(size: u64) -> String {
+    const KIB: f64 = 1024.0;
+    const MIB: f64 = KIB * 1024.0;
+    if size >= 1024 * 1024 {
+        format!("{:.1} MiB", size as f64 / MIB)
+    } else if size >= 1024 {
+        format!("{:.1} KiB", size as f64 / KIB)
+    } else {
+        format!("{size} B")
+    }
+}
+
+fn feature_matrix_check(quick: bool) -> Result<()> {
+    const FEATURES: &[&str] = &[
+        "feature-hooks",
+        "feature-buildfix",
+        "feature-policy-signing",
+        "feature-schema",
+    ];
+
+    let mut combinations: Vec<(String, Vec<String>)> = Vec::new();
+    combinations.push((
+        "no-features".to_string(),
+        vec!["--no-default-features".to_string()],
+    ));
+    for feature in FEATURES {
+        combinations.push((
+            format!("only-{feature}"),
+            vec![
+                "--no-default-features".to_string(),
+                "--features".to_string(),
+                (*feature).to_string(),
+            ],
+        ));
+    }
+    combinations.push(("all-defaults".to_string(), Vec::new()));
+
+    if !quick {
+        for (i, first) in FEATURES.iter().enumerate() {
+            for second in FEATURES.iter().skip(i + 1) {
+                let selected = format!("{first},{second}");
+                combinations.push((
+                    format!("pair-{selected}"),
+                    vec![
+                        "--no-default-features".to_string(),
+                        "--features".to_string(),
+                        selected,
+                    ],
+                ));
+            }
+        }
+        for omitted in FEATURES {
+            let selected = FEATURES
+                .iter()
+                .copied()
+                .filter(|feature| feature != omitted)
+                .collect::<Vec<_>>()
+                .join(",");
+            combinations.push((
+                format!("triple-without-{omitted}"),
+                vec![
+                    "--no-default-features".to_string(),
+                    "--features".to_string(),
+                    selected,
+                ],
+            ));
+        }
+    }
+
+    eprintln!();
+    eprintln!("=== Feature compilation matrix ===");
+    let mut failed = 0usize;
+    for (label, cargo_args) in &combinations {
+        let mut args = vec![
+            "build".to_string(),
+            "-p".to_string(),
+            "cockpitctl".to_string(),
+        ];
+        args.extend(cargo_args.iter().cloned());
+        let args_ref = args.iter().map(String::as_str).collect::<Vec<_>>();
+        eprintln!("  [{label}] cargo {}", args.join(" "));
+        if run_status("cargo", &args_ref)? {
+            eprintln!("  OK: {label}");
+        } else {
+            eprintln!("  FAIL: {label}");
+            failed += 1;
+        }
+    }
+
+    eprintln!();
+    eprintln!("=== Results ===");
+    if failed > 0 {
+        anyhow::bail!("{failed} combination(s) failed");
+    }
+    eprintln!("All {} combinations passed.", combinations.len());
+    Ok(())
+}
+
+fn smoke_test_release(mut tag: String) -> Result<()> {
+    if !tag.starts_with('v') {
+        tag.insert(0, 'v');
+    }
+    let (platform, binary_ext) = release_platform()?;
+    eprintln!("[INFO] Starting smoke test for cockpitctl release: {tag}");
+    eprintln!("[INFO] Detected platform: {platform}");
+
+    let temp_dir = tempfile::tempdir().context("create temporary release smoke-test directory")?;
+    let conformctl_path = temp_dir.path().join(format!("conformctl{binary_ext}"));
+    let cockpitctl_path = temp_dir.path().join(format!("cockpitctl{binary_ext}"));
+
+    download_release_binary("conformctl", &tag, platform, binary_ext, &conformctl_path)?;
+    download_release_binary("cockpitctl", &tag, platform, binary_ext, &cockpitctl_path)?;
+    test_conformctl_binary(&conformctl_path)?;
+    test_cockpitctl_binary(&cockpitctl_path)?;
+    write_composite_action_smoke_workflow(&tag, temp_dir.path())?;
+
+    eprintln!("[INFO] ==========================================");
+    eprintln!("[INFO] All smoke tests passed!");
+    eprintln!("[INFO] ==========================================");
+    eprintln!("[INFO] Binaries tested:");
+    eprintln!("[INFO]   - conformctl: {}", conformctl_path.display());
+    eprintln!("[INFO]   - cockpitctl: {}", cockpitctl_path.display());
+    eprintln!("[INFO]");
+    eprintln!("[INFO] Release {tag} is ready for announcement.");
+    Ok(())
+}
+
+fn release_platform() -> Result<(&'static str, &'static str)> {
+    match std::env::consts::OS {
+        "linux" => Ok(("linux-x64", "")),
+        "macos" if std::env::consts::ARCH == "aarch64" => Ok(("darwin-arm64", "")),
+        "macos" => Ok(("darwin-x64", "")),
+        "windows" => Ok(("windows-x64", ".exe")),
+        other => anyhow::bail!("unsupported platform: {other}"),
+    }
+}
+
+fn download_release_binary(
+    binary_name: &str,
+    tag: &str,
+    platform: &str,
+    binary_ext: &str,
+    output_path: &Path,
+) -> Result<()> {
+    let asset_name = format!("{binary_name}-{platform}{binary_ext}");
+    let download_url = format!(
+        "https://github.com/EffortlessMetrics/cockpitctl/releases/download/{tag}/{asset_name}"
+    );
+    eprintln!("[INFO] Downloading {binary_name} from {download_url}");
+
+    let output_arg = output_path.display().to_string();
+    let downloaded = run_status("curl", &["-fsSL", &download_url, "-o", &output_arg])
+        .unwrap_or(false)
+        || run_status("wget", &["-qO", &output_arg, &download_url]).unwrap_or(false);
+    if !downloaded {
+        anyhow::bail!(
+            "failed to download {binary_name}; install curl or wget and verify the release asset exists"
+        );
+    }
+
+    #[cfg(unix)]
+    {
+        let mut permissions = fs::metadata(output_path)?.permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(output_path, permissions)?;
+    }
+
+    eprintln!("[INFO] Downloaded to: {}", output_path.display());
+    Ok(())
+}
+
+fn test_conformctl_binary(conformctl_path: &Path) -> Result<()> {
+    eprintln!("[INFO] Testing conformctl...");
+    ensure_command_success(conformctl_path, &["--version"])?;
+
+    let temp_dir = tempfile::tempdir().context("create conformctl smoke-test directory")?;
+    let report_path = temp_dir.path().join("report.json");
+    fs::write(&report_path, MINIMAL_TEST_SENSOR_REPORT).context("write conformctl test receipt")?;
+    let report_arg = report_path.display().to_string();
+    ensure_command_success(
+        conformctl_path,
+        &[
+            "check",
+            "--report",
+            &report_arg,
+            "--sensor-id",
+            "test-sensor",
+        ],
+    )?;
+    eprintln!("[INFO] conformctl tests passed");
+    Ok(())
+}
+
+fn test_cockpitctl_binary(cockpitctl_path: &Path) -> Result<()> {
+    eprintln!("[INFO] Testing cockpitctl...");
+    ensure_command_success(cockpitctl_path, &["--version"])?;
+
+    let temp_dir = tempfile::tempdir().context("create cockpitctl smoke-test directory")?;
+    fs::write(
+        temp_dir.path().join("cockpit.toml"),
+        "[sensor.builddiag]\nrequired = true\n\n[sensor.diffguard]\nrequired = true\n",
+    )?;
+    let builddiag_dir = temp_dir.path().join("artifacts/builddiag");
+    let diffguard_dir = temp_dir.path().join("artifacts/diffguard");
+    fs::create_dir_all(&builddiag_dir)?;
+    fs::create_dir_all(&diffguard_dir)?;
+    fs::write(builddiag_dir.join("report.json"), MINIMAL_BUILDDIAG_REPORT)?;
+    fs::write(diffguard_dir.join("report.json"), MINIMAL_DIFFGUARD_REPORT)?;
+
+    let status = Command::new(cockpitctl_path)
+        .args([
+            "ingest",
+            "--artifacts",
+            "artifacts",
+            "--config",
+            "cockpit.toml",
+        ])
+        .current_dir(temp_dir.path())
+        .status()
+        .with_context(|| format!("run {} ingest", cockpitctl_path.display()))?;
+    if !status.success() {
+        anyhow::bail!("cockpitctl ingest failed");
+    }
+
+    let report_path = temp_dir.path().join("artifacts/cockpit/report.json");
+    let comment_path = temp_dir.path().join("artifacts/cockpit/comment.md");
+    if !report_path.is_file() {
+        anyhow::bail!("cockpitctl did not create report.json");
+    }
+    if !comment_path.is_file() {
+        anyhow::bail!("cockpitctl did not create comment.md");
+    }
+    let report: serde_json::Value = serde_json::from_slice(&fs::read(&report_path)?)?;
+    let status = report["verdict"]["status"].as_str().unwrap_or("<missing>");
+    if status != "pass" {
+        anyhow::bail!("expected verdict 'pass', got '{status}'");
+    }
+
+    eprintln!("[INFO] cockpitctl tests passed");
+    Ok(())
+}
+
+fn ensure_command_success(program: &Path, args: &[&str]) -> Result<()> {
+    let output = Command::new(program)
+        .args(args)
+        .output()
+        .with_context(|| format!("run {} {}", program.display(), args.join(" ")))?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "{} {} failed:\n{}",
+            program.display(),
+            args.join(" "),
+            combined_output(&output)
+        );
+    }
+    Ok(())
+}
+
+fn write_composite_action_smoke_workflow(tag: &str, temp_root: &Path) -> Result<()> {
+    let workflow_dir = temp_root.join("composite-action-smoke");
+    fs::create_dir_all(&workflow_dir)?;
+    let workflow_path = workflow_dir.join("test-workflow.yml");
+    let mut file = fs::File::create(&workflow_path)?;
+    writeln!(
+        file,
+        "name: Smoke Test cockpitctl Action\non: workflow_dispatch\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Test cockpitctl action\n        uses: EffortlessMetrics/cockpitctl@{tag}\n        with:\n          artifacts-path: fixtures/happy_path/artifacts\n          config-path: fixtures/happy_path/cockpit.toml\n          version: {tag}\n          post-comment: false\n          fail-on-error: true"
+    )?;
+    eprintln!(
+        "[INFO] Created composite action smoke workflow at: {}",
+        workflow_path.display()
+    );
+    eprintln!(
+        "[INFO] To test the composite action manually, copy it to .github/workflows/ and run it via GitHub Actions."
+    );
+    Ok(())
+}
+
+const MINIMAL_TEST_SENSOR_REPORT: &str = r#"{
+  "schema": "test-sensor.report.v1",
+  "tool": { "name": "test-sensor", "version": "1.0.0" },
+  "run": { "started_at": "2024-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] },
+  "findings": []
+}
+"#;
+
+const MINIMAL_BUILDDIAG_REPORT: &str = r#"{
+  "schema": "builddiag.report.v1",
+  "tool": { "name": "builddiag", "version": "1.0.0" },
+  "run": { "started_at": "2024-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] },
+  "findings": []
+}
+"#;
+
+const MINIMAL_DIFFGUARD_REPORT: &str = r#"{
+  "schema": "diffguard.report.v1",
+  "tool": { "name": "diffguard", "version": "1.0.0" },
+  "run": { "started_at": "2024-01-01T00:00:00Z" },
+  "verdict": { "status": "pass", "counts": { "info": 0, "warn": 0, "error": 0 }, "reasons": [] },
+  "findings": []
+}
+"#;
 
 fn schema_sync_check() -> Result<()> {
     let source = PathBuf::from("contracts/schemas");

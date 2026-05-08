@@ -12,6 +12,8 @@ readme = "README.md"
 keywords = ["ci", "filesystem", "adapters", "receipts", "security"]
 categories = ["development-tools", "filesystem"]
 
+exclude = ["tests/"]
+
 [dependencies]
 anyhow.workspace = true
 toml.workspace = true

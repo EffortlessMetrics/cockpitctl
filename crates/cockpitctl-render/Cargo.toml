@@ -12,6 +12,8 @@ readme = "README.md"
 keywords = ["ci", "markdown", "rendering", "annotations", "deterministic"]
 categories = ["development-tools", "text-processing"]
 
+exclude = ["tests/"]
+
 [dependencies]
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
 serde_json.workspace = true

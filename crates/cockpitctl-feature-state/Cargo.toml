@@ -12,6 +12,8 @@ readme = "README.md"
 keywords = ["ci", "feature-flags", "interop", "testing", "ingest"]
 categories = ["development-tools", "filesystem"]
 
+exclude = ["tests/"]
+
 [dev-dependencies]
 insta = { workspace = true }
 proptest.workspace = true

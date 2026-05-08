@@ -7,6 +7,7 @@ Internal workspace task runner for cockpitctl maintenance workflows.
 - Conformance harness utilities.
 - Fixture generation and refresh workflows.
 - Example file synchronization.
+- Packaging, release dry-run, smoke-test, and feature matrix automation that replaces shell/PowerShell scripts.
 
 ## Commands
 
@@ -21,6 +22,10 @@ Internal workspace task runner for cockpitctl maintenance workflows.
 | `conform` | Conformance harness: validate sensor receipts against the protocol |
 | `conform-dir` | Validate every sensor receipt in an `artifacts/` directory at once |
 | `fixtures-help` | Print instructions for regenerating golden fixtures |
+| `check-packaging` | Verify publishable crates ship no junk files and have required metadata |
+| `release-dry-run` | Simulate a full crates.io publish in dependency order |
+| `smoke-test-release <tag>` | Download and exercise published release binaries |
+| `feature-matrix-check [--quick]` | Build `cockpitctl` across supported feature combinations |
 
 ## Usage
 
@@ -30,6 +35,10 @@ cargo run -p xtask -- validate-schemas
 cargo run -p xtask -- conform --report report.json --all --sensor-id builddiag
 cargo run -p xtask -- conform-dir --dir artifacts --all --validate-cockpit
 cargo run -p xtask -- fixtures-help
+cargo run -p xtask -- check-packaging
+cargo run -p xtask -- release-dry-run
+cargo run -p xtask -- smoke-test-release v0.3.0
+cargo run -p xtask -- feature-matrix-check --quick
 ```
 
 This crate is `publish = false` and is intended for repository maintenance only.
