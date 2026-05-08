@@ -11,6 +11,7 @@ description = "Policy-signing key loading adapter boundary extracted from cockpi
 readme = "README.md"
 keywords = ["ci", "signing", "adapter", "policy", "keys"]
 categories = ["development-tools"]
+exclude = ["tests/"]
 
 [dependencies]
 anyhow.workspace = true

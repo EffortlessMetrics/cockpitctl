@@ -134,11 +134,7 @@ fuzz/                        # cargo-fuzz harness (optional)
 Before announcing a release, validate it using only published artifacts:
 
 ```bash
-# Unix/macOS
-./scripts/smoke-test-release.sh v0.3.0
-
-# Windows PowerShell
-.\scripts\smoke-test-release.ps1 -Tag v0.3.0
+cargo run -p xtask -- smoke-test-release v0.3.0
 ```
 
 See [`docs/how-to/smoke-test-release.md`](docs/how-to/smoke-test-release.md) for details.

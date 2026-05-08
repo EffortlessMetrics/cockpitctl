@@ -336,16 +336,10 @@ gh release view v0.3.0 --web
 
 ## Post-Release Validation
 
-### Step 1: Run Smoke Test Script
+### Step 1: Run Smoke Test xtask
 
-**Unix/Linux/macOS**:
 ```bash
-./scripts/smoke-test-release.sh v0.3.0
-```
-
-**Windows PowerShell**:
-```powershell
-./scripts/smoke-test-release.ps1 v0.3.0
+cargo run -p xtask -- smoke-test-release v0.3.0
 ```
 
 **Expected output**: All smoke tests pass
@@ -647,7 +641,7 @@ gh run list --workflow=release.yml
 gh run view --workflow=release.yml
 
 # Smoke test
-./scripts/smoke-test-release.sh v0.3.0
+cargo run -p xtask -- smoke-test-release v0.3.0
 
 # Rollback
 cargo yank --vers 0.3.0 cockpitctl

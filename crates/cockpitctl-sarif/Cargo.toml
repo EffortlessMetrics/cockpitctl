@@ -11,6 +11,7 @@ description = "SARIF v2.1.0 export from cockpit.report.v1 findings."
 readme = "README.md"
 keywords = ["ci", "sarif", "code-scanning", "export", "receipts"]
 categories = ["development-tools"]
+exclude = ["tests/"]
 
 [dependencies]
 serde.workspace = true

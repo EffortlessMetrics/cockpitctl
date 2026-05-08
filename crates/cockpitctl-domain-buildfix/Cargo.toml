@@ -11,6 +11,7 @@ description = "Buildfix planning and selection domain boundary extracted from co
 readme = "README.md"
 keywords = ["ci", "buildfix", "domain", "planning", "selection"]
 categories = ["development-tools"]
+exclude = ["tests/"]
 
 [dependencies]
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }
