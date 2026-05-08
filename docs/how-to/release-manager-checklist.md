@@ -301,15 +301,9 @@ This comprehensive checklist guides release managers through preparing, executin
 
 ### Smoke Testing
 
-- [ ] **Run smoke test script** (Unix/Linux/macOS)
+- [ ] **Run xtask smoke test**
   ```bash
-  ./scripts/smoke-test-release.sh v0.3.0
-  ```
-  - [ ] All smoke tests pass
-
-- [ ] **Run smoke test script** (Windows)
-  ```powershell
-  ./scripts/smoke-test-release.ps1 v0.3.0
+  cargo run -p xtask -- smoke-test-release v0.3.0
   ```
   - [ ] All smoke tests pass
 

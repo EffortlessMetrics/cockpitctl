@@ -153,7 +153,7 @@ The release process is fully automated and triggered by version tags:
 3. Bump version in workspace `Cargo.toml` if needed
 4. Tag: `git tag v0.3.0 && git push origin v0.3.0`
 5. Monitor the release workflow in GitHub Actions
-6. After release, run `scripts/smoke-test-release.sh v0.3.0` (or `.ps1` on Windows) to validate published artifacts
+6. After release, run `cargo run -p xtask -- smoke-test-release v0.3.0` to validate published artifacts
 
 ## Comprehensive Release Documentation
 
@@ -275,7 +275,7 @@ Before creating a release tag, ensure:
 
 After the release is complete:
 
-- [ ] Run smoke test script: `./scripts/smoke-test-release.sh v0.3.0`
+- [ ] Run xtask smoke test: `cargo run -p xtask -- smoke-test-release v0.3.0`
 - [ ] Verify checksums match downloaded binaries
 - [ ] Test crates.io installation: `cargo add cockpitctl`
 - [ ] Test binaries on available platforms
