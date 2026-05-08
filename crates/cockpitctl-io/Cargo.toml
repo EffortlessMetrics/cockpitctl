@@ -11,6 +11,7 @@ description = "Filesystem adapters for cockpitctl ingest ports with path and siz
 readme = "README.md"
 keywords = ["ci", "filesystem", "adapters", "receipts", "security"]
 categories = ["development-tools", "filesystem"]
+exclude = ["tests/snapshots/"]
 
 [dependencies]
 anyhow.workspace = true

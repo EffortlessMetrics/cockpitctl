@@ -11,6 +11,7 @@ description = "Shared feature-state helpers for cockpitctl runtime and test feat
 readme = "README.md"
 keywords = ["ci", "feature-flags", "interop", "testing", "ingest"]
 categories = ["development-tools", "filesystem"]
+exclude = ["tests/snapshots/"]
 
 [dev-dependencies]
 insta = { workspace = true }

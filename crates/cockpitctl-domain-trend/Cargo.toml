@@ -11,6 +11,7 @@ description = "Trend computation domain boundary extracted from cockpitctl-domai
 readme = "README.md"
 keywords = ["ci", "trend", "domain", "delta", "baseline"]
 categories = ["development-tools"]
+exclude = ["tests/snapshots/"]
 
 [dependencies]
 cockpitctl-types = { path = "../cockpitctl-types", version = "0.3.0" }

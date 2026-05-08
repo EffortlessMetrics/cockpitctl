@@ -11,6 +11,7 @@ description = "Policy signing domain boundary extracted from cockpitctl-domain."
 readme = "README.md"
 keywords = ["ci", "signing", "policy", "hmac", "integrity"]
 categories = ["development-tools"]
+exclude = ["tests/snapshots/"]
 
 [dependencies]
 anyhow.workspace = true

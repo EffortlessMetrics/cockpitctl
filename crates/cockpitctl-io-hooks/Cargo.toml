@@ -11,6 +11,7 @@ description = "Post-processor hook I/O boundary extracted from cockpitctl-io."
 readme = "README.md"
 keywords = ["ci", "hooks", "adapter", "post-processor", "receipts"]
 categories = ["development-tools"]
+exclude = ["tests/snapshots/"]
 
 [dependencies]
 anyhow.workspace = true
