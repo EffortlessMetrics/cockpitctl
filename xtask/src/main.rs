@@ -2,7 +2,8 @@ use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use cockpitctl_conform::ConformChecks;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Parser, Debug)]
 #[command(name = "xtask")]
@@ -143,6 +144,19 @@ enum Commands {
         #[arg(long)]
         allow_missing_report: bool,
     },
+
+    /// Verify publishable crates ship no fixtures, docs junk, or missing metadata.
+    CheckPackaging,
+
+    /// Simulate a crates.io publish by packaging crates in release order.
+    ReleaseDryRun,
+
+    /// Build cockpitctl across supported feature combinations.
+    FeatureMatrix {
+        /// Only check no-features, single-feature isolation, and all defaults.
+        #[arg(long)]
+        quick: bool,
+    },
 }
 
 const SCHEMA_FILES: &[&str] = &[
@@ -151,6 +165,59 @@ const SCHEMA_FILES: &[&str] = &[
     "buildfix.plan.v1.json",
     "cockpit.promote.v1.json",
 ];
+
+const PUBLISHABLE_CRATES: &[&str] = &[
+    "cockpitctl",
+    "cockpitctl-types",
+    "cockpitctl-domain",
+    "cockpitctl-domain-buildfix",
+    "cockpitctl-domain-signing",
+    "cockpitctl-domain-trend",
+    "cockpitctl-feature-grid",
+    "cockpitctl-feature-state",
+    "cockpitctl-ingest",
+    "cockpitctl-io",
+    "cockpitctl-io-buildfix",
+    "cockpitctl-io-hooks",
+    "cockpitctl-io-policy-signing",
+    "cockpitctl-io-schema",
+    "cockpitctl-render",
+    "cockpitctl-sarif",
+    "cockpitctl-conform",
+    "cockpitctl-core",
+    "conformctl",
+];
+
+const RELEASE_ORDER: &[&str] = &[
+    "cockpitctl-types",
+    "cockpitctl-feature-state",
+    "cockpitctl-conform",
+    "cockpitctl-domain-buildfix",
+    "cockpitctl-domain-signing",
+    "cockpitctl-domain-trend",
+    "cockpitctl-feature-grid",
+    "cockpitctl-io-schema",
+    "cockpitctl-domain",
+    "cockpitctl-io-buildfix",
+    "cockpitctl-io-hooks",
+    "cockpitctl-io-policy-signing",
+    "cockpitctl-render",
+    "cockpitctl-ingest",
+    "cockpitctl-io",
+    "cockpitctl-sarif",
+    "cockpitctl-core",
+    "cockpitctl",
+    "conformctl",
+];
+
+const FEATURE_MATRIX: &[&str] = &[
+    "feature-hooks",
+    "feature-buildfix",
+    "feature-policy-signing",
+    "feature-schema",
+];
+
+const MAX_CRATE_SIZE_BYTES: u64 = 10 * 1024 * 1024;
 
 fn main_entry(cli: Cli) -> i32 {
     if let Err(e) = run(cli) {
@@ -231,6 +298,328 @@ fn run(cli: Cli) -> Result<()> {
             allow_missing_report,
             presence_semantics || all,
         ),
+        Commands::CheckPackaging => check_packaging(),
+        Commands::ReleaseDryRun => release_dry_run(),
+        Commands::FeatureMatrix { quick } => feature_matrix(quick),
+    }
+}
+
+fn check_packaging() -> Result<()> {
+    let mut failed = false;
+
+    eprintln!("=== Checking cargo package --list for junk files ===");
+    for crate_name in PUBLISHABLE_CRATES {
+        let output = cargo_output(&["package", "--list", "-p", crate_name])?;
+        if !output.status.success() {
+            eprintln!("FAIL: cargo package --list -p {crate_name} failed");
+            failed = true;
+            continue;
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let junk = junk_package_lines(&stdout, false);
+        if junk.is_empty() {
+            eprintln!("  OK: {crate_name}");
+        } else {
+            eprintln!("FAIL: {crate_name} ships junk files:");
+            for line in junk {
+                eprintln!("  {line}");
+            }
+            failed = true;
+        }
+    }
+
+    eprintln!();
+    eprintln!("=== Checking crate metadata ===");
+    let metadata = cargo_output(&["metadata", "--format-version", "1", "--no-deps"])?;
+    if !metadata.status.success() {
+        anyhow::bail!("cargo metadata --format-version 1 --no-deps failed");
+    }
+    let metadata: serde_json::Value =
+        serde_json::from_slice(&metadata.stdout).context("parse cargo metadata output as JSON")?;
+
+    for crate_name in PUBLISHABLE_CRATES {
+        let Some(package) = metadata["packages"].as_array().and_then(|packages| {
+            packages
+                .iter()
+                .find(|p| p["name"].as_str() == Some(crate_name))
+        }) else {
+            eprintln!("FAIL: {crate_name} not found in workspace");
+            failed = true;
+            continue;
+        };
+
+        let missing: Vec<_> = ["name", "version", "description", "license", "repository"]
+            .into_iter()
+            .filter(|field| package[*field].as_str().is_none_or(str::is_empty))
+            .collect();
+
+        if missing.is_empty() {
+            eprintln!("  OK: {crate_name} metadata");
+        } else {
+            eprintln!(
+                "FAIL: {crate_name} metadata missing: {}",
+                missing.join(", ")
+            );
+            failed = true;
+        }
+    }
+
+    if failed {
+        anyhow::bail!("packaging hygiene checks found issues");
+    }
+
+    eprintln!();
+    eprintln!("All crates clean");
+    Ok(())
+}
+
+fn release_dry_run() -> Result<()> {
+    let mut failed = false;
+
+    eprintln!("================================================================");
+    eprintln!(
+        "              Release Dry-Run ({} crates)",
+        RELEASE_ORDER.len()
+    );
+    eprintln!("================================================================");
+    eprintln!();
+
+    eprintln!("=== Step 1: Packaging all crates (publish order) ===");
+    for crate_name in RELEASE_ORDER {
+        eprint!("  Packaging {crate_name} ... ");
+        let status = cargo_status(&["package", "-p", crate_name, "--allow-dirty", "--no-verify"])?;
+        if status.success() {
+            eprintln!("OK");
+        } else {
+            eprintln!("FAIL");
+            failed = true;
+        }
+    }
+    eprintln!();
+
+    eprintln!("=== Step 2: Checking package sizes ===");
+    eprintln!("  {:<40} {:>10}", "Crate", "Size");
+    eprintln!(
+        "  {:<40} {:>10}",
+        "────────────────────────────────────────", "──────────"
+    );
+    for crate_name in RELEASE_ORDER {
+        match find_crate_archive(Path::new("target/package"), crate_name)? {
+            Some(path) => {
+                let size = fs::metadata(&path)
+                    .with_context(|| format!("stat {}", path.display()))?
+                    .len();
+                eprintln!("  {:<40} {:>10}", crate_name, human_size(size));
+                if size > MAX_CRATE_SIZE_BYTES {
+                    eprintln!("    FAIL: exceeds {MAX_CRATE_SIZE_BYTES} byte limit!");
+                    failed = true;
+                }
+            }
+            None => {
+                eprintln!("  {:<40} {:>10}", crate_name, "NOT FOUND");
+                failed = true;
+            }
+        }
+    }
+    eprintln!();
+
+    eprintln!("=== Step 3: Verifying embedded schemas in cockpitctl-types ===");
+    let package_list = cargo_output(&[
+        "package",
+        "--list",
+        "-p",
+        "cockpitctl-types",
+        "--allow-dirty",
+    ])?;
+    let files = String::from_utf8_lossy(&package_list.stdout);
+    for schema in SCHEMA_FILES {
+        if files.lines().any(|line| line.contains(schema)) {
+            eprintln!("  OK: {schema} included");
+        } else {
+            eprintln!("  FAIL: {schema} missing from package");
+            failed = true;
+        }
+    }
+    eprintln!();
+
+    eprintln!("=== Step 4: Content hygiene (no junk files) ===");
+    for crate_name in RELEASE_ORDER {
+        let output = cargo_output(&["package", "--list", "-p", crate_name, "--allow-dirty"])?;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let junk = junk_package_lines(&stdout, true);
+        if junk.is_empty() {
+            eprintln!("  OK: {crate_name}");
+        } else {
+            eprintln!("  FAIL: {crate_name} ships junk:");
+            for line in junk {
+                eprintln!("    {line}");
+            }
+            failed = true;
+        }
+    }
+    eprintln!();
+
+    if failed {
+        eprintln!("================================================================");
+        anyhow::bail!("release dry-run found issues — fix before tagging");
+    }
+
+    eprintln!("================================================================");
+    eprintln!(
+        "PASSED: all {} crates ready for release",
+        RELEASE_ORDER.len()
+    );
+    eprintln!("================================================================");
+    Ok(())
+}
+
+fn feature_matrix(quick: bool) -> Result<()> {
+    let mut cases: Vec<(String, Vec<String>)> = Vec::new();
+    cases.push((
+        "no-features".to_string(),
+        vec!["--no-default-features".to_string()],
+    ));
+    for feature in FEATURE_MATRIX {
+        cases.push((
+            format!("only-{feature}"),
+            vec![
+                "--no-default-features".to_string(),
+                "--features".to_string(),
+                (*feature).to_string(),
+            ],
+        ));
+    }
+    cases.push(("all-defaults".to_string(), Vec::new()));
+
+    if !quick {
+        for (i, first) in FEATURE_MATRIX.iter().enumerate() {
+            for second in FEATURE_MATRIX.iter().skip(i + 1) {
+                let features = format!("{first},{second}");
+                cases.push((
+                    format!("pair-{features}"),
+                    vec![
+                        "--no-default-features".to_string(),
+                        "--features".to_string(),
+                        features,
+                    ],
+                ));
+            }
+        }
+
+        for omitted in FEATURE_MATRIX {
+            let features = FEATURE_MATRIX
+                .iter()
+                .copied()
+                .filter(|feature| feature != omitted)
+                .collect::<Vec<_>>()
+                .join(",");
+            cases.push((
+                format!("triple-without-{omitted}"),
+                vec![
+                    "--no-default-features".to_string(),
+                    "--features".to_string(),
+                    features,
+                ],
+            ));
+        }
+    }
+
+    eprintln!();
+    eprintln!("=== Feature compilation matrix ===");
+    let mut failed = 0usize;
+    for (label, cargo_args) in &cases {
+        eprintln!(
+            "  [{label}] cargo build -p cockpitctl {}",
+            cargo_args.join(" ")
+        );
+        let mut args = vec![
+            "build".to_string(),
+            "-p".to_string(),
+            "cockpitctl".to_string(),
+        ];
+        args.extend(cargo_args.clone());
+        let arg_refs: Vec<_> = args.iter().map(String::as_str).collect();
+        let status = cargo_status(&arg_refs)?;
+        if status.success() {
+            eprintln!("  OK: {label}");
+        } else {
+            eprintln!("  FAIL: {label}");
+            failed += 1;
+        }
+    }
+
+    eprintln!();
+    eprintln!("=== Results ===");
+    if failed == 0 {
+        eprintln!("All {} combinations passed.", cases.len());
+        Ok(())
+    } else {
+        anyhow::bail!("{failed} combination(s) failed")
+    }
+}
+
+fn cargo_output(args: &[&str]) -> Result<std::process::Output> {
+    Command::new("cargo")
+        .args(args)
+        .output()
+        .with_context(|| format!("run cargo {}", args.join(" ")))
+}
+
+fn cargo_status(args: &[&str]) -> Result<std::process::ExitStatus> {
+    Command::new("cargo")
+        .args(args)
+        .status()
+        .with_context(|| format!("run cargo {}", args.join(" ")))
+}
+
+fn junk_package_lines(package_list: &str, include_release_junk: bool) -> Vec<&str> {
+    package_list
+        .lines()
+        .filter(|line| is_junk_package_line(line, include_release_junk))
+        .collect()
+}
+
+fn is_junk_package_line(line: &str, include_release_junk: bool) -> bool {
+    line.contains("fixtures/")
+        || line.contains("docs/")
+        || line.ends_with(".snap")
+        || line.ends_with(".snap.new")
+        || (include_release_junk && (line.contains("target/") || line.contains(".github/")))
+}
+
+fn find_crate_archive(package_dir: &Path, crate_name: &str) -> Result<Option<PathBuf>> {
+    if !package_dir.is_dir() {
+        return Ok(None);
+    }
+
+    let mut matches = Vec::new();
+    let prefix = format!("{crate_name}-");
+    for entry in
+        fs::read_dir(package_dir).with_context(|| format!("read dir {}", package_dir.display()))?
+    {
+        let entry = entry.with_context(|| format!("read entry in {}", package_dir.display()))?;
+        let path = entry.path();
+        let file_name = entry.file_name();
+        let file_name = file_name.to_string_lossy();
+        if path.is_file() && file_name.starts_with(&prefix) && file_name.ends_with(".crate") {
+            matches.push(path);
+        }
+    }
+    matches.sort();
+    Ok(matches.into_iter().next())
+}
+
+fn human_size(bytes: u64) -> String {
+    const KIB: f64 = 1024.0;
+    const MIB: f64 = KIB * 1024.0;
+    let bytes_f = bytes as f64;
+    if bytes_f >= MIB {
+        format!("{:.1} MiB", bytes_f / MIB)
+    } else if bytes_f >= KIB {
+        format!("{:.1} KiB", bytes_f / KIB)
+    } else {
+        format!("{bytes} B")
     }
 }
 

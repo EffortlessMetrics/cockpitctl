@@ -11,6 +11,7 @@ description = "Ingest use case and ports for composing sensor receipts into cock
 readme = "README.md"
 keywords = ["ci", "ingest", "ports", "receipts", "orchestration"]
 categories = ["development-tools"]
+exclude = ["tests/snapshots/"]
 
 [dependencies]
 anyhow.workspace = true

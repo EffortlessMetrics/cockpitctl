@@ -21,6 +21,9 @@ Internal workspace task runner for cockpitctl maintenance workflows.
 | `conform` | Conformance harness: validate sensor receipts against the protocol |
 | `conform-dir` | Validate every sensor receipt in an `artifacts/` directory at once |
 | `fixtures-help` | Print instructions for regenerating golden fixtures |
+| `check-packaging` | Verify publishable crates ship no junk files and include required metadata |
+| `release-dry-run` | Package publishable crates in release order and verify release hygiene |
+| `feature-matrix` | Build `cockpitctl` across supported feature combinations (`--quick` for the short matrix) |
 
 ## Usage
 
@@ -30,6 +33,9 @@ cargo run -p xtask -- validate-schemas
 cargo run -p xtask -- conform --report report.json --all --sensor-id builddiag
 cargo run -p xtask -- conform-dir --dir artifacts --all --validate-cockpit
 cargo run -p xtask -- fixtures-help
+cargo run -p xtask -- check-packaging
+cargo run -p xtask -- release-dry-run
+cargo run -p xtask -- feature-matrix --quick
 ```
 
 This crate is `publish = false` and is intended for repository maintenance only.
