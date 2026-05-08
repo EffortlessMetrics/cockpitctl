@@ -272,14 +272,14 @@ After the release is complete, perform validation steps.
 
 ### 1. Smoke Test Release Artifacts
 
-Run the smoke test script to validate published artifacts:
+Run the smoke test task to validate published artifacts:
 
 ```bash
 # Unix/Linux/macOS
-./scripts/smoke-test-release.sh v0.3.0
+cargo run -p xtask -- smoke-test-release v0.3.0
 
 # Windows PowerShell
-./scripts/smoke-test-release.ps1 v0.3.0
+cargo run -p xtask -- smoke-test-release v0.3.0
 ```
 
 The smoke test validates:
