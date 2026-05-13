@@ -12,6 +12,7 @@ This documentation follows the [Diataxis framework](https://diataxis.fr/).
 | Accomplish a specific task | [How-to Guides](how-to/README.md) |
 | Look up technical details | [Reference](reference/README.md) |
 | Understand concepts and design | [Explanation](explanation/README.md) |
+| Verify badges and PR evidence | [Verification](VERIFICATION.md) |
 
 ## By Audience
 
@@ -44,6 +45,7 @@ Understanding the system:
 4. [Determinism Design](explanation/determinism-design.md) - Why byte-stability matters
 5. [Identity Specification](../contracts/docs/identity-spec.md) - Vocabulary and fingerprint rules
 6. [Compatibility Promise](reference/compatibility.md) - SemVer and contract stability
+7. [Verification](VERIFICATION.md) - README badge meanings, generated endpoints, and PR evidence boundaries
 
 ### Release Managers
 

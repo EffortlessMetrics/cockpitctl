@@ -438,3 +438,109 @@ fn conform_dir_missing_required_dir_arg_fails() {
         .failure()
         .stderr(predicate::str::contains("--dir"));
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// badge endpoints
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[cfg(unix)]
+fn fake_ripr_script(dir: &Path) -> PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+
+    let path = dir.join("ripr");
+    write_file(
+        &path,
+        r#"#!/usr/bin/env sh
+set -eu
+if [ "${1:-}" = "check" ] && [ "${5:-}" = "repo-badge-plus-shields" ]; then
+  printf '{"schemaVersion":1,"label":"ripr+","message":"0","color":"brightgreen"}\n'
+  exit 0
+fi
+if [ "${1:-}" = "check" ]; then
+  printf '{"findings":[]}\n'
+  exit 0
+fi
+if [ "${1:-}" = "review-comments" ]; then
+  out=""
+  while [ "$#" -gt 0 ]; do
+    if [ "$1" = "--out" ]; then
+      shift
+      out="$1"
+    fi
+    shift || true
+  done
+  mkdir -p "$(dirname "$out")"
+  printf '{"comments":[],"summary_only":[],"suppressed":[],"warnings":[]}\n' > "$out"
+  printf '# RIPR Review Guidance\n\nNo line-placeable guidance.\n' > "$(dirname "$out")/comments.md"
+  exit 0
+fi
+echo "unexpected ripr args: $*" >&2
+exit 2
+"#,
+    );
+    let mut perms = fs::metadata(&path)
+        .expect("fake ripr metadata")
+        .permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(&path, perms).expect("fake ripr executable");
+    path
+}
+
+#[test]
+#[cfg(unix)]
+fn badges_check_accepts_generated_endpoint_shape() {
+    let temp = TempDir::new().expect("tempdir");
+    let fake_ripr = fake_ripr_script(temp.path());
+
+    cmd()
+        .current_dir(workspace_root())
+        .env("RIPR_BIN", fake_ripr)
+        .args(["badges", "--check"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("committed endpoints are current"));
+}
+
+#[test]
+#[cfg(unix)]
+fn ripr_pr_check_validates_generated_contract() {
+    let temp = TempDir::new().expect("tempdir");
+    let fake_ripr = fake_ripr_script(temp.path());
+
+    cmd()
+        .current_dir(workspace_root())
+        .env("RIPR_BIN", fake_ripr)
+        .arg("ripr-pr")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("wrote PR evidence"));
+
+    cmd()
+        .current_dir(workspace_root())
+        .args(["ripr-pr", "--check"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("output contract is intact"));
+}
+
+#[test]
+#[cfg(unix)]
+fn ripr_review_comments_check_validates_generated_contract() {
+    let temp = TempDir::new().expect("tempdir");
+    let fake_ripr = fake_ripr_script(temp.path());
+
+    cmd()
+        .current_dir(workspace_root())
+        .env("RIPR_BIN", fake_ripr)
+        .arg("ripr-review-comments")
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("wrote review guidance"));
+
+    cmd()
+        .current_dir(workspace_root())
+        .args(["ripr-review-comments", "--check"])
+        .assert()
+        .success()
+        .stderr(predicate::str::contains("output contract is intact"));
+}
