@@ -53,7 +53,8 @@ Managing releases:
 2. [Release Manager Checklist](how-to/release-manager-checklist.md) - Detailed release checklist
 3. [Release Runbook](how-to/release-runbook.md) - Step-by-step release execution
 4. [Smoke Test a Release](how-to/smoke-test-release.md) - Post-release validation
-5. [Release-Ready Gate Checklist](../RELEASE_READY_GATE_CHECKLIST.md) - Workflow verification
+5. [Verification](VERIFICATION.md) - README badge meanings, generated endpoints, and PR evidence boundaries
+6. [Release-Ready Gate Checklist](../RELEASE_READY_GATE_CHECKLIST.md) - Workflow verification
 
 ## Documentation Structure
 

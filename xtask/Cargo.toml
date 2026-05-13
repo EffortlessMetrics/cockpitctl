@@ -21,6 +21,7 @@ clap.workspace = true
 cockpitctl-conform = { path = "../crates/cockpitctl-conform" }
 cockpitctl-types = { path = "../crates/cockpitctl-types" }
 jsonschema.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 walkdir.workspace = true
 
