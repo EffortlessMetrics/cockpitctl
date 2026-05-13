@@ -12,6 +12,7 @@ This documentation follows the [Diataxis framework](https://diataxis.fr/).
 | Accomplish a specific task | [How-to Guides](how-to/README.md) |
 | Look up technical details | [Reference](reference/README.md) |
 | Understand concepts and design | [Explanation](explanation/README.md) |
+| Verify badge and PR evidence boundaries | [Verification](VERIFICATION.md) |
 
 ## By Audience
 

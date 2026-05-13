@@ -438,3 +438,62 @@ fn conform_dir_missing_required_dir_arg_fails() {
         .failure()
         .stderr(predicate::str::contains("--dir"));
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// badges
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[cfg(unix)]
+fn write_mock_ripr(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    write_file(
+        path,
+        r#"#!/usr/bin/env sh
+set -eu
+if [ "${1:-}" = "check" ] && [ "${5:-}" = "repo-badge-plus-shields" ]; then
+  printf '{"schemaVersion":1,"label":"ripr+","message":"0","color":"brightgreen"}\n'
+  exit 0
+fi
+printf 'unexpected mock ripr args: %s\n' "$*" >&2
+exit 1
+"#,
+    );
+    let mut perms = fs::metadata(path).expect("mock metadata").permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(path, perms).expect("chmod mock ripr");
+}
+
+#[cfg(unix)]
+#[test]
+fn badges_generates_and_checks_from_workspace_root() {
+    let temp = TempDir::new().expect("tempdir");
+    let root = temp.path();
+    write_file(
+        &root.join("Cargo.toml"),
+        "[workspace]\nmembers = [\"xtask\"]\n",
+    );
+    fs::create_dir_all(root.join("xtask")).expect("create nested dir");
+    let ripr = root.join("mock-ripr.sh");
+    write_mock_ripr(&ripr);
+
+    cmd()
+        .current_dir(root.join("xtask"))
+        .env("RIPR_BIN", &ripr)
+        .arg("badges")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("refreshed"));
+
+    let badge = fs::read_to_string(root.join("badges/ripr-plus.json")).expect("badge");
+    assert!(badge.contains(r#""label": "ripr+""#));
+    assert!(!root.join("xtask/badges/ripr-plus.json").exists());
+
+    cmd()
+        .current_dir(root.join("xtask"))
+        .env("RIPR_BIN", &ripr)
+        .args(["badges", "--check"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("current"));
+}
